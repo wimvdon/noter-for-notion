@@ -3,13 +3,14 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 // ---------------------------------------------------------------------------
 // App identity: the ONE place to change the package / application ID.
 // (Also move the Kotlin sources in app/src/*/kotlin/ to the matching folder.)
 // ---------------------------------------------------------------------------
-val appId = "com.example.template"
+val appId = "com.impca201.noter"
 
 // ---------------------------------------------------------------------------
 // Versioning
@@ -92,6 +93,7 @@ android {
     buildTypes {
         debug {
             // Lets a pull request's debug APK be installed next to the released app.
+            // Shown as "Noter Dev" (src/debug/res) so the two icons can be told apart.
             applicationIdSuffix = ".debug"
         }
         release {
@@ -122,6 +124,11 @@ android {
         // Do not disable checks or add a baseline without recording why in docs/decisions.md.
     }
 
+    dependenciesInfo {
+        // Not needed outside Google Play; keeps the APK free of an encrypted dependency blob.
+        includeInApk = false
+    }
+
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
@@ -130,11 +137,18 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.security.crypto)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons)
+    implementation(libs.okhttp)
+    implementation(libs.kotlinx.serialization.json)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
