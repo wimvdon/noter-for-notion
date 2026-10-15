@@ -109,7 +109,7 @@ fun MainScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    val context = LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     var reordering by rememberSaveable { mutableStateOf(false) }
     var choosingDatabase by remember { mutableStateOf(false) }
     var confirmTrash by remember { mutableStateOf<NoteSummary?>(null) }
@@ -117,12 +117,12 @@ fun MainScreen(
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             val text = when (event) {
-                is RepoEvent.SaveFailed -> context.getString(
+                is RepoEvent.SaveFailed -> resources.getString(
                     R.string.sync_failed,
-                    event.noteTitle.ifBlank { context.getString(R.string.untitled) },
+                    event.noteTitle.ifBlank { resources.getString(R.string.untitled) },
                     event.detail,
                 )
-                RepoEvent.KeyRejected -> context.getString(R.string.sync_key_rejected)
+                RepoEvent.KeyRejected -> resources.getString(R.string.sync_key_rejected)
             }
             snackbar.showSnackbar(text)
         }
@@ -580,7 +580,7 @@ private fun NoteMeta(note: NoteSummary, chipProperty: String?) {
         is PropertyValue.MultiSelect -> chipValue.options
         else -> emptyList()
     }
-    val locale = Locale.getDefault()
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
     val edited = NotionDates.display(note.lastEditedTime.takeIf { it.isNotBlank() }, locale)
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         options.take(3).forEach { OptionChip(it, small = true) }

@@ -183,7 +183,7 @@ private fun PropertyEditor(
 
 @Composable
 fun ReadOnlyValue(property: NoteProperty) {
-    val locale = Locale.getDefault()
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
     val text = when (property.type) {
         "created_time", "last_edited_time" -> NotionDates.display((property.value as? PropertyValue.ReadOnly)?.display, locale)
         else -> PropertyCodec.displayText(property.value)
@@ -430,7 +430,7 @@ private fun <T> ChoiceSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DateEditor(value: PropertyValue.Date, onChange: (PropertyValue.Date) -> Unit) {
-    val locale = Locale.getDefault()
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
     var pickDate by remember { mutableStateOf(false) }
     var pickTime by remember { mutableStateOf(false) }
     ValueChips(empty = value.start == null, onClick = { pickDate = true }) {
