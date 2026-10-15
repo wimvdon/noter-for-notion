@@ -49,7 +49,7 @@ object ContentDiff {
         normalized.forEach { block ->
             val id = block.notionId ?: return@forEach
             val old = baseById[id] ?: return@forEach
-            if (block.type != BlockType.UNSUPPORTED && !old.sameContentAs(block)) ops += ContentOp.Update(id, block)
+            if (block.type != BlockType.UNSUPPORTED && block.type != BlockType.DIVIDER && !old.sameContentAs(block)) ops += ContentOp.Update(id, block)
         }
         ops += deletes.distinct()
 

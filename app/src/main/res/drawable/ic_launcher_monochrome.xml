@@ -1,19 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Themed icon: the note with the checkbox cut out. -->
+<!-- Themed icon: the box shape with the folded corner cut out. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Scaled to stay inside the 66dp safe zone of every icon mask. -->
     <group
         android:pivotX="54"
         android:pivotY="54"
-        android:scaleX="0.8"
-        android:scaleY="0.8">
+        android:scaleX="1"
+        android:scaleY="1">
         <path
-            android:fillColor="#FFFFFF"
-            android:fillType="evenOdd"
-            android:pathData="M30,24h46a4,4 0,0 1,4 4v34l-16,16h-34a4,4 0,0 1,-4 -4v-46a4,4 0,0 1,4 -4zM42,36h18a6,6 0,0 1,6 6v18a6,6 0,0 1,-6 6h-18a6,6 0,0 1,-6 -6v-18a6,6 0,0 1,6 -6zM43.5,40.5a3,3 0,0 0,-3 3v15a3,3 0,0 0,3 3h15a3,3 0,0 0,3 -3v-15a3,3 0,0 0,-3 -3zM44,51l3,-3l3.5,3.5l7,-7l3,3l-10,10z" />
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M30,38H70V66L58,78H30ZM30,38L38,30H78L70,38ZM70,38L78,30V58L70,66Z" />
     </group>
 </vector>

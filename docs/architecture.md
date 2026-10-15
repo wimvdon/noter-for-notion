@@ -1,9 +1,17 @@
 # Architecture
 
-> Template skeleton. Fill in the "This app" section for each app and keep it up to date.
-
 ## This app
-_What the app does, its screens, and where its data lives. (Placeholder: one home screen with a tap counter. No stored data.)_
+Noter shows the pages of Notion databases as notes.
+- **Main screen** (`ui/main`): a floating bar with Home (pinned notes of all databases) and one tab per
+  database, filter chips on top, a + button. Long-press and drag a note to move it; long-press without
+  moving for its menu.
+- **Note** (`ui/note`): title, editable properties (read-only ones folded away), block editor.
+- **Settings** (`ui/settings`): Notion key, databases (name, icon, chip property), appearance.
+- **Data** (`data/`): `NotesRepository` is the single source for the screens. `NotionClient` calls the
+  API; `notion/` converts JSON; `sync/` holds the queue, the content diff and the refresh rules;
+  `store/` keeps the settings (DataStore, backed up), the key (encrypted) and the cache (files).
+- Plain-Kotlin logic with tests: `logic/` (editor rules, ordering, chips, dates), `data/notion`,
+  `data/sync`, `CacheStore`.
 
 ## Structure
 ```

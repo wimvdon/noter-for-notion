@@ -11,18 +11,13 @@ data class EditResult(
     val cursor: Int? = null,
 )
 
-/** Progress of a checklist section: a text block followed by checkboxes. */
-data class SectionProgress(val done: Int, val total: Int)
-
 /**
- * The note editor's rules, on a plain list of [Block]s:
+ * The note editor's rules, on a plain list of [Block]s, following Notion's own editor:
  * - Enter splits a block; in a list (bullets, numbers, checkboxes) the new line is the same kind.
- *   Enter on an empty list item ends the list. Under a section title Enter adds a checkbox.
- * - Markdown at the start of a text block changes its kind: `# `, `## `, `### `, `- `, `* `,
- *   `1. `, `[] `, `[ ] `, `[x] `.
- * - Backspace at the start turns a list item or heading into text, then joins it with the line above.
- * - A section is a text block (no checkbox) followed by checkboxes. "Add item" adds a checkbox at
- *   the end of the section.
+ *   Enter on an empty list item ends the list. In a code block Enter is a new line in the code.
+ * - Notion's Markdown shortcuts at the start of a text block change its kind: `# `, `## `, `### `,
+ *   `- `, `* `, `1. `, `[] `, `[x] `, `> ` (toggle), `" ` (quote), ```` ``` ```` (code), `---` (divider).
+ * - Backspace at the start turns a block into text, then joins it with the line above.
  */
 class DocumentEditor(private val newKey: () -> String = { UUID.randomUUID().toString() }) {
 
@@ -36,13 +31,23 @@ class DocumentEditor(private val newKey: () -> String = { UUID.randomUUID().toSt
         val block = blocks[index]
         if (block.type == BlockType.UNSUPPORTED) return EditResult(blocks)
 
+        if (block.type == BlockType.CODE) return EditResult(blocks.replace(index, block.copy(text = newText)), key, cursor)
         if (newText.contains('\n')) return splitLines(blocks, index, newText)
 
         val shortcut = if (block.type == BlockType.PARAGRAPH && !block.hasChildren) shortcutFor(newText) else null
         if (shortcut != null) {
             val (type, checked, prefixLength) = shortcut
             val text = newText.substring(prefixLength)
-            val updated = block.copy(type = type, checked = checked, text = text)
+            if (type == BlockType.DIVIDER) {
+                // A divider has no text: what was typed after it goes on a new line below.
+                val next = newBlock(BlockType.PARAGRAPH, text)
+                val result = blocks.toMutableList().apply {
+                    set(index, block.copy(type = BlockType.DIVIDER, text = ""))
+                    add(index + 1, next)
+                }
+                return EditResult(result, next.key, 0)
+            }
+            val updated = block.copy(type = type, checked = checked, text = text, language = if (type == BlockType.CODE) "plain text" else null)
             return EditResult(blocks.replace(index, updated), key, (cursor - prefixLength).coerceIn(0, text.length))
         }
         return EditResult(blocks.replace(index, block.copy(text = newText)), key, cursor)
@@ -70,13 +75,7 @@ class DocumentEditor(private val newKey: () -> String = { UUID.randomUUID().toSt
     /** What a new line after [index] becomes. */
     fun continuationType(blocks: List<Block>, index: Int): BlockType {
         val block = blocks[index]
-        return when {
-            block.type.isListItem -> block.type
-            // A section title: the next line is a checkbox when the section has checkboxes.
-            block.type == BlockType.PARAGRAPH || block.type.isHeading ->
-                if (blocks.getOrNull(index + 1)?.type == BlockType.TODO) BlockType.TODO else BlockType.PARAGRAPH
-            else -> BlockType.PARAGRAPH
-        }
+        return if (block.type.isListItem) block.type else BlockType.PARAGRAPH
     }
 
     /** Backspace at the very start of block [key]. */
@@ -85,13 +84,14 @@ class DocumentEditor(private val newKey: () -> String = { UUID.randomUUID().toSt
         if (index < 0) return EditResult(blocks)
         val block = blocks[index]
         if (block.type == BlockType.UNSUPPORTED) return EditResult(blocks)
+        if (block.type == BlockType.DIVIDER) return delete(blocks, key)
         if (block.type != BlockType.PARAGRAPH && !block.hasChildren) {
             return EditResult(blocks.replace(index, block.copy(type = BlockType.PARAGRAPH, checked = false)), key, 0)
         }
         if (block.hasChildren) return EditResult(blocks, key, 0)
         val previousIndex = index - 1
         val previous = blocks.getOrNull(previousIndex) ?: return EditResult(blocks, key, 0)
-        if (previous.type == BlockType.UNSUPPORTED) {
+        if (!previous.type.hasText || previous.type == BlockType.CODE) {
             // Can't join into an image or table; only remove this line when it is empty.
             return if (block.text.isEmpty()) EditResult(blocks.removeAtIndex(index), null) else EditResult(blocks, key, 0)
         }
@@ -108,7 +108,12 @@ class DocumentEditor(private val newKey: () -> String = { UUID.randomUUID().toSt
         if (index < 0) return EditResult(blocks)
         val block = blocks[index]
         if (!canChangeType(block) || type == BlockType.UNSUPPORTED) return EditResult(blocks, key)
-        val updated = block.copy(type = type, checked = if (type == BlockType.TODO) block.checked else false)
+        val updated = block.copy(
+            type = type,
+            checked = if (type == BlockType.TODO) block.checked else false,
+            text = if (type == BlockType.DIVIDER) "" else block.text,
+            language = if (type == BlockType.CODE) block.language ?: "plain text" else null,
+        )
         return EditResult(blocks.replace(index, updated), key)
     }
 
@@ -132,49 +137,6 @@ class DocumentEditor(private val newKey: () -> String = { UUID.randomUUID().toSt
         return EditResult(result, block.key, 0)
     }
 
-    /**
-     * Adds a checkbox at the end of the note. An empty text line at the end is reused, so tapping
-     * "Add checkbox" twice doesn't leave empty lines behind.
-     */
-    fun addCheckboxAtEnd(blocks: List<Block>): EditResult {
-        val last = blocks.lastOrNull()
-        if (last != null && last.type == BlockType.PARAGRAPH && last.text.isEmpty() && !last.hasChildren) {
-            return EditResult(blocks.replace(blocks.lastIndex, last.copy(type = BlockType.TODO)), last.key, 0)
-        }
-        return insertAfter(blocks, null, BlockType.TODO)
-    }
-
-    /** Adds a checkbox after the last checkbox of the run of checkboxes that contains [key]. */
-    fun addCheckboxToSection(blocks: List<Block>, key: String): EditResult {
-        var index = blocks.indexOfFirst { it.key == key }
-        if (index < 0) return EditResult(blocks)
-        while (blocks.getOrNull(index + 1)?.type == BlockType.TODO) index++
-        return insertAfter(blocks, blocks[index].key, BlockType.TODO)
-    }
-
-    /**
-     * Moves checked checkboxes below the unchecked ones within each section. Notion can't move a
-     * block, so a checkbox that moves becomes a new block (and the old one is deleted on sync).
-     */
-    fun sortCheckedToBottom(blocks: List<Block>): List<Block> {
-        val result = mutableListOf<Block>()
-        var run = mutableListOf<Block>()
-        fun flush() {
-            val lastUnchecked = run.indexOfLast { !it.checked }
-            val moved = run.withIndex().filter { it.value.checked }.map { (i, b) ->
-                if (i < lastUnchecked) b.copy(key = newKey(), notionId = null) else b
-            }
-            result += run.filter { !it.checked } + moved
-            run = mutableListOf()
-        }
-        blocks.forEach { if (it.type == BlockType.TODO && !it.hasChildren) run += it else { flush(); result += it } }
-        flush()
-        return result
-    }
-
-    /** Removes every checked checkbox. */
-    fun deleteChecked(blocks: List<Block>): List<Block> = blocks.filterNot { it.type == BlockType.TODO && it.checked }
-
     companion object {
         private val NUMBERED_PREFIX = Regex("""^\d+[.)] """)
 
@@ -187,6 +149,10 @@ class DocumentEditor(private val newKey: () -> String = { UUID.randomUUID().toSt
             text.startsWith("[ ] ") -> Triple(BlockType.TODO, false, 4)
             text.startsWith("[x] ") || text.startsWith("[X] ") -> Triple(BlockType.TODO, true, 4)
             text.startsWith("- ") || text.startsWith("* ") || text.startsWith("• ") -> Triple(BlockType.BULLETED, false, 2)
+            text.startsWith("> ") -> Triple(BlockType.TOGGLE, false, 2)
+            text.startsWith("\" ") || text.startsWith("“ ") -> Triple(BlockType.QUOTE, false, 2)
+            text.startsWith("```") -> Triple(BlockType.CODE, false, 3)
+            text.startsWith("---") -> Triple(BlockType.DIVIDER, false, 3)
             NUMBERED_PREFIX.containsMatchIn(text) -> Triple(BlockType.NUMBERED, false, NUMBERED_PREFIX.find(text)!!.value.length)
             else -> null
         }
@@ -206,28 +172,10 @@ class DocumentEditor(private val newKey: () -> String = { UUID.randomUUID().toSt
             return result
         }
 
-        /** For each section title (text or heading directly followed by checkboxes): its progress. */
-        fun sections(blocks: List<Block>): Map<String, SectionProgress> {
-            val result = mutableMapOf<String, SectionProgress>()
-            blocks.forEachIndexed { index, block ->
-                val isTitle = block.type == BlockType.PARAGRAPH || block.type.isHeading
-                if (!isTitle || blocks.getOrNull(index + 1)?.type != BlockType.TODO) return@forEachIndexed
-                val todos = blocks.drop(index + 1).takeWhile { it.type == BlockType.TODO }
-                result[block.key] = SectionProgress(todos.count { it.checked }, todos.size)
-            }
-            return result
-        }
-
-        /** Keys of the last checkbox of each run of checkboxes (where "Add item" goes). */
-        fun lastCheckboxes(blocks: List<Block>): Set<String> =
-            blocks.filterIndexed { index, block ->
-                block.type == BlockType.TODO && blocks.getOrNull(index + 1)?.type != BlockType.TODO
-            }.map { it.key }.toSet()
-
         /** A short preview of a note's content for lists. */
         fun preview(blocks: List<Block>, maxLines: Int = 3): String =
             blocks.asSequence()
-                .filter { it.type != BlockType.UNSUPPORTED && it.text.isNotBlank() }
+                .filter { it.type.hasText && it.text.isNotBlank() }
                 .take(maxLines)
                 .joinToString("\n") { block ->
                     val text = com.impca201.noter.data.notion.InlineMarkdown.stripped(block.text)

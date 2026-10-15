@@ -358,14 +358,23 @@ class NotesRepository(
 
     // ---- Sending changes ------------------------------------------------------------------
 
-    /** Sends the queue shortly after the last edit, so typing doesn't cause a request per letter. */
+    /**
+     * Sends the queue shortly after an edit. A flush that is still waiting sends later edits too;
+     * keeping it (instead of restarting the wait) means changes go out while typing continues, not
+     * only after it stops. Notion's rate limit is respected by sending one request at a time.
+     */
     fun scheduleFlush(delayMs: Long = FLUSH_DELAY_MS) {
-        flushJob?.cancel()
+        if (flushWaiting) return
+        flushWaiting = true
         flushJob = scope.launch {
             delay(delayMs)
+            flushWaiting = false
             flush()
         }
     }
+
+    @Volatile
+    private var flushWaiting = false
 
     /** Sends every queued change now, in order. Stops at the first one that can't be sent yet. */
     suspend fun flush() {
@@ -679,7 +688,7 @@ class NotesRepository(
     suspend fun updateSettings(transform: (AppSettings) -> AppSettings) = settings.update(transform)
 
     private companion object {
-        const val FLUSH_DELAY_MS = 1_500L
+        const val FLUSH_DELAY_MS = 500L
         const val RETRY_MIN_MS = 15_000L
         const val RETRY_MAX_MS = 5 * 60_000L
         const val LOOKUP_TTL_MS = 24 * 60 * 60_000L

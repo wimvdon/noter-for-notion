@@ -189,7 +189,7 @@ data class NoteSummary(
 }
 
 enum class BlockType {
-    PARAGRAPH, HEADING_1, HEADING_2, HEADING_3, BULLETED, NUMBERED, TODO,
+    PARAGRAPH, HEADING_1, HEADING_2, HEADING_3, BULLETED, NUMBERED, TODO, TOGGLE, QUOTE, CALLOUT, CODE, DIVIDER,
 
     /** A block the editor can't change (image, toggle, table, …). Shown, kept, never written. */
     UNSUPPORTED,
@@ -197,6 +197,9 @@ enum class BlockType {
 
     val isListItem: Boolean get() = this == BULLETED || this == NUMBERED || this == TODO
     val isHeading: Boolean get() = this == HEADING_1 || this == HEADING_2 || this == HEADING_3
+
+    /** Blocks with text the user types (all but dividers and unsupported blocks). */
+    val hasText: Boolean get() = this != DIVIDER && this != UNSUPPORTED
 }
 
 /**
@@ -213,10 +216,12 @@ data class Block(
     val hasChildren: Boolean = false,
     /** Notion's type name, for [BlockType.UNSUPPORTED] blocks. */
     val rawType: String? = null,
+    /** Language of a code block. */
+    val language: String? = null,
 ) {
     /** Same content as [other], ignoring identity. */
     fun sameContentAs(other: Block): Boolean =
-        type == other.type && text == other.text && checked == other.checked
+        type == other.type && text == other.text && checked == other.checked && language == other.language
 }
 
 /**

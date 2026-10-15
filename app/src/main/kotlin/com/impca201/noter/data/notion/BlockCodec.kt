@@ -19,6 +19,11 @@ object BlockCodec {
         "bulleted_list_item" to BlockType.BULLETED,
         "numbered_list_item" to BlockType.NUMBERED,
         "to_do" to BlockType.TODO,
+        "toggle" to BlockType.TOGGLE,
+        "quote" to BlockType.QUOTE,
+        "callout" to BlockType.CALLOUT,
+        "code" to BlockType.CODE,
+        "divider" to BlockType.DIVIDER,
     )
 
     fun notionType(type: BlockType): String =
@@ -52,7 +57,9 @@ object BlockCodec {
             text = InlineMarkdown.fromRichText(body?.arrayOrNull("rich_text")),
             checked = type == BlockType.TODO && body?.boolOrNull("checked") == true,
             hasChildren = hasChildren,
-        )
+            // Code is kept as typed: Markdown markers in it are not formatting.
+            language = if (type == BlockType.CODE) body?.stringOrNull("language") ?: "plain text" else null,
+        ).let { if (type == BlockType.CODE) it.copy(text = InlineMarkdown.plainText(body?.arrayOrNull("rich_text"))) else it }
     }
 
     /** The body for creating [block] (append children / create page). */
@@ -65,7 +72,18 @@ object BlockCodec {
     fun toUpdateRequest(block: Block): Map<String, Any?> = mapOf(notionType(block.type) to content(block))
 
     private fun content(block: Block): Map<String, Any?> = buildMap {
-        put("rich_text", InlineMarkdown.toRichText(block.text))
+        when (block.type) {
+            BlockType.DIVIDER -> Unit
+            BlockType.CODE -> {
+                put("rich_text", plainRichText(block.text))
+                put("language", block.language ?: "plain text")
+            }
+            else -> put("rich_text", InlineMarkdown.toRichText(block.text))
+        }
         if (block.type == BlockType.TODO) put("checked", block.checked)
     }
+
+    /** Text without Markdown parsing, in items of at most 2000 characters. */
+    private fun plainRichText(text: String): List<Map<String, Any?>> =
+        text.chunked(2000).map { mapOf("type" to "text", "text" to mapOf("content" to it)) }
 }

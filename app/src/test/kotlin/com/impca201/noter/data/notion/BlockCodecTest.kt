@@ -39,4 +39,28 @@ class BlockCodecTest {
         val body = request["to_do"] as Map<String, Any?>
         assertEquals(true, body["checked"])
     }
+
+    @Test
+    fun `reads code, quote, toggle, callout and divider`() {
+        val code = parse("""{"id":"b","type":"code","code":{"rich_text":[{"plain_text":"a **b**","annotations":{"bold":false}}],"language":"kotlin"}}""")!!
+        assertEquals(BlockType.CODE, code.type)
+        assertEquals("a **b**", code.text)
+        assertEquals("kotlin", code.language)
+        assertEquals(BlockType.QUOTE, parse("""{"id":"b","type":"quote","quote":{"rich_text":[]}}""")!!.type)
+        assertEquals(BlockType.TOGGLE, parse("""{"id":"b","type":"toggle","has_children":true,"toggle":{"rich_text":[]}}""")!!.type)
+        assertEquals(BlockType.CALLOUT, parse("""{"id":"b","type":"callout","callout":{"rich_text":[]}}""")!!.type)
+        assertEquals(BlockType.DIVIDER, parse("""{"id":"b","type":"divider","divider":{}}""")!!.type)
+    }
+
+    @Test
+    fun `writes code without markdown and a divider without text`() {
+        val code = BlockCodec.toCreateRequest(Block("k", type = BlockType.CODE, text = "**x**", language = "kotlin"))
+        @Suppress("UNCHECKED_CAST")
+        val body = code["code"] as Map<String, Any?>
+        assertEquals("kotlin", body["language"])
+        @Suppress("UNCHECKED_CAST")
+        val text = (body["rich_text"] as List<Map<String, Any?>>)[0]["text"] as Map<String, Any?>
+        assertEquals("**x**", text["content"])
+        assertEquals(mapOf("object" to "block", "type" to "divider", "divider" to emptyMap<String, Any?>()), BlockCodec.toCreateRequest(Block("k", type = BlockType.DIVIDER)))
+    }
 }

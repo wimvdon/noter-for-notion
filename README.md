@@ -1,8 +1,8 @@
-# Android app template
+# Noter for Notion
 
-A starting point for Android apps built with Claude Code and GitHub. Out of the box it
-**builds, tests and releases**. The only app content is a placeholder screen with a tap
-counter.
+A Material 3 note app for Android on top of your Notion databases: one tab per database, filter
+chips, pinned notes on Home, a Notion-style block editor, fast offline cache and background sync.
+Built from the Android app template (below).
 
 - Kotlin, Jetpack Compose, Material 3 (light/dark, wallpaper colours), Android 12+.
 - CI on every pull request: unit tests, lint, debug and release builds, and an installable APK.

@@ -119,5 +119,7 @@ repositories:
 
 ## This app
 
-Each app replaces this section with its own rules: the seed colour of its theme and its
-signature element.
+- Noter's seed colour is sticky-note amber `#F5A623` (the icon's middle gradient stop).
+- Icon: a sticky note drawn as a 3D box (a nod to Notion's cube logo), gradient
+  `#FFC93C` → `#F5A623` → `#E8731A`, with a pale folded corner.
+- Signature element: the floating bottom bar with the + button beside it.

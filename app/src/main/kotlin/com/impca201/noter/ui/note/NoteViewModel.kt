@@ -137,23 +137,9 @@ class NoteViewModel(
 
     fun delete(key: String) = apply(editor.delete(blocks.value, key))
 
-    fun addCheckboxAtEnd() = apply(editor.addCheckboxAtEnd(blocks.value))
-
     fun addTextAtEnd() = apply(editor.insertAfter(blocks.value, null, BlockType.PARAGRAPH))
 
-    fun addCheckboxToSection(key: String) = apply(editor.addCheckboxToSection(blocks.value, key))
-
     fun insertAfter(key: String, type: BlockType) = apply(editor.insertAfter(blocks.value, key, type))
-
-    fun sortCheckedToBottom() {
-        blocks.value = editor.sortCheckedToBottom(blocks.value)
-        scheduleSave(fast = true)
-    }
-
-    fun deleteChecked() {
-        blocks.value = editor.deleteChecked(blocks.value)
-        scheduleSave(fast = true)
-    }
 
     fun canChangeType(block: Block) = editor.canChangeType(block)
 
@@ -164,12 +150,21 @@ class NoteViewModel(
 
     private fun scheduleSave(fast: Boolean = false) {
         editedSinceOpen = true
-        saveJob?.cancel()
+        // A waiting save stores the latest content when it runs, so it is not restarted: content is
+        // saved every few hundred milliseconds while typing, not only after typing stops.
+        if (saveWaiting) {
+            if (!fast) return
+            saveJob?.cancel()
+        }
+        saveWaiting = true
         saveJob = viewModelScope.launch {
-            delay(if (fast) 300 else 800)
+            delay(if (fast) 100 else 300)
+            saveWaiting = false
             repository.saveContent(pageId, savable())
         }
     }
+
+    private var saveWaiting = false
 
     /** The content to store: a single empty line (an untouched new note) is not content. */
     private fun savable(): List<Block> =
@@ -186,7 +181,7 @@ class NoteViewModel(
         pendingProperties[property.name] = property
         propertyJobs[property.name]?.cancel()
         propertyJobs[property.name] = viewModelScope.launch {
-            if (debounce) delay(600)
+            if (debounce) delay(300)
             pendingProperties.remove(property.name)
             repository.updateProperty(pageId, property)
         }
@@ -227,7 +222,6 @@ class NoteViewModel(
         }
         pendingProperties.values.forEach { repository.updatePropertyInBackground(pageId, it) }
         repository.scheduleFlush(200)
-        super.onCleared()
     }
 
     companion object {

@@ -42,14 +42,6 @@ class DocumentEditorTest {
     }
 
     @Test
-    fun `enter on a section title adds a checkbox`() {
-        val blocks = listOf(b("t", "Groceries"), b("c", "Milk", BlockType.TODO))
-        val result = editor.changeText(blocks, "t", "Groceries\n")
-        assertEquals(BlockType.TODO, result.blocks[1].type)
-        assertEquals("", result.blocks[1].text)
-    }
-
-    @Test
     fun `enter on a heading adds text`() {
         val result = editor.changeText(listOf(b("h", "Title", BlockType.HEADING_1)), "h", "Title\n")
         assertEquals(BlockType.PARAGRAPH, result.blocks[1].type)
@@ -109,47 +101,10 @@ class DocumentEditorTest {
     }
 
     @Test
-    fun `add item goes to the end of the section`() {
-        val blocks = listOf(b("t", "Shop"), b("1", "a", BlockType.TODO), b("2", "b", BlockType.TODO), b("u", "Other"))
-        val result = editor.addCheckboxToSection(blocks, "1")
-        assertEquals(listOf("t", "1", "2", "n1", "u"), result.blocks.map { it.key })
-        assertEquals(BlockType.TODO, result.blocks[3].type)
-    }
-
-    @Test
-    fun `add checkbox reuses an empty last line`() {
-        val result = editor.addCheckboxAtEnd(listOf(b("a", "x"), b("e")))
-        assertEquals(listOf(BlockType.PARAGRAPH, BlockType.TODO), result.blocks.map { it.type })
-        assertEquals("e", result.focusKey)
-    }
-
-    @Test
     fun `blocks with nested content keep their kind`() {
         val block = Block("a", "1", BlockType.BULLETED, "x", hasChildren = true)
         assertFalse(editor.canChangeType(block))
         assertEquals(BlockType.BULLETED, editor.setType(listOf(block), "a", BlockType.TODO).blocks[0].type)
-    }
-
-    @Test
-    fun `checked items move down within their section`() {
-        val blocks = listOf(
-            b("t", "Shop"),
-            b("1", "a", BlockType.TODO, checked = true, id = "i1"),
-            b("2", "b", BlockType.TODO, id = "i2"),
-            b("3", "c", BlockType.TODO, checked = true, id = "i3"),
-            b("u", "Other"),
-        )
-        val result = editor.sortCheckedToBottom(blocks)
-        assertEquals(listOf("Shop", "b", "a", "c", "Other"), result.map { it.text })
-        // "a" moved, so Notion gets it as a new block; "c" stayed in place.
-        assertNull(result[2].notionId)
-        assertEquals("i3", result[3].notionId)
-    }
-
-    @Test
-    fun `delete checked removes only checked checkboxes`() {
-        val blocks = listOf(b("1", "a", BlockType.TODO, checked = true), b("2", "b", BlockType.TODO), b("3", "c"))
-        assertEquals(listOf("2", "3"), editor.deleteChecked(blocks).map { it.key })
     }
 
     @Test
@@ -160,13 +115,32 @@ class DocumentEditorTest {
         assertEquals(mapOf("1" to 1, "2" to 2, "3" to 1), DocumentEditor.numbers(blocks))
     }
 
+
     @Test
-    fun `sections count their checked items`() {
-        val blocks = listOf(
-            b("t", "Shop"), b("1", "a", BlockType.TODO, checked = true), b("2", "b", BlockType.TODO),
-            b("p", "just text"), b("q", "more text"),
-        )
-        assertEquals(mapOf("t" to SectionProgress(1, 2)), DocumentEditor.sections(blocks))
-        assertEquals(setOf("2"), DocumentEditor.lastCheckboxes(blocks))
+    fun `notion shortcuts for toggle, quote, code and divider`() {
+        fun typed(text: String) = editor.changeText(listOf(b("a")), "a", text).blocks
+        assertEquals(BlockType.TOGGLE, typed("> ")[0].type)
+        assertEquals(BlockType.QUOTE, typed("\" ")[0].type)
+        assertEquals(BlockType.CODE, typed("```")[0].type)
+        val divider = typed("---")
+        assertEquals(listOf(BlockType.DIVIDER, BlockType.PARAGRAPH), divider.map { it.type })
+    }
+
+    @Test
+    fun `enter in a code block is a new line in the code`() {
+        val result = editor.changeText(listOf(b("a", "x", BlockType.CODE)), "a", "x\ny")
+        assertEquals(listOf("x\ny"), result.blocks.map { it.text })
+    }
+
+    @Test
+    fun `enter after a toggle or quote adds text`() {
+        val result = editor.changeText(listOf(b("a", "x", BlockType.QUOTE)), "a", "x\n")
+        assertEquals(BlockType.PARAGRAPH, result.blocks[1].type)
+    }
+
+    @Test
+    fun `backspace on a divider removes it`() {
+        val result = editor.backspaceAtStart(listOf(b("x", "a"), b("d", type = BlockType.DIVIDER)), "d")
+        assertEquals(listOf("x"), result.blocks.map { it.key })
     }
 }

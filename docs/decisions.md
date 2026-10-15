@@ -2,6 +2,29 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-15: Noter, a note app for Notion databases
+
+- **Sign-in and network:** a Notion integration key, stored encrypted, as in Time Tracker for Notion
+  (same libraries: OkHttp, kotlinx-serialization, security-crypto). Internet permission added; only
+  api.notion.com is called. Rejected: Notion OAuth (needs a server for the client secret).
+- **Libraries added:** the ones above plus DataStore, lifecycle-viewmodel/runtime-compose and
+  material-icons-extended, all already used by Time Tracker for Notion. No navigation library: three
+  screens are a small back stack with one ViewModelStore per screen (`ui/AppNavigation.kt`).
+- **Caching:** a copy of each database and each opened note's content is kept as JSON files in the
+  no-backup folder (`CacheStore`), not in DataStore: Preferences DataStore loads everything into memory
+  at once and notes can be large. Lists and notes open from this copy and refresh in the background.
+  Only edits since the last sync are asked for most of the time; a full reload runs on
+  pull-to-refresh and every 6 hours (`SyncPolicy`).
+- **Saving:** edits go into a queue (`Outbox`) stored on the phone and are sent one request at a time
+  (Notion allows about 3 per second, 429s are retried), starting a few hundred milliseconds after an
+  edit and continuing while typing goes on. Content is sent as a diff of changed blocks
+  (`ContentDiff`), never by rewriting the note, so formatting and blocks the app can't edit stay as they are.
+- **Editor:** Notion's block types with text (text, headings, lists, to-do, toggle, quote, callout,
+  code, divider), with Notion's Markdown shortcuts. Other blocks (images, tables, …) are shown
+  read-only. Rejected: a raw Markdown text editor (every save would rewrite all blocks).
+- **Pins and order** are kept on the phone only (backed-up settings), so Notion is never changed by them.
+- **Notion API version 2022-06-28**, as in Time Tracker for Notion.
+
 ## 2026-10-15: Android's backup copies settings only, from an allow list
 
 Users expect their settings back after a reset or on a new phone, and Android does that for free with its own backup (Google account) and phone-to-phone transfer. The template now lists exactly one file, the DataStore `backed_up_settings`, in `data_extraction_rules.xml`; everything else stays on the phone. An allow list means a file added later (a sign-in token, device state) is never backed up by accident, and `BackupRulesTest` fails if the rules drift. Rules for what goes where are in `docs/architecture.md`, "Backup". Rejected: backing up everything with exclusions (one forgotten exclusion leaks a token into the backup), switching backup off (users lose their settings) and our own backup to Google Drive (needs network access, sign-in and more code for what Android already does).

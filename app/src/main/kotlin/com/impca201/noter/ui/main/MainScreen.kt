@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
@@ -100,6 +101,9 @@ import com.impca201.noter.ui.theme.AppShapes
 import com.impca201.noter.ui.theme.SkeletonBlock
 import java.util.Locale
 
+/** How far (in pixels) a long-pressed note may move and still count as a press (opens the menu). */
+private const val MENU_SLOP_PX = 24f
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -110,7 +114,6 @@ fun MainScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val resources = androidx.compose.ui.platform.LocalResources.current
-    var reordering by rememberSaveable { mutableStateOf(false) }
     var choosingDatabase by remember { mutableStateOf(false) }
     var confirmTrash by remember { mutableStateOf<NoteSummary?>(null) }
 
@@ -127,7 +130,6 @@ fun MainScreen(
             snackbar.showSnackbar(text)
         }
     }
-    LaunchedEffect(state.currentTab) { reordering = false }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val title = state.tabs.firstOrNull { it.key == state.currentTab }?.name?.ifEmpty { null }
@@ -141,11 +143,6 @@ fun MainScreen(
                 title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 actions = {
                     SyncStatusIcon(state.pendingCount, state.offline)
-                    if (state.pinned.size + state.others.size > 1) {
-                        FilledTonalIconToggleButton(checked = reordering, onCheckedChange = { reordering = it }) {
-                            Icon(Icons.Rounded.SwapVert, contentDescription = stringResource(R.string.action_reorder))
-                        }
-                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
@@ -193,7 +190,6 @@ fun MainScreen(
                         )
                         else -> NoteList(
                             state = state,
-                            reordering = reordering,
                             onOpen = onOpenNote,
                             onTogglePin = viewModel::togglePin,
                             onTrash = { confirmTrash = it },
@@ -344,7 +340,6 @@ private sealed interface Row {
 @Composable
 private fun NoteList(
     state: MainUiState,
-    reordering: Boolean,
     onOpen: (String) -> Unit,
     onTogglePin: (String) -> Unit,
     onTrash: (NoteSummary) -> Unit,
@@ -354,6 +349,7 @@ private fun NoteList(
     val pinned = remember { mutableStateListOf<NoteSummary>() }
     val others = remember { mutableStateListOf<NoteSummary>() }
     var draggingKey by remember { mutableStateOf<String?>(null) }
+    var menuFor by remember { mutableStateOf<String?>(null) }
     if (draggingKey == null) {
         if (pinned.toList() != state.pinned) { pinned.clear(); pinned.addAll(state.pinned) }
         if (others.toList() != state.others) { others.clear(); others.addAll(state.others) }
@@ -408,23 +404,31 @@ private fun NoteList(
                         databaseIcon = state.databaseIcons[row.note.databaseId],
                         pinned = row.note.id in state.pinnedIds,
                         chipProperty = state.chipProperty,
-                        reordering = reordering,
+                        menuOpen = menuFor == row.key,
+                        onMenuDismiss = { menuFor = null },
                         onOpen = { onOpen(row.note.id) },
                         onTogglePin = { onTogglePin(row.note.id) },
                         onTrash = { onTrash(row.note) },
                         onMoveUp = { move(row.key, -1) },
                         onMoveDown = { move(row.key, 1) },
                         dragHandle = Modifier.pointerInput(row.key) {
+                            // Long-press and drag moves the note; long-press without moving opens its menu.
+                            var moved = 0f
                             detectDragGesturesAfterLongPress(
-                                onDragStart = { draggingKey = row.key; dragOffset = 0f },
+                                onDragStart = { draggingKey = row.key; dragOffset = 0f; moved = 0f },
                                 onDragEnd = {
-                                    groupOf(row.key)?.let { group -> onReordered(group.map { it.id }) }
+                                    if (moved < MENU_SLOP_PX) {
+                                        menuFor = row.key
+                                    } else {
+                                        groupOf(row.key)?.let { group -> onReordered(group.map { it.id }) }
+                                    }
                                     draggingKey = null
                                     dragOffset = 0f
                                 },
                                 onDragCancel = { draggingKey = null; dragOffset = 0f },
                                 onDrag = { change, amount ->
                                     change.consume()
+                                    moved += kotlin.math.abs(amount.y)
                                     dragOffset += amount.y
                                     dragOffset = swapIfNeeded(listState, row.key, dragOffset, currentRows, ::groupOf)
                                 },
@@ -438,12 +442,10 @@ private fun NoteList(
                             }
                             .then(if (isDragging) Modifier else Modifier.animateItem())
                             .semantics {
-                                if (reordering) {
-                                    customActions = listOf(
-                                        CustomAccessibilityAction(moveUp) { move(row.key, -1); true },
-                                        CustomAccessibilityAction(moveDown) { move(row.key, 1); true },
-                                    )
-                                }
+                                customActions = listOf(
+                                    CustomAccessibilityAction(moveUp) { move(row.key, -1); true },
+                                    CustomAccessibilityAction(moveDown) { move(row.key, 1); true },
+                                )
                             },
                     )
                 }
@@ -487,7 +489,8 @@ private fun NoteCard(
     databaseIcon: String?,
     pinned: Boolean,
     chipProperty: String?,
-    reordering: Boolean,
+    menuOpen: Boolean,
+    onMenuDismiss: () -> Unit,
     onOpen: () -> Unit,
     onTogglePin: () -> Unit,
     onTrash: () -> Unit,
@@ -496,7 +499,6 @@ private fun NoteCard(
     dragHandle: Modifier,
     modifier: Modifier = Modifier,
 ) {
-    var menu by remember { mutableStateOf(false) }
     Card(
         shape = AppShapes.Item,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -506,8 +508,9 @@ private fun NoteCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .combinedClickable(onClick = onOpen, onLongClick = { menu = true })
-                    .padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+                    .then(dragHandle)
+                    .clickable(onClick = onOpen)
+                    .padding(start = 16.dp, top = 14.dp, bottom = 14.dp, end = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -529,43 +532,27 @@ private fun NoteCard(
                     )
                     NoteMeta(note, chipProperty)
                 }
-                if (reordering) {
-                    Icon(
-                        Icons.Rounded.DragHandle,
-                        contentDescription = stringResource(R.string.action_drag),
-                        modifier = dragHandle.padding(12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    IconButton(onClick = onTogglePin) {
-                        Icon(
-                            if (pinned) Icons.Rounded.PushPin else Icons.Outlined.PushPin,
-                            contentDescription = stringResource(if (pinned) R.string.action_unpin else R.string.action_pin),
-                            tint = if (pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                        )
-                    }
-                }
             }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            DropdownMenu(expanded = menuOpen, onDismissRequest = onMenuDismiss) {
                 DropdownMenuItem(
                     text = { Text(stringResource(if (pinned) R.string.action_unpin else R.string.action_pin)) },
                     leadingIcon = { Icon(Icons.Rounded.PushPin, null) },
-                    onClick = { menu = false; onTogglePin() },
+                    onClick = { onMenuDismiss(); onTogglePin() },
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.action_move_up)) },
                     leadingIcon = { Icon(Icons.Rounded.KeyboardArrowUp, null) },
-                    onClick = { menu = false; onMoveUp() },
+                    onClick = { onMenuDismiss(); onMoveUp() },
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.action_move_down)) },
                     leadingIcon = { Icon(Icons.Rounded.KeyboardArrowDown, null) },
-                    onClick = { menu = false; onMoveDown() },
+                    onClick = { onMenuDismiss(); onMoveDown() },
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.action_trash)) },
                     leadingIcon = { Icon(Icons.Rounded.Delete, null) },
-                    onClick = { menu = false; onTrash() },
+                    onClick = { onMenuDismiss(); onTrash() },
                 )
             }
         }
