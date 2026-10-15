@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- What Android's own backup (to the user's Google account) and phone-to-phone transfer copy.
      Only the files listed here; everything else stays on this phone. Put settings the user would
-     want back on a new phone in the `backed_up_settings` DataStore; keep sign-in tokens, API keys
-     and device-only state in another file. See docs/architecture.md, "Backup".
+     want back on a new phone in the `backed_up_settings` DataStore (databases, pins, order, theme);
+     keep sign-in tokens, API keys and device-only state (the Notion cache) in another file. See docs/architecture.md, "Backup".
      Keep both sections the same (BackupRulesTest checks this). -->
 <data-extraction-rules>
     <cloud-backup>

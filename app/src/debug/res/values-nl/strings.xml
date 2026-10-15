@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds install next to the released app; this name tells the two apart. -->
+<resources>
+    <string name="app_name">Noter Dev</string>
+</resources>

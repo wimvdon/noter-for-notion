@@ -11,3 +11,7 @@
 # Keep line numbers in stack traces, but hide the original source file names.
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# Tink (used by security-crypto for the encrypted API key) refers to Error Prone's compile-time
+# annotations, which are not on the runtime classpath.
+-dontwarn com.google.errorprone.annotations.**
