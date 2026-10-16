@@ -56,6 +56,10 @@
     <string name="include_time">Include time</string>
     <string name="no_options">Nothing to choose from.</string>
     <string name="unsupported_block">%1$s (edit in Notion)</string>
+    <string name="block_image">Image</string>
+    <string name="block_linked_page">Linked page</string>
+    <string name="block_equation">Equation</string>
+    <string name="block_table_of_contents">Contents</string>
     <string name="type_text">Text</string>
     <string name="type_h1">Heading 1</string>
     <string name="type_h2">Heading 2</string>

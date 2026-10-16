@@ -123,4 +123,34 @@ class NotesRepositoryTest {
         assertTrue(events.toString(), events.isEmpty())
         assertEquals(0, repo.pendingCount.first())
     }
+
+    @Test
+    fun `tables come with their rows, and expired images are downloaded again`() = runBlocking {
+        var signature = 1
+        notion.respond = { sent ->
+            when {
+                sent.path.startsWith("/databases/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "Old"))
+                sent.path.startsWith("/databases/db") -> 200 to FakeNotion.database("db")
+                sent.path == "/pages/page-1" -> 200 to FakeNotion.page("page-1", "db", "Old")
+                sent.path.startsWith("/blocks/page-1/children") -> 200 to FakeNotion.list(
+                    """{"id":"img","type":"image","image":{"type":"file","caption":[],
+                        "file":{"url":"https://s3/cat.png?sig=${signature++}","expiry_time":"2000-01-01T00:00:00.000Z"}}}""",
+                    """{"id":"tbl","type":"table","has_children":true,"table":{"table_width":1,"has_column_header":false}}""",
+                )
+                sent.path.startsWith("/blocks/tbl/children") ->
+                    200 to FakeNotion.list("""{"type":"table_row","table_row":{"cells":[[{"plain_text":"A1"}]]}}""")
+                else -> 200 to "{}"
+            }
+        }
+        val repo = repository()
+        repo.refresh("db", userAsked = true)
+
+        val first = checkNotNull(repo.fetchContent("page-1"))
+        assertEquals(listOf(listOf("A1")), first.blocks.single { it.rawType == "table" }.rows)
+        // The image's link has expired: opening the note again gets a fresh one.
+        val second = checkNotNull(repo.fetchContent("page-1"))
+        assertEquals("https://s3/cat.png?sig=2", second.blocks.single { it.rawType == "image" }.url)
+        // Blocks keep their keys, so the editor doesn't redraw everything.
+        assertEquals(first.blocks.map { it.key }, second.blocks.map { it.key })
+    }
 }

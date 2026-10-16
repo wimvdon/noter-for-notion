@@ -6,6 +6,7 @@ import com.impca201.noter.data.api.objOrNull
 import com.impca201.noter.data.api.stringOrNull
 import com.impca201.noter.data.model.Block
 import com.impca201.noter.data.model.BlockType
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
 /** Reads Notion blocks into the editor's [Block]s and writes them back. */
@@ -39,21 +40,7 @@ object BlockCodec {
         val rawType = block.stringOrNull("type") ?: return null
         val hasChildren = block.boolOrNull("has_children") == true
         val body = block.objOrNull(rawType)
-        val type = typeNames[rawType]
-            ?: return Block(
-                key = key,
-                notionId = id,
-                type = BlockType.UNSUPPORTED,
-                text = body?.arrayOrNull("rich_text")?.let { InlineMarkdown.plainText(it) }
-                    ?: body?.arrayOrNull("caption")?.let { InlineMarkdown.plainText(it) }?.takeIf { it.isNotBlank() }
-                    ?: body?.stringOrNull("url")
-                    ?: body?.objOrNull("external")?.stringOrNull("url")
-                    ?: body?.stringOrNull("title")
-                    ?: body?.stringOrNull("expression")
-                    ?: "",
-                hasChildren = hasChildren,
-                rawType = rawType,
-            )
+        val type = typeNames[rawType] ?: return readOnly(key, id, rawType, body, hasChildren)
         return Block(
             key = key,
             notionId = id,
@@ -71,6 +58,45 @@ object BlockCodec {
             icon = if (type == BlockType.CALLOUT) body?.objOrNull("icon")?.stringOrNull("emoji") else null,
         )
     }
+
+    /** Notion's file blocks: the link is in "external" or, for uploads, in "file" with an expiry. */
+    private val fileTypes = setOf("image", "video", "file", "pdf", "audio")
+
+    private fun readOnly(key: String, id: String, rawType: String, body: JsonObject?, hasChildren: Boolean): Block {
+        val caption = body?.arrayOrNull("caption")?.let { InlineMarkdown.plainText(it) }?.trim().orEmpty()
+        val base = Block(key = key, notionId = id, type = BlockType.UNSUPPORTED, hasChildren = hasChildren, rawType = rawType)
+        return when (rawType) {
+            in fileTypes -> {
+                val file = fileLink(body)
+                base.copy(text = caption.ifEmpty { body?.stringOrNull("name").orEmpty() }, url = file?.first, urlExpiry = file?.second)
+            }
+            "bookmark", "embed", "link_preview" -> base.copy(text = caption, url = body?.stringOrNull("url"))
+            "equation" -> base.copy(text = body?.stringOrNull("expression").orEmpty())
+            "child_page", "child_database" -> base.copy(text = body?.stringOrNull("title").orEmpty(), url = id)
+            "link_to_page" -> base.copy(url = body?.stringOrNull("page_id") ?: body?.stringOrNull("database_id"))
+            "table" -> base.copy(headerRow = body?.boolOrNull("has_column_header") == true)
+            else -> base.copy(
+                text = body?.arrayOrNull("rich_text")?.let { InlineMarkdown.plainText(it) } ?: caption.ifEmpty { body?.stringOrNull("url").orEmpty() },
+            )
+        }
+    }
+
+    /** The link of a file block or cover, and when it expires (only for files Notion hosts). */
+    fun fileLink(body: JsonObject?): Pair<String, String?>? {
+        body ?: return null
+        body.objOrNull("external")?.stringOrNull("url")?.let { return it to null }
+        val file = body.objOrNull("file") ?: return null
+        val url = file.stringOrNull("url") ?: return null
+        return url to file.stringOrNull("expiry_time")
+    }
+
+    /** The cells of a table's rows (Notion's "table_row" children), as plain text. */
+    fun tableRows(children: List<JsonObject>): List<List<String>> =
+        children.filter { it.stringOrNull("type") == "table_row" }.map { row ->
+            row.objOrNull("table_row")?.arrayOrNull("cells").orEmpty().map { cell ->
+                (cell as? JsonArray)?.let { InlineMarkdown.plainText(it) }.orEmpty()
+            }
+        }
 
     /** The body for creating [block] (append children / create page). */
     fun toCreateRequest(block: Block): Map<String, Any?> {

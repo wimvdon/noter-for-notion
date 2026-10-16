@@ -34,7 +34,10 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
 
 - **Blocks** (`data/notion/BlockCodec.kt`): paragraphs, headings (also toggle headings), bulleted,
   numbered and to-do lists, toggles, quotes, callouts, code and dividers are editable. Other blocks
-  (images, tables, embeds, …) are shown as a read-only box and left untouched. Nested blocks
+  are shown read-only and left untouched (`ui/note/ReadOnlyBlocks.kt`): images, tables (their rows
+  cost one more request per table), equations, files, videos, PDFs, audio, bookmarks, embeds,
+  linked pages and the table of contents; tapping one opens it in the browser or in Notion.
+  Anything else is a box with its kind and "(edit in Notion)". Nested blocks
   (inside a toggle, a list item, …) are not shown; a toggle, callout or quote with nested content
   says so. A block with nested content can't change its kind, because Notion can't change a
   block's kind and recreating it would lose what is nested.
@@ -48,6 +51,11 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
   first unsent change). While typing, that is about one round of requests per second, one per
   changed block, under Notion's limit of about three requests per second; `NotionClient` waits when
   Notion answers 429. Leaving a note sends at once.
+- **Images** (`ui/common/NotionImage.kt`, Coil): the page's header image above the title and
+  image blocks, downscaled to the size they are shown at and cached in memory and in
+  `cacheDir/images` (100 MB). Links to files Notion hosts work for about an hour: content with an
+  expired link is downloaded again when the note opens (`NotionFiles`), and images are cached
+  under the link without its signature, so a fresh link doesn't download the image again.
 - **Previews** (`logic/NotePreviews.kt`): the overview shows the start of each note's content from
   the on-phone copy. Copies that are missing or older than the note's last edit in Notion are
   downloaded one note at a time (at most 24 per round).
@@ -60,6 +68,7 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
 | Databases, pins, order, theme | DataStore `backed_up_settings` | Yes |
 | API key | `EncryptedSharedPreferences` `notion_key_encrypted_prefs` | No |
 | Copies of notes, schemas, users; unsent changes | JSON files in `noBackupFilesDir/notion_cache` | No |
+| Images | Coil's cache in `cacheDir/images` | No |
 
 ## Structure
 ```
@@ -89,7 +98,8 @@ scripts/                         Release helpers (Python/Java) with their own te
 - **Persistence**: Jetpack DataStore (version already in the catalog). Wrap it behind a small
   repository interface so logic tests can use a fake. Decide per value whether it is backed up
   (see "Backup" below).
-- **Network: only Notion's API**, only in `data/api/NotionClient.kt`. No analytics, crash
+- **Network: only Notion's API**, only in `data/api/NotionClient.kt`, plus the images in notes
+  (Coil, `NoterApp.newImageLoader`). No analytics, crash
   reporting or ads (see `CLAUDE.md` and `PRIVACY.md`).
 - **Strings** in resources only; plurals via `<plurals>`.
 - **Versions** of libraries only in `gradle/libs.versions.toml`.
