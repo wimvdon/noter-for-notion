@@ -12,7 +12,7 @@ data class DatabaseConfig(
     val id: String,
     val name: String,
     val icon: String = DEFAULT_ICON,
-    /** Property whose options become the filters (select, status, multi-select or person). */
+    /** Property whose options become the filters (select, status, multi-select, person or checkbox). */
     val chipProperty: String? = null,
     /** The database shown; null for views saved before views existed ([id] is then the database). */
     val databaseId: String? = null,
@@ -102,7 +102,7 @@ data class PropertySchema(
     val isChipCandidate: Boolean get() = type in CHIP_TYPES
 
     companion object {
-        val CHIP_TYPES = setOf("select", "status", "multi_select", "people")
+        val CHIP_TYPES = setOf("select", "status", "multi_select", "people", "checkbox")
     }
 }
 

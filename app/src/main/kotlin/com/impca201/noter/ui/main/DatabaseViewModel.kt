@@ -24,6 +24,8 @@ data class DatabaseUiState(
     val content: MainUiState = MainUiState(),
     /** Views of this database in the navigation. */
     val viewCount: Int = 0,
+    /** The first view of this database ("Edit view" opens it), null when there is none. */
+    val viewId: String? = null,
     /** A database with several data sources: each of them, for tabs (null: just one). */
     val sources: List<PageRef>? = null,
     /** The data source shown. */
@@ -67,6 +69,7 @@ class DatabaseViewModel(
             title = db?.schema?.title.orEmpty(),
             content = databaseContent(base, databaseId, db, defaultChipProperty(databaseId, settings, db), chips, settings),
             viewCount = settings.databases.count { it.sourceId == databaseId },
+            viewId = settings.databases.firstOrNull { it.sourceId == databaseId }?.id,
             sources = list,
             sourceId = databaseId,
         )

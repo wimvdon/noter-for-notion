@@ -170,10 +170,24 @@ class NotionClient(
     suspend fun getPage(pageId: String): JsonObject = call("GET", "/pages/$pageId")
 
     suspend fun createPage(dataSourceId: String, properties: Map<String, Any?>, children: List<Map<String, Any?>>): JsonObject =
+        createPage(mapOf("type" to "data_source_id", "data_source_id" to dataSourceId), properties, children)
+
+    /**
+     * Creates a page on its own: inside page [parentPageId], or at the top of the workspace when it
+     * is null (Notion allows that only for some kinds of connections; others get an error).
+     */
+    suspend fun createPageIn(parentPageId: String?, properties: Map<String, Any?>): JsonObject =
+        createPage(
+            if (parentPageId != null) mapOf("type" to "page_id", "page_id" to parentPageId) else mapOf("type" to "workspace", "workspace" to true),
+            properties,
+            emptyList(),
+        )
+
+    private suspend fun createPage(parent: Map<String, Any?>, properties: Map<String, Any?>, children: List<Map<String, Any?>>): JsonObject =
         call(
             "POST", "/pages",
             buildMap {
-                put("parent", mapOf("type" to "data_source_id", "data_source_id" to dataSourceId))
+                put("parent", parent)
                 put("properties", properties)
                 if (children.isNotEmpty()) put("children", children.take(MAX_CHILDREN))
             },

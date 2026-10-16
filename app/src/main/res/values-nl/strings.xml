@@ -10,7 +10,7 @@
     <string name="browse_nothing_found">Niets gevonden.</string>
     <string name="browse_edited">Bewerkt %1$s</string>
     <string name="source_pages">Pagina’s</string>
-    <string name="add_view">Aan navigatie toevoegen</string>
+    <string name="add_view">Weergave toevoegen</string>
     <string name="view_added">Toegevoegd aan de weergaven. Wijzig het via ☰ › Weergaven beheren.</string>
     <string name="view_filters">Alleen tonen</string>
     <string name="view_filters_help">De filters die aan staan als de weergave opent. Geen: alle notities.</string>
@@ -69,10 +69,9 @@
     <string name="no_options">Niets om uit te kiezen.</string>
     <string name="customize_properties">Eigenschappen aanpassen</string>
     <string name="hide_properties">Eigenschappen verbergen</string>
-    <string name="properties_title">Hoe notities worden getoond</string>
-    <string name="properties_help">Sleep om de volgorde te veranderen. Getoonde eigenschappen staan boven de notitie, de andere zijn ingeklapt. Maximaal drie kunnen ook op de kaart van de notitie staan. Dit geldt voor elke notitie in de database.</string>
+    <string name="properties_title">Eigenschappen</string>
+    <string name="properties_help">Sleep om de volgorde te veranderen. Getoonde eigenschappen staan boven de notitie, de andere zijn ingeklapt. Dit geldt voor elke notitie in de database. Wat de kaarten in het overzicht tonen, stel je in via ☰ › Weergaven beheren.</string>
     <string name="property_shown">%1$s tonen</string>
-    <string name="property_on_card">%1$s op de kaart tonen</string>
     <string name="unsupported_block">%1$s (bewerken in Notion)</string>
     <string name="block_image">Afbeelding</string>
     <string name="block_linked_page">Gekoppelde pagina</string>
@@ -170,7 +169,19 @@
     <string name="cards_title">Kaarten in het overzicht</string>
     <string name="card_cover">Omslagafbeelding</string>
     <string name="card_content">Begin van de inhoud</string>
-    <string name="properties_section">Eigenschappen</string>
     <string name="action_indent">Inspringen (in het blok erboven zetten)</string>
     <string name="action_outdent">Uitspringen (uit het blok halen waar het in staat)</string>
+    <string name="chip_checked">%1$s</string>
+    <string name="chip_unchecked">Niet %1$s</string>
+    <string name="type_checkbox_property">Selectievakje</string>
+    <string name="cards_help">Voor elke weergave van deze database. Welke eigenschappen een notitie toont, en in welke volgorde, stel je in de notitie zelf in (de regelknop).</string>
+    <string name="cards_properties">Eigenschappen op de kaart (maximaal %1$d)</string>
+    <string name="edit_view">Weergave bewerken</string>
+    <string name="new_page">Nieuwe pagina</string>
+    <string name="new_page_top_level">Bovenaan in de werkruimte</string>
+    <string name="new_page_top_level_help">Alleen voor sommige Notion-koppelingen; anders voeg je hem in een pagina toe</string>
+    <string name="new_page_inside">In %1$s</string>
+    <string name="new_subpage">Nieuwe subpagina</string>
+    <string name="create_top_level_failed">Notion laat deze koppeling geen pagina’s bovenaan in de werkruimte toevoegen. Voeg de pagina in een pagina toe (+ in Bladeren, of ⋮ › Nieuwe subpagina in een pagina).</string>
+    <string name="create_failed">Notion kon de pagina niet maken: %1$s</string>
 </resources>

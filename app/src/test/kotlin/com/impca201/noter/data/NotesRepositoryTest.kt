@@ -312,4 +312,33 @@ class NotesRepositoryTest {
         assertEquals("ds-1", repo.resolveSource("db"))
         assertEquals(1, notion.requests.count { it.path == "/databases/db" })
     }
+
+    @Test
+    fun `pages are made inside a page, and a refused top-level page is removed again`() = runBlocking {
+        notion.respond = { sent ->
+            when {
+                sent.method == "POST" && sent.path == "/pages" && sent.body.contains("\"workspace\":true") ->
+                    400 to """{"object":"error","status":400,"code":"validation_error","message":"Can't create pages at the workspace level"}"""
+                sent.method == "POST" && sent.path == "/pages" ->
+                    200 to """{"object":"page","id":"sub-1","parent":{"type":"page_id","page_id":"top"},"properties":{"title":{"id":"title","type":"title","title":[]}}}"""
+                else -> 200 to "{}"
+            }
+        }
+        val repo = repository()
+        val events = Collections.synchronizedList(mutableListOf<RepoEvent>())
+        val collector = scope.launch { repo.events.collect { events += it } }
+
+        val sub = repo.createPage("top")
+        repo.flush()
+        val created = notion.requests.single { it.method == "POST" && it.path == "/pages" }
+        assertTrue(created.body, created.body.contains("\"page_id\":\"top\""))
+        assertEquals("sub-1", repo.resolve(sub))
+
+        val topLevel = repo.createPage(null)
+        repo.flush()
+        assertEquals(null, repo.note(topLevel).first())
+        assertEquals(0, repo.pendingCount.first())
+        collector.cancel()
+        assertTrue(events.toString(), events.any { it is RepoEvent.CreateFailed && it.topLevel })
+    }
 }

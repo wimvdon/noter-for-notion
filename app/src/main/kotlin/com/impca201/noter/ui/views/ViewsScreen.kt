@@ -42,6 +42,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,7 +62,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.impca201.noter.R
 import com.impca201.noter.data.model.DatabaseConfig
 import com.impca201.noter.data.model.PropertySchema
+import com.impca201.noter.logic.ChipFilter
 import com.impca201.noter.logic.Destinations
+import com.impca201.noter.logic.PropertyLayouts
+import com.impca201.noter.data.model.PropertyLayout
 import com.impca201.noter.ui.common.DatabaseIcons
 import com.impca201.noter.ui.common.IconPicker
 import com.impca201.noter.ui.theme.SettingsBlock
@@ -79,8 +84,16 @@ fun rememberWindowWidthDp(): Int {
  * navigation bar (as many as fit). Tapping a view edits it; "Add view" picks a database.
  */
 @Composable
-fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit) {
+fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: String? = null) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    // Opened from "Edit view": that view's setup, once.
+    var editOpened by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(editViewId) {
+        if (editViewId != null && !editOpened) {
+            editOpened = true
+            viewModel.startEdit(editViewId)
+        }
+    }
     var addingDatabase by remember { mutableStateOf(false) }
     val width = rememberWindowWidthDp()
     val views = state.views
@@ -154,6 +167,7 @@ fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit) {
         DatabaseEditorSheet(
             draft = draft,
             onChange = viewModel::editDraft,
+            onLayout = viewModel::editLayout,
             onSave = viewModel::saveDraft,
             onCancel = viewModel::cancelDraft,
             onRemove = { viewModel.removeDatabase(draft.config.id) },
@@ -260,6 +274,7 @@ private fun AddDatabaseSheet(
 private fun DatabaseEditorSheet(
     draft: DatabaseDraft,
     onChange: ((DatabaseConfig) -> DatabaseConfig) -> Unit,
+    onLayout: ((PropertyLayout?) -> PropertyLayout) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
     onRemove: () -> Unit,
@@ -329,7 +344,16 @@ private fun DatabaseEditorSheet(
                         Text(stringResource(R.string.chip_property_none_available), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     // The filters selected when the view opens (status and select options; people vary).
-                    val options = draft.config.chipProperty?.let { schema.property(it) }?.options.orEmpty()
+                    val chipSchema = draft.config.chipProperty?.let { schema.property(it) }
+                    // (key, label): the options, or checked and not checked for a checkbox.
+                    val options = if (chipSchema?.type == "checkbox") {
+                        listOf(
+                            ChipFilter.CHECKED to stringResource(R.string.chip_checked, chipSchema.name),
+                            ChipFilter.UNCHECKED to stringResource(R.string.chip_unchecked, chipSchema.name),
+                        )
+                    } else {
+                        chipSchema?.options.orEmpty().map { it.name to it.name }
+                    }
                     if (options.isNotEmpty()) {
                         Text(stringResource(R.string.view_filters), style = MaterialTheme.typography.titleSmall)
                         Text(
@@ -338,20 +362,21 @@ private fun DatabaseEditorSheet(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            options.forEach { option ->
-                                val selected = option.name in draft.config.filters
+                            options.forEach { (key, label) ->
+                                val selected = key in draft.config.filters
                                 FilterChip(
                                     selected = selected,
                                     onClick = {
-                                        onChange { c -> c.copy(filters = if (selected) c.filters - option.name else c.filters + option.name) }
+                                        onChange { c -> c.copy(filters = if (selected) c.filters - key else c.filters + key) }
                                     },
-                                    label = { Text(option.name) },
+                                    label = { Text(label) },
                                 )
                             }
                         }
                     }
                 }
             }
+            CardOptions(draft, onLayout)
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (!draft.isNew) {
@@ -381,6 +406,54 @@ private fun DatabaseEditorSheet(
     }
 }
 
+/**
+ * What the cards in the overview show for this database: the header image, the start of the
+ * content, and up to three properties.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CardOptions(draft: DatabaseDraft, onLayout: ((PropertyLayout?) -> PropertyLayout) -> Unit) {
+    val layout = draft.layout
+    Text(stringResource(R.string.cards_title), style = MaterialTheme.typography.titleSmall)
+    Text(
+        stringResource(R.string.cards_help),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    SwitchRow(stringResource(R.string.card_cover), layout?.coverOnCard == true) { on -> onLayout { PropertyLayouts.setCoverOnCard(it, on) } }
+    SwitchRow(stringResource(R.string.card_content), PropertyLayouts.showsContent(layout)) { on -> onLayout { PropertyLayouts.setContentOnCard(it, on) } }
+    val properties = draft.schema?.properties.orEmpty().filter { it.type != "title" }
+    if (properties.isNotEmpty()) {
+        Text(stringResource(R.string.cards_properties, PropertyLayouts.MAX_ON_CARD), style = MaterialTheme.typography.bodyLarge)
+        val onCard = layout?.onCard.orEmpty()
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            properties.forEach { property ->
+                val selected = property.name in onCard
+                FilterChip(
+                    selected = selected,
+                    enabled = selected || onCard.size < PropertyLayouts.MAX_ON_CARD,
+                    onClick = { onLayout { PropertyLayouts.toggleOnCard(it, property.name) } },
+                    label = { Text(property.name) },
+                )
+            }
+        }
+    }
+}
+
+/** A switch row; the whole row toggles. */
+@Composable
+private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = null)
+    }
+}
+
 @Composable
 private fun ChipChoice(property: PropertySchema?, label: String, selected: Boolean, onSelect: () -> Unit) {
     Row(
@@ -401,6 +474,7 @@ private fun ChipChoice(property: PropertySchema?, label: String, selected: Boole
                             "status" -> R.string.type_status
                             "select" -> R.string.type_select
                             "multi_select" -> R.string.type_multi_select
+                            "checkbox" -> R.string.type_checkbox_property
                             else -> R.string.type_people
                         },
                     ),

@@ -127,9 +127,10 @@ fun AppNavigation() {
                         onBack = ::pop,
                         onOpenViews = { push(VIEWS) },
                     )
-                    top == VIEWS -> ViewsScreen(
+                    top == VIEWS || top.startsWith(EDIT_VIEW) -> ViewsScreen(
                         viewModel = viewModel(factory = ViewsViewModel.Factory),
                         onBack = ::pop,
+                        editViewId = top.removePrefix(EDIT_VIEW).takeIf { top.startsWith(EDIT_VIEW) },
                     )
                     top.startsWith(NOTE) -> NoteScreen(
                         pageId = top.removePrefix(NOTE),
@@ -141,6 +142,7 @@ fun AppNavigation() {
                         databaseId = top.removePrefix(DATABASE),
                         onBack = ::pop,
                         onOpenNote = { push(NOTE + it) },
+                        onEditView = { push(EDIT_VIEW + it) },
                     )
                 }
             }
@@ -152,5 +154,8 @@ private const val CLEAR_DELAY_MS = 1_000L
 private const val MAIN = "main"
 private const val SETTINGS = "settings"
 private const val VIEWS = "views"
+
+/** Manage views with one view's setup open. */
+private const val EDIT_VIEW = "views:"
 private const val NOTE = "note:"
 private const val DATABASE = "database:"
