@@ -123,7 +123,7 @@ class SyncStressTest {
     private fun serve(page: Page, random: Random) {
         notion.respond = { sent ->
             // Notion is slow, so edits keep coming while a request is under way.
-            Thread.sleep(random.nextLong(5, 60))
+            Thread.sleep(random.nextLong(LATENCY_MIN, LATENCY_MAX))
             synchronized(page) {
                 val body = if (sent.body.isBlank()) JsonObject(emptyMap()) else Json.parseToJsonElement(sent.body).jsonObject
                 when {
@@ -231,7 +231,33 @@ class SyncStressTest {
 
     @Test
     fun `random editing while Notion is slow never duplicates or loses blocks`() {
-        (1..SEEDS).forEach { run(it) }
+        val failures = (1..SEEDS).mapNotNull { seed -> runCatching { run(seed) }.exceptionOrNull()?.message }
+        assertEquals(failures.joinToString("\n"), 0, failures.size)
+    }
+
+    @Test
+    fun `ticking a nested item only ticks it, and taking it out moves it out`() = runBlocking {
+        val page = Page().apply { blocks += Page.B("milk", "to_do", "Milk", false) }
+        serve(page, Random(0))
+        val repo = repository(0)
+        repo.refresh("db", userAsked = true)
+        val editor = DocumentEditor()
+        var blocks = checkNotNull(repo.fetchContent("page-1")).blocks
+
+        suspend fun step(next: List<Block>) {
+            blocks = next
+            repo.saveContent("page-1", blocks)
+            repo.flush()
+        }
+        step(editor.insertAfter(blocks, "milk", BlockType.TODO).blocks)
+        step(editor.indent(blocks, blocks.last().key).blocks)
+        val before = notion.requests.size
+        step(editor.toggleChecked(blocks, blocks.last().key))
+        // Ticking only ticks: the item stays where it is (it isn't deleted and added again).
+        assertEquals(listOf("PATCH"), notion.requests.drop(before).map { it.method })
+        step(editor.outdent(blocks, blocks.last().key).blocks)
+
+        assertEquals(shape(blocks), synchronized(page) { shapeOf(page) })
     }
 
     @Test
@@ -241,7 +267,10 @@ class SyncStressTest {
     }
 
     private companion object {
-        const val SEEDS = 4
+        const val SEEDS = 5
         const val EDITS = 40
+        /** How long Notion takes to answer (ms): wide, so sends and edits interleave in many ways. */
+        const val LATENCY_MIN = 1L
+        const val LATENCY_MAX = 250L
     }
 }

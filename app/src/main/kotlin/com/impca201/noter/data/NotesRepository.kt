@@ -615,7 +615,8 @@ class NotesRepository(
                         if (!e.isNotFound && e.status != 400) throw e
                         reload = true
                     }
-                    base.replaceAll { if (it.notionId == op.notionId) op.block else it }
+                    // Notion's copy now has the new text; where the block is (its parent) stays as Notion has it.
+                    base.replaceAll { if (it.notionId == op.notionId) op.block.copy(parentId = it.parentId) else it }
                 }
                 is ContentOp.Delete -> {
                     try {
