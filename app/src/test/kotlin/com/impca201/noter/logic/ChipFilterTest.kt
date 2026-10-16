@@ -64,4 +64,15 @@ class ChipFilterTest {
         val filtered = NoteLists.home(dbs, byDb, pinned = listOf("x", "a"), order = emptyList(), selectedDatabases = setOf("db2"))
         assertEquals(listOf("x"), filtered.pinned.map { it.id })
     }
+
+    @Test
+    fun `a checkbox property filters checked and not checked notes`() {
+        val done = PropertySchema(name = "Done", type = "checkbox")
+        fun task(id: String, checked: Boolean) = NoteSummary(id, "db", id, properties = listOf(NoteProperty("Done", "checkbox", PropertyValue.Checkbox(checked))))
+        val tasks = listOf(task("a", true), task("b", false), task("c", false))
+
+        val chips = ChipFilter.chips(done, tasks)
+        assertEquals(listOf(ChipFilter.CHECKED to 1, ChipFilter.UNCHECKED to 2), chips.map { it.key to it.count })
+        assertEquals(listOf("b", "c"), ChipFilter.filter(tasks, "Done", setOf(ChipFilter.UNCHECKED)).map { it.id })
+    }
 }

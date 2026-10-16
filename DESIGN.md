@@ -168,8 +168,8 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   under a "Views" header, then Manage views and Settings. The navigation bar shows Pinned, Browse
   and the views pinned to it, as many as fit (an item per 80dp; owner's choice, see decisions). Browse is one list with
   a pill-shaped search field and "Databases" and "Pages" headers (Title Small, primary). A
-  database opened from Browse is a child page with "Add to navigation" (bookmark icon) in its
-  app bar.
+  database opened from Browse is a child page with an "Add view" text button in its app bar,
+  "Edit view" once it is a view.
 - The note editor follows Notion's look: headings in SemiBold, quotes with a bar, callouts and
   code on `surfaceContainerHigh` (code in a monospace font), dividers as `outlineVariant` lines.
   Read-only blocks sit in a `surfaceContainer` box with "(edit in Notion)".

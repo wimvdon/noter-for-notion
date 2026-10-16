@@ -8,7 +8,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.BookmarkAdd
-import androidx.compose.material.icons.rounded.BookmarkAdded
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -35,11 +39,12 @@ import kotlinx.coroutines.launch
 
 /**
  * A database opened from Browse or from a link in a note: a child page with its notes and
- * filters. "Add to navigation" makes it a view, with the filters selected now.
+ * filters. "Add view" makes it a view, with the filters selected now; once it is one, "Edit view"
+ * opens its setup.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DatabaseScreen(databaseId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit) {
+fun DatabaseScreen(databaseId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit, onEditView: (String) -> Unit) {
     val viewModel: DatabaseViewModel = viewModel(key = "database-$databaseId", factory = DatabaseViewModel.factory(databaseId))
     val state by viewModel.state.collectAsStateWithLifecycle()
     val previews by viewModel.previews.collectAsStateWithLifecycle()
@@ -61,16 +66,25 @@ fun DatabaseScreen(databaseId: String, onBack: () -> Unit, onOpenNote: (String) 
                         }
                     },
                     actions = {
-                        IconButton(
-                            onClick = {
-                                viewModel.addView(state.title.ifBlank { untitled })
-                                scope.launch { snackbar.showSnackbar(added) }
-                            },
-                        ) {
-                            Icon(
-                                if (state.viewCount > 0) Icons.Rounded.BookmarkAdded else Icons.Rounded.BookmarkAdd,
-                                contentDescription = stringResource(R.string.add_view),
-                            )
+                        // One view per database from here: once added, the button edits it.
+                        val viewId = state.viewId
+                        if (viewId == null) {
+                            TextButton(
+                                onClick = {
+                                    viewModel.addView(state.title.ifBlank { untitled })
+                                    scope.launch { snackbar.showSnackbar(added) }
+                                },
+                            ) {
+                                Icon(Icons.Rounded.BookmarkAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.add_view))
+                            }
+                        } else {
+                            TextButton(onClick = { onEditView(viewId) }) {
+                                Icon(Icons.Rounded.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.edit_view))
+                            }
                         }
                     },
                 )

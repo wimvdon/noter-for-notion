@@ -4,16 +4,24 @@ import com.impca201.noter.data.model.NoteSummary
 import com.impca201.noter.data.model.PropertySchema
 import com.impca201.noter.data.model.PropertyValue
 
-/** A filter chip: [key] is an option name, or a user ID for person properties. */
+/**
+ * A filter chip: [key] is an option name, a user ID for person properties, or [ChipFilter.CHECKED]
+ * / [ChipFilter.UNCHECKED] for checkbox properties (shown with their own words, see [isCheckbox]).
+ */
 data class FilterChip(
     val key: String,
     val label: String,
     val color: String = "default",
     val count: Int = 0,
-)
+) {
+    val isCheckbox: Boolean get() = key == ChipFilter.CHECKED || key == ChipFilter.UNCHECKED
+}
 
-/** Filter chips from a select, status, multi-select or person property. */
+/** Filter chips from a select, status, multi-select, person or checkbox property. */
 object ChipFilter {
+    const val CHECKED = "__checked"
+    const val UNCHECKED = "__unchecked"
+
     fun chips(property: PropertySchema?, notes: List<NoteSummary>): List<FilterChip> {
         property ?: return emptyList()
         val keysPerNote = notes.map { keysOf(it, property.name) }
@@ -37,6 +45,7 @@ object ChipFilter {
                 .distinctBy { it.id }
                 .sortedBy { it.name.lowercase() }
                 .map { FilterChip(it.id, it.name.ifBlank { "?" }, count = count(it.id)) }
+            "checkbox" -> listOf(FilterChip(CHECKED, "", count = count(CHECKED)), FilterChip(UNCHECKED, "", count = count(UNCHECKED)))
             else -> emptyList()
         }
     }
@@ -47,6 +56,7 @@ object ChipFilter {
             is PropertyValue.Select -> setOfNotNull(value.option?.name)
             is PropertyValue.MultiSelect -> value.options.map { it.name }.toSet()
             is PropertyValue.People -> value.users.map { it.id }.toSet()
+            is PropertyValue.Checkbox -> setOf(if (value.checked) CHECKED else UNCHECKED)
             else -> emptySet()
         }
 

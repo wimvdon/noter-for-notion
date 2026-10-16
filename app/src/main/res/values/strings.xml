@@ -10,7 +10,7 @@
     <string name="browse_nothing_found">Nothing found.</string>
     <string name="browse_edited">Edited %1$s</string>
     <string name="source_pages">Pages</string>
-    <string name="add_view">Add to navigation</string>
+    <string name="add_view">Add view</string>
     <string name="view_added">Added to the views. Change it in ☰ › Manage views.</string>
     <string name="view_filters">Show only</string>
     <string name="view_filters_help">The filters that are on when the view opens. None: all notes.</string>
@@ -69,10 +69,9 @@
     <string name="no_options">Nothing to choose from.</string>
     <string name="customize_properties">Customize properties</string>
     <string name="hide_properties">Hide properties</string>
-    <string name="properties_title">How notes are shown</string>
-    <string name="properties_help">Drag to change the order. Shown properties are above the note, the others are collapsed. Up to three can also appear on the note’s card. This applies to every note in the database.</string>
+    <string name="properties_title">Properties</string>
+    <string name="properties_help">Drag to change the order. Shown properties are above the note, the others are collapsed. This applies to every note in the database. What the cards in the overview show is set up in ☰ › Manage views.</string>
     <string name="property_shown">Show %1$s</string>
-    <string name="property_on_card">Show %1$s on the card</string>
     <string name="unsupported_block">%1$s (edit in Notion)</string>
     <string name="block_image">Image</string>
     <string name="block_linked_page">Linked page</string>
@@ -170,7 +169,19 @@
     <string name="cards_title">Cards in the overview</string>
     <string name="card_cover">Header image</string>
     <string name="card_content">Start of the content</string>
-    <string name="properties_section">Properties</string>
     <string name="action_indent">Indent (put in the block above)</string>
     <string name="action_outdent">Outdent (take out of the block it is in)</string>
+    <string name="chip_checked">%1$s</string>
+    <string name="chip_unchecked">Not %1$s</string>
+    <string name="type_checkbox_property">Checkbox</string>
+    <string name="cards_help">For every view of this database. Which properties are shown in a note, and in which order, is set in the note itself (the tune button).</string>
+    <string name="cards_properties">Properties on the card (up to %1$d)</string>
+    <string name="edit_view">Edit view</string>
+    <string name="new_page">New page</string>
+    <string name="new_page_top_level">At the top of the workspace</string>
+    <string name="new_page_top_level_help">Only for some Notion connections; otherwise add it inside a page</string>
+    <string name="new_page_inside">Inside %1$s</string>
+    <string name="new_subpage">New subpage</string>
+    <string name="create_top_level_failed">Notion doesn’t let this connection add pages at the top of the workspace. Add the page inside a page instead (+ in Browse, or ⋮ › New subpage in a page).</string>
+    <string name="create_failed">Notion couldn’t make the page: %1$s</string>
 </resources>

@@ -11,6 +11,7 @@ import com.impca201.noter.data.api.NotionException
 import com.impca201.noter.data.model.DatabaseConfig
 import com.impca201.noter.data.model.DatabaseSchema
 import com.impca201.noter.data.model.PageRef
+import com.impca201.noter.data.model.PropertyLayout
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,12 +21,16 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-/** The view being added or edited in the sheet. */
+/**
+ * The view being added or edited in the sheet. [layout] is what the cards in the overview show,
+ * kept per database (so for every view of it).
+ */
 data class DatabaseDraft(
     val config: DatabaseConfig,
     val isNew: Boolean,
     val schema: DatabaseSchema? = null,
     val schemaError: String? = null,
+    val layout: PropertyLayout? = null,
 )
 
 data class ViewsUiState(
@@ -78,12 +83,29 @@ class ViewsViewModel(
             inBar = roomInBar,
         )
         draft.value = DatabaseDraft(config, isNew = true)
+        loadLayout(database.id)
         loadSchema(database.id)
     }
 
     fun startEdit(config: DatabaseConfig) {
         draft.value = DatabaseDraft(config, isNew = false)
+        loadLayout(config.sourceId)
         loadSchema(config.sourceId)
+    }
+
+    /** Opens the editor of view [id] (from "Edit view" on a database's page). */
+    fun startEdit(id: String) = viewModelScope.launch {
+        repository.currentSettings().databases.firstOrNull { it.id == id }?.let(::startEdit)
+    }
+
+    private fun loadLayout(databaseId: String) = viewModelScope.launch {
+        val layout = repository.currentSettings().propertyLayouts[databaseId]
+        draft.update { d -> if (d?.config?.sourceId == databaseId) d.copy(layout = layout) else d }
+    }
+
+    /** Changes what the cards show (saved with the view). */
+    fun editLayout(transform: (PropertyLayout?) -> PropertyLayout) {
+        draft.update { it?.copy(layout = transform(it.layout)) }
     }
 
     private fun loadSchema(id: String) {
@@ -115,7 +137,10 @@ class ViewsViewModel(
         val d = draft.value ?: return
         if (d.config.name.isBlank()) return
         draft.value = null
-        viewModelScope.launch { repository.saveDatabase(d.config.copy(name = d.config.name.trim())) }
+        viewModelScope.launch {
+            d.layout?.let { layout -> repository.updateSettings { s -> s.copy(propertyLayouts = s.propertyLayouts + (d.config.sourceId to layout)) } }
+            repository.saveDatabase(d.config.copy(name = d.config.name.trim()))
+        }
     }
 
     fun cancelDraft() {

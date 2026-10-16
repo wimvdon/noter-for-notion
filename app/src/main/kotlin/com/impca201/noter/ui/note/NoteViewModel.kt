@@ -225,11 +225,7 @@ class NoteViewModel(
 
     fun toggleShown(name: String) = updateLayout { PropertyLayouts.toggleShown(it, propertyNames, name) }
 
-    fun toggleOnCard(name: String) = updateLayout { PropertyLayouts.toggleOnCard(it, name) }
 
-    fun setCoverOnCard(shown: Boolean) = updateLayout { PropertyLayouts.setCoverOnCard(it, shown) }
-
-    fun setContentOnCard(shown: Boolean) = updateLayout { PropertyLayouts.setContentOnCard(it, shown) }
 
     private fun updateLayout(transform: (PropertyLayout?) -> PropertyLayout) {
         val databaseId = state.value.note?.databaseId ?: return
@@ -254,6 +250,11 @@ class NoteViewModel(
     }
 
     fun togglePin() = viewModelScope.launch { repository.togglePin(pageId) }
+
+    /** Makes a new page inside this one and opens it. */
+    fun createSubpage(onCreated: (String) -> Unit) = viewModelScope.launch {
+        onCreated(repository.createPage(repository.resolve(pageId)))
+    }
 
     /**
      * The sync button: hands over edits that are still waiting, sends everything and gets the

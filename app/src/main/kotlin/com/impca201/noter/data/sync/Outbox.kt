@@ -12,7 +12,11 @@ sealed interface PendingOp {
 
     @Serializable
     @SerialName("create")
-    data class CreatePage(override val pageId: String, val databaseId: String) : PendingOp
+    /**
+     * A new note in [databaseId], or a page on its own (databaseId [com.impca201.noter.data.NotesRepository.PAGES])
+     * inside page [parentPageId], or at the top of the workspace when that is null.
+     */
+    data class CreatePage(override val pageId: String, val databaseId: String, val parentPageId: String? = null) : PendingOp
 
     @Serializable
     @SerialName("property")

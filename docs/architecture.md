@@ -21,23 +21,31 @@ properties and content: the pages of databases and pages on their own.
   Notes are cards in a staggered grid with a preview of their content; pinned notes come first
   under "Pinned". Long-press and drag moves a note within its section; a long press without
   moving opens its menu (pin, move to trash). Filters (Material filter chips) come from one
-  select, status, multi-select or person property.
+  select, status, multi-select, person or checkbox property (a checkbox gives "Done" and "Not
+  Done", named after the property).
 - **Database** (`DatabaseScreen.kt`): a database opened from Browse or a link in a note, as a
-  child page with its notes and filters; "Add to navigation" makes it a view.
+  child page with its notes and filters; "Add view" makes it a view, after which the button is
+  "Edit view" and opens that view's setup (Manage views), so a database isn't added twice.
+- **New pages**: + on Browse offers a page at the top of the workspace (Notion only allows that
+  for public connections and personal access tokens; when it refuses, the page is removed again
+  and the app explains), a page inside one of the pages listed in Browse, or a note in a database.
+  A page's ⋮ menu has "New subpage".
 - **Note** (`ui/note/`): header image, icon, title, properties (`PropertyEditors.kt`), then the content as a
   list of blocks, each its own text field. To-do items have an × to delete them. A toolbar above the keyboard changes the block's kind,
   adds a divider or deletes the block. Tapping below the content continues at the end. Moving a
   note to the trash asks first.
 - **Properties per database** (`logic/PropertyLayouts.kt`, `PropertyLayoutSheet.kt`): the first
   three are shown and the rest collapsed under "N more properties", until the user chooses
-  otherwise with the tune button: drag to reorder, the eye to show or collapse, the card icon to
-  show up to three on the note's card in the overview (else the card shows the filter property).
-  Two switches above them choose what the cards show: the header image (off by default) and the
-  start of the content (on; when off, no previews are downloaded for that database).
-  Kept per database in `AppSettings.propertyLayouts` (backed up).
+  otherwise with the tune button: drag to reorder, the eye to show or collapse. What the cards
+  in the overview show is set up with the view (Manage views): the header image (off by
+  default), the start of the content (on; when off, no previews are downloaded for that
+  database) and up to three properties (else the card shows the filter property). All of it is
+  kept per database in `AppSettings.propertyLayouts` (backed up), so it applies to every view of
+  that database.
 - **Manage views** (`ui/views/`): the views in their order (up/down), each with a pin for the
   navigation bar (`DatabaseConfig.inBar`; disabled when the bar is full); tapping one edits its
-  name, icon, bar pin, filter property and filters; "Add view" picks a database. Opens from the
+  name, icon, bar pin, filter property and filters, and what the cards show; "Add view" picks a
+  database. Opens from the
   drawer and from Settings.
 - **View icons** (`data/icons/IconCatalog.kt`, `ui/common/IconPicker.kt`, `DatabaseIcons.kt`):
   the Material Symbols set (4 229 icons) from `assets/material_symbols.txt` (name, categories and

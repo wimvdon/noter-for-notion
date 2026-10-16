@@ -12,6 +12,7 @@ import com.impca201.noter.data.model.NoteSummary
 import com.impca201.noter.data.model.NotionUser
 import com.impca201.noter.data.model.PageContent
 import com.impca201.noter.data.model.PageRef
+import com.impca201.noter.data.model.PropertyValue
 import com.impca201.noter.data.model.WorkspaceItem
 import com.impca201.noter.data.notion.BlockCodec
 import com.impca201.noter.data.notion.InlineMarkdown
@@ -74,6 +75,9 @@ data class DatabaseState(
 /** Something the user should hear about. */
 sealed interface RepoEvent {
     data class SaveFailed(val noteTitle: String, val detail: String) : RepoEvent
+
+    /** Notion refused a new page; it was removed here. [topLevel]: it was to go at the top of the workspace. */
+    data class CreateFailed(val topLevel: Boolean, val detail: String) : RepoEvent
 
     data object KeyRejected : RepoEvent
 }
@@ -343,6 +347,39 @@ class NotesRepository(
     // ---- Notes ----------------------------------------------------------------------------
 
     /**
+     * Creates a page on its own on this phone (it is sent to Notion right after): inside page
+     * [parentPageId], or at the top of the workspace when that is null. Returns its ID.
+     */
+    suspend fun createPage(parentPageId: String?): String = withContext(Dispatchers.IO) {
+        loadDatabase(PAGES)
+        val id = NoteSummary.LOCAL_PREFIX + UUID.randomUUID()
+        val now = Instant.ofEpochMilli(clock()).toString()
+        val title = NoteProperty(PAGE_TITLE, "title", PropertyValue.Text(""))
+        val page = NoteSummary(id, PAGES, title = "", createdTime = now, lastEditedTime = now, properties = listOf(title))
+        lock.withLock {
+            setState(PAGES) { it.copy(notes = listOf(page) + it.notes, loaded = true) }
+            _databases.value[PAGES]?.let { saveDatabaseCache(PAGES, it) }
+            cache.saveContent(PageContent(id, blocks = emptyList(), base = emptyList(), nestedLoaded = true))
+            enqueue(PendingOp.CreatePage(id, PAGES, parentPageId?.let(::resolve)))
+        }
+        scheduleFlush()
+        id
+    }
+
+    /** Removes a note that only exists on this phone (Notion refused to make it). */
+    private suspend fun dropLocal(pageId: String) {
+        lock.withLock {
+            val databaseId = findNote(_databases.value, pageId)?.databaseId ?: return@withLock
+            setState(databaseId) { db -> db.copy(notes = db.notes.filterNot { it.id == pageId }) }
+            _databases.value[databaseId]?.let { saveDatabaseCache(databaseId, it) }
+            cache.deleteContent(pageId)
+            _outbox.value = _outbox.value.filterNot { it.pageId == pageId }
+            cache.saveOutbox(_outbox.value)
+        }
+        settings.update { s -> s.copy(pinned = s.pinned - pageId) }
+    }
+
+    /**
      * Creates a note on this phone (it is sent to Notion right after) and returns its ID.
      * [preset] values are filled in, e.g. the chip that is selected.
      */
@@ -561,6 +598,12 @@ class NotesRepository(
                         }
                         // Gone from Notion or moved to its trash (here or elsewhere): nothing left to save.
                         e.isNotFound || e.isArchived -> true
+                        // Notion won't make the page: don't keep a note here that can never be saved.
+                        op is PendingOp.CreatePage -> {
+                            dropLocal(op.pageId)
+                            _events.tryEmit(RepoEvent.CreateFailed(op.databaseId == PAGES && op.parentPageId == null, e.message.orEmpty()))
+                            true
+                        }
                         else -> {
                             val title = findNote(_databases.value, op.pageId)?.title.orEmpty()
                             _events.tryEmit(RepoEvent.SaveFailed(InlineMarkdown.stripped(title), e.message.orEmpty()))
@@ -624,7 +667,11 @@ class NotesRepository(
     private suspend fun create(op: PendingOp.CreatePage): Boolean {
         val note = findNote(_databases.value, op.pageId) ?: return true
         val sent = note.properties
-        val page = client.createPage(resolveSource(op.databaseId), PropertyCodec.toCreateRequest(sent), children = emptyList())
+        val page = if (op.databaseId == PAGES) {
+            client.createPageIn(op.parentPageId, PropertyCodec.toCreateRequest(sent))
+        } else {
+            client.createPage(resolveSource(op.databaseId), PropertyCodec.toCreateRequest(sent), children = emptyList())
+        }
         val newId = page.stringOrNull("id") ?: throw NotionException("Notion did not return a page ID", status = 500)
         val created = PropertyCodec.parsePage(page, op.databaseId) ?: note.copy(id = newId)
         val oldId = op.pageId
@@ -994,6 +1041,9 @@ class NotesRepository(
     companion object {
         /** The key under which pages that are not in a database are kept, like a database's notes. */
         const val PAGES = "pages"
+
+        /** The title property of a page on its own (Notion's name for it). */
+        const val PAGE_TITLE = "title"
 
         /** Results of one Browse search (one or two requests). */
         private const val BROWSE_LIMIT = 200

@@ -19,6 +19,7 @@ import com.impca201.noter.data.model.PropertySchema
 import com.impca201.noter.data.model.PropertyValue
 import com.impca201.noter.data.model.WorkspaceItem
 import com.impca201.noter.data.store.AppSettings
+import com.impca201.noter.logic.ChipFilter
 import com.impca201.noter.logic.Destinations
 import com.impca201.noter.logic.FilterChip
 import com.impca201.noter.logic.NoteLists
@@ -126,6 +127,7 @@ internal fun presetFor(schema: PropertySchema, chip: FilterChip): NoteProperty? 
         "select", "status" -> PropertyValue.Select(schema.options.firstOrNull { it.name == chip.key })
         "multi_select" -> PropertyValue.MultiSelect(listOfNotNull(schema.options.firstOrNull { it.name == chip.key }))
         "people" -> PropertyValue.People(listOf(NotionUser(chip.key, chip.label)))
+        "checkbox" -> PropertyValue.Checkbox(chip.key == ChipFilter.CHECKED)
         else -> return null
     }
     return NoteProperty(schema.name, schema.type, value)
@@ -269,6 +271,11 @@ class MainViewModel(private val repository: NotesRepository, hasKey: StateFlow<B
             if (ui.isHome) repository.togglePin(id)
             onCreated(id)
         }
+    }
+
+    /** Makes a page on its own: inside page [parentPageId], or at the top of the workspace. */
+    fun createPage(parentPageId: String?, onCreated: (String) -> Unit) {
+        viewModelScope.launch { onCreated(repository.createPage(parentPageId)) }
     }
 
     private fun presetFromChips(databaseId: String, ui: MainUiState): List<NoteProperty> {

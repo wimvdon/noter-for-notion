@@ -111,10 +111,14 @@ import com.impca201.noter.ui.common.NotionImage
 import com.impca201.noter.ui.common.OptionChip
 import com.impca201.noter.ui.common.SyncButton
 import com.impca201.noter.ui.views.rememberWindowWidthDp
+import com.impca201.noter.logic.ChipFilter
 import com.impca201.noter.logic.Destinations
 import com.impca201.noter.logic.NoteTargets
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.Workspaces
+import androidx.compose.material.icons.rounded.Description
+import com.impca201.noter.data.NotesRepository
 import androidx.compose.material.icons.rounded.FilterAltOff
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.automirrored.rounded.StickyNote2
@@ -154,6 +158,8 @@ fun MainScreen(
                     event.detail,
                 )
                 RepoEvent.KeyRejected -> resources.getString(R.string.sync_key_rejected)
+                is RepoEvent.CreateFailed ->
+                    if (event.topLevel) resources.getString(R.string.create_top_level_failed) else resources.getString(R.string.create_failed, event.detail)
             }
             snackbar.showSnackbar(text)
         }
@@ -252,12 +258,14 @@ fun MainScreen(
             },
             floatingActionButton = {
                 // A view adds to its database; Pinned and Browse ask which database (when there is a choice).
+                // Browse also makes pages: at the top of the workspace or inside a page.
                 val inView = !state.isHome && !state.isBrowse
-                if (state.hasKey && (inView || targets.isNotEmpty())) {
+                if (state.hasKey && (inView || state.isBrowse || targets.isNotEmpty())) {
                     FloatingActionButton(
                         onClick = {
                             when {
                                 inView -> viewModel.createNote(onCreated = onOpenNote)
+                                state.isBrowse -> choosingDatabase = true
                                 targets.size == 1 -> viewModel.createNote(targets.first().databaseId, onOpenNote)
                                 else -> choosingDatabase = true
                             }
@@ -303,12 +311,34 @@ fun MainScreen(
 
     if (choosingDatabase) {
         ModalBottomSheet(onDismissRequest = { choosingDatabase = false }) {
-            Text(
-                stringResource(R.string.new_note_in),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-            )
             Column(Modifier.verticalScroll(rememberScrollState())) {
+                if (state.isBrowse) {
+                    SheetHeader(stringResource(R.string.new_page))
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.new_page_top_level)) },
+                        supportingContent = { Text(stringResource(R.string.new_page_top_level_help)) },
+                        leadingContent = { Icon(Icons.Rounded.Workspaces, contentDescription = null) },
+                        modifier = Modifier.clickable {
+                            choosingDatabase = false
+                            viewModel.createPage(null, onOpenNote)
+                        },
+                    )
+                    browse.items.orEmpty().filter { !it.isDatabase && it.note?.databaseId == NotesRepository.PAGES }.forEach { page ->
+                        ListItem(
+                            headlineContent = { Text(stringResource(R.string.new_page_inside, page.title.ifBlank { stringResource(R.string.untitled) })) },
+                            leadingContent = {
+                                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                                    if (page.icon != null) Text(page.icon, style = MaterialTheme.typography.titleMedium) else Icon(Icons.Rounded.Description, contentDescription = null)
+                                }
+                            },
+                            modifier = Modifier.clickable {
+                                choosingDatabase = false
+                                viewModel.createPage(page.id, onOpenNote)
+                            },
+                        )
+                    }
+                }
+                if (targets.isNotEmpty()) SheetHeader(stringResource(R.string.new_note_in))
                 targets.forEach { target ->
                     ListItem(
                         headlineContent = { Text(target.name.ifBlank { stringResource(R.string.untitled) }) },
@@ -331,6 +361,15 @@ fun MainScreen(
             }
         }
     }
+}
+
+@Composable
+private fun SheetHeader(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 8.dp).semantics { heading() },
+    )
 }
 
 /** The names of the fixed destinations (views have their own). */
@@ -432,13 +471,19 @@ private fun ChipRow(state: MainUiState, onToggle: (String) -> Unit, onClear: () 
         items(state.chips, key = { it.key }) { chip ->
             val selected = chip.key in state.selectedChips
             val icon = if (state.isHome) state.databaseIcons[chip.key] else null
-            val label = chip.label.ifEmpty { stringResource(R.string.source_pages) }
+            val label = when (chip.key) {
+                ChipFilter.CHECKED -> stringResource(R.string.chip_checked, state.chipProperty.orEmpty())
+                ChipFilter.UNCHECKED -> stringResource(R.string.chip_unchecked, state.chipProperty.orEmpty())
+                else -> chip.label.ifEmpty { stringResource(R.string.source_pages) }
+            }
             FilterChip(
                 selected = selected,
                 onClick = { onToggle(chip.key) },
                 label = { Text(if (chip.count > 0) "$label  ${chip.count}" else label) },
                 leadingIcon = if (state.isHome) {
                     { Icon(DatabaseIcons.icon(icon), contentDescription = null, Modifier.size(FilterChipDefaults.IconSize)) }
+                } else if (chip.isCheckbox) {
+                    null
                 } else {
                     { OptionDot(chip.color) }
                 },
