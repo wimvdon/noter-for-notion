@@ -38,6 +38,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -424,17 +425,24 @@ class NotesRepository(
         val now = clock()
         if (firstUnsentMs == 0L) firstUnsentMs = now
         val wait = delayMs ?: SaveTiming.NOTION.delayMs(now, firstUnsentMs)
+        // Only the wait is cancelled: a send that started always finishes (see flush).
         flushJob?.cancel()
         flushJob = scope.launch {
             delay(wait)
             firstUnsentMs = 0L
-            flush()
+            scope.launch { flush() }
         }
     }
 
-    /** Sends every queued change now, in order. Stops at the first one that can't be sent yet. */
-    suspend fun flush() {
-        if (!hasKey()) return
+    /**
+     * Sends every queued change now, in order. Stops at the first one that can't be sent yet.
+     *
+     * Never cancelled halfway (also when a screen that asked for it closes): Notion may already
+     * have carried out a request whose answer would then be lost, and the change would be sent
+     * again (a new block added twice).
+     */
+    suspend fun flush() = withContext(NonCancellable) {
+        if (!hasKey()) return@withContext
         flushLock.withLock {
             while (true) {
                 val op = lock.withLock { _outbox.value.firstOrNull() } ?: break
@@ -445,11 +453,11 @@ class NotesRepository(
                         e.isTemporary -> {
                             if (e.isOffline) _offline.value = true
                             scheduleRetry(e.isOffline)
-                            return
+                            return@withLock
                         }
                         e.status == 401 -> {
                             _events.tryEmit(RepoEvent.KeyRejected)
-                            return
+                            return@withLock
                         }
                         // Gone from Notion or moved to its trash (here or elsewhere): nothing left to save.
                         e.isNotFound || e.isArchived -> true
