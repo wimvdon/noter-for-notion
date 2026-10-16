@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-16: Shared empty state, same setup screen as Time Tracker
+
+A Material 3 audit of the sibling apps found empty screens drawn three different ways; this app showed a grey icon with one line of text. Its empty, no-result, failed and "no API key" screens now use the shared `ui/theme/EmptyState.kt` (`DESIGN.md`, "Empty and setup states"): an icon in a circle, a title that says what the state means, one sentence on what to do, and a filled button where there is a next step. The "no API key" screen says "Connect to Notion" with an "Open settings" button, the same words as Time Tracker for Notion, which needs the same key. Filtered-empty now offers "Clear filters" instead of "All". Rejected: keeping a single line of text (it doesn't say whether the state is expected) and illustrations per screen (more to draw and maintain, and they don't help the next step).
+
 ## 2026-10-16: Notion API 2025-09-03, every data source a database of its own
 
 The owner asked for databases with several data sources ("it's fine if each source appears as a

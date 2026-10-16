@@ -6,8 +6,8 @@
     <string name="browse_search">Zoek in pagina’s en databases</string>
     <string name="browse_databases">Databases</string>
     <string name="browse_pages">Pagina’s</string>
-    <string name="browse_empty">Nog niets hier. Deel in Notion pagina’s en databases met je integratie (⋯ › Verbindingen).</string>
-    <string name="browse_nothing_found">Niets gevonden.</string>
+    <string name="browse_empty">Deel in Notion pagina’s en databases met je integratie (⋯ › Verbindingen).</string>
+    <string name="browse_nothing_found">Niets gevonden</string>
     <string name="browse_edited">Bewerkt %1$s</string>
     <string name="source_pages">Pagina’s</string>
     <string name="add_view">Weergave toevoegen</string>
@@ -43,12 +43,11 @@
     <string name="trash_title">Naar de prullenbak?</string>
     <string name="trash_body">“%1$s” gaat naar de prullenbak in Notion. Daar kun je het 30 dagen terugzetten.</string>
     <string name="trash_confirm">Naar prullenbak</string>
-    <string name="empty_no_key">Koppel Noter aan Notion om je notities te zien.</string>
-    <string name="empty_no_key_action">Koppelen met Notion</string>
-    <string name="empty_home">Zet notities vast om ze hier te zien. Tik op de punaise bij een notitie.</string>
-    <string name="empty_database">Nog geen notities. Tik op + om er een te maken.</string>
-    <string name="empty_filtered">Geen notities met de gekozen filters.</string>
-    <string name="empty_error">Kon de notities niet laden: %1$s</string>
+    <string name="empty_no_key">Voeg je Notion API-sleutel toe in Instellingen om je notities te zien.</string>
+    <string name="empty_no_key_action">Naar instellingen</string>
+    <string name="empty_home">Tik op de punaise bij een notitie om ze hier te zien.</string>
+    <string name="empty_database">Tik op + om er een te maken.</string>
+    <string name="empty_filtered">Geen notities met deze filters</string>
     <string name="status_offline">Offline. Wijzigingen worden op deze telefoon bewaard en later verstuurd.</string>
     <string name="status_not_synced">Nog niet in Notion</string>
     <string name="sync_failed">Kon “%1$s” niet opslaan in Notion: %2$s</string>
@@ -184,4 +183,10 @@
     <string name="new_subpage">Nieuwe subpagina</string>
     <string name="create_top_level_failed">Notion laat deze koppeling geen pagina’s bovenaan in de werkruimte toevoegen. Voeg de pagina in een pagina toe (+ in Bladeren, of ⋮ › Nieuwe subpagina in een pagina).</string>
     <string name="create_failed">Notion kon de pagina niet maken: %1$s</string>
+    <string name="browse_empty_title">Nog niets gedeeld</string>
+    <string name="empty_no_key_title">Verbind met Notion</string>
+    <string name="empty_home_title">Geen vastgezette notities</string>
+    <string name="empty_database_title">Nog geen notities</string>
+    <string name="empty_clear_filters">Filters wissen</string>
+    <string name="empty_error_title">Kon de notities niet laden</string>
 </resources>

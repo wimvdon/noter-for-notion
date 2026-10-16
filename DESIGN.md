@@ -38,7 +38,10 @@ unchanged to every app. Only the "This app" section belongs to this repository.
 - Top app bars are Material's `TopAppBar` family with the default title style
   (Title Large, regular weight). Weight is not used to make app bar titles stand out.
 - Emphasis through weight is kept for hero content (a title on a detail page, a big number).
-- Button labels are in sentence case.
+- Button labels are in sentence case and short: the action in one to three words ("Watched",
+  "Open settings", "Retry"). The screen around the button gives the context, so a label never
+  repeats it ("Watched", not "Mark as watched"); explanations go in the text above the button.
+  Longer wording is fine in menus and for screen readers (`contentDescription`).
 - Icons come from Material's Rounded set; direction-dependent icons use `AutoMirrored`.
 - Cards and grouped surfaces use the `surfaceContainer*` roles.
 - Components keep Material's shape scale (`MaterialTheme.shapes`). App-level containers use
@@ -61,6 +64,10 @@ Follows Material 3's split between destinations and actions:
 - Lists are lists: `ListItem` rows (or rows with the same paddings), separated by spacing or
   dividers. A card is for a unit that stands on its own (a poster, a banner, a running timer),
   not for every row or section.
+- Rows that scroll sideways (posters, trailers, chips) keep one height while they scroll: text
+  under a tile has a fixed number of lines (two for a title, one for a caption, ending in "…"),
+  and a missing line still takes its space. Otherwise the row grows and shrinks as tiles with
+  longer titles scroll into view, and everything below it jumps.
 - Content keeps a readable width on wide windows (about 640dp for lists and settings).
 
 ## Settings screen
@@ -109,6 +116,36 @@ follows the Android and Material 3 settings pattern: one scrolling list, grouped
   indicator instead; a busy button shows a spinner in place of its icon.
 - An app with nothing to load (Snoozer) leaves `Skeleton.kt` out.
 
+## Empty and setup states
+
+Every screen that can be empty uses `EmptyState` (`ui/theme/EmptyState.kt`), so an empty
+screen looks the same in every app:
+
+- Centred in the space below the app bar, at most 360dp wide, and scrollable so pull-to-refresh
+  keeps working.
+- An icon in a 72dp `secondaryContainer` circle that says what is missing (a bookmark for an
+  empty watchlist, a key for a missing API key), a title in Title Large that says what the state
+  means ("No feeds yet"), and, when it helps, one or two sentences in Body Medium on how to fill
+  the screen or what will appear here.
+- At most two buttons, for the next useful step: a filled `Button` for the main one, an
+  `OutlinedButton` or `TextButton` for an alternative. No button when there is nothing useful
+  to do (a list that fills by itself).
+
+The same component covers four situations:
+
+| Situation | Example | Button |
+| --- | --- | --- |
+| Nothing here yet | "No watched movies" | The way to add something, if there is one |
+| Nothing matches | A search or filter found nothing | "Clear filters" when filters are on |
+| Couldn't load | The network failed and there is nothing to show | "Retry" |
+| Setup needed | Not signed in, no API key, a permission missing | Straight to the place that fixes it ("Open settings") |
+
+- A setup-needed state replaces the screen's content: a screen that can't work shows what to
+  do, not a disabled screen with a small banner above it. Apps that need the same setup use the
+  same words (Time Tracker for Notion and Noter for Notion both say "Connect to Notion").
+- A banner (a `Group`-shaped card at the top) is only for something worth knowing while the
+  screen still works. An error from an action on a screen that has content is a snackbar.
+
 ## Wording
 
 Shared settings and actions use the same words in every app and language (strings are kept in
@@ -124,12 +161,17 @@ English, Dutch, German, French, Spanish and Italian).
 | Cancel / Save | Cancel / Save | Annuleren / Opslaan | Abbrechen / Speichern | Annuler / Enregistrer | Cancelar / Guardar | Annulla / Salva |
 | Clear | Clear | Wissen | Löschen | Effacer | Borrar | Cancella |
 | Retry | Retry | Opnieuw proberen | Wiederholen | Réessayer | Reintentar | Riprova |
+| Go to settings | Open settings | Naar instellingen | Zu den Einstellungen | Ouvrir les paramètres | Abrir ajustes | Apri impostazioni |
+| Setup needed (Notion apps) | Connect to Notion | Verbind met Notion | Mit Notion verbinden | Connexion à Notion | Conéctate a Notion | Collegati a Notion |
 
 - Prefer the shortest clear wording ("System", not "Follow device (Auto)").
 - American spelling in English ("color").
 - Address the user informally in Dutch, German, Spanish and Italian (je, du, tú, tu) and with
   "vous" in French.
 - Labels and buttons in sentence case.
+- Buttons name the action as briefly as the language allows; drop "mark as", "markeren als",
+  "als … markieren" and the like when the screen already makes it clear ("Gezien", not
+  "Markeren als gezien").
 
 ## Shared design kit
 
@@ -141,6 +183,8 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
 - `ui/theme/SystemBars.kt`: `SystemBarsFollowTheme()`.
 - `ui/theme/Skeleton.kt`: loading placeholders (`Modifier.skeleton()`, `SkeletonLine`,
   `SkeletonBlock`).
+- `ui/theme/EmptyState.kt`: `EmptyState` for empty, no-result, failed and setup-needed screens
+  (see "Empty and setup states").
 - `ui/theme/SettingsKit.kt`: the settings screen components above. It also needs
   `drawable/ic_arrow_back`, `drawable/ic_expand_more` and the strings `section_expanded` and
   `section_collapsed`.
