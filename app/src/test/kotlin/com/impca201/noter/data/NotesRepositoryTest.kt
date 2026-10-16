@@ -57,8 +57,8 @@ class NotesRepositoryTest {
     fun `a new note stays open while Notion creates it`() = runBlocking {
         notion.respond = { sent ->
             when {
-                sent.path.startsWith("/databases/db/query") -> 200 to FakeNotion.list()
-                sent.path.startsWith("/databases/db") -> 200 to FakeNotion.database("db")
+                sent.path.startsWith("/data_sources/db/query") -> 200 to FakeNotion.list()
+                sent.path.startsWith("/data_sources/db") -> 200 to FakeNotion.database("db")
                 sent.method == "POST" && sent.path == "/pages" -> 200 to FakeNotion.page("page-1", "db")
                 else -> 200 to "{}"
             }
@@ -82,8 +82,8 @@ class NotesRepositoryTest {
     fun `edits to a note in the trash are not sent`() = runBlocking {
         notion.respond = { sent ->
             when {
-                sent.path.startsWith("/databases/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "Old"))
-                sent.path.startsWith("/databases/db") -> 200 to FakeNotion.database("db")
+                sent.path.startsWith("/data_sources/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "Old"))
+                sent.path.startsWith("/data_sources/db") -> 200 to FakeNotion.database("db")
                 sent.method == "PATCH" && sent.path == "/pages/page-1" -> 200 to FakeNotion.page("page-1", "db", archived = true)
                 else -> 200 to "{}"
             }
@@ -107,8 +107,8 @@ class NotesRepositoryTest {
     fun `saving a note that was trashed in Notion fails quietly`() = runBlocking {
         notion.respond = { sent ->
             when {
-                sent.path.startsWith("/databases/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "Old"))
-                sent.path.startsWith("/databases/db") -> 200 to FakeNotion.database("db")
+                sent.path.startsWith("/data_sources/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "Old"))
+                sent.path.startsWith("/data_sources/db") -> 200 to FakeNotion.database("db")
                 sent.method == "PATCH" -> 400 to FakeNotion.ARCHIVED
                 else -> 200 to "{}"
             }
@@ -131,8 +131,8 @@ class NotesRepositoryTest {
         var signature = 1
         notion.respond = { sent ->
             when {
-                sent.path.startsWith("/databases/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "Old"))
-                sent.path.startsWith("/databases/db") -> 200 to FakeNotion.database("db")
+                sent.path.startsWith("/data_sources/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "Old"))
+                sent.path.startsWith("/data_sources/db") -> 200 to FakeNotion.database("db")
                 sent.path == "/pages/page-1" -> 200 to FakeNotion.page("page-1", "db", "Old")
                 sent.path.startsWith("/blocks/page-1/children") -> 200 to FakeNotion.list(
                     """{"id":"img","type":"image","image":{"type":"file","caption":[],
@@ -160,8 +160,8 @@ class NotesRepositoryTest {
     fun `pages from Browse and linked pages open in the editor and can be pinned`() = runBlocking {
         notion.respond = { sent ->
             when {
-                sent.path.startsWith("/databases/db/query") -> 200 to FakeNotion.list()
-                sent.path.startsWith("/databases/db") -> 200 to FakeNotion.database("db")
+                sent.path.startsWith("/data_sources/db/query") -> 200 to FakeNotion.list()
+                sent.path.startsWith("/data_sources/db") -> 200 to FakeNotion.database("db")
                 sent.path == "/search" -> 200 to FakeNotion.list(
                     """{"object":"page","id":"top","parent":{"type":"workspace","workspace":true},
                         "properties":{"title":{"id":"title","type":"title","title":[]}}}""",
@@ -192,8 +192,8 @@ class NotesRepositoryTest {
         var next = 0
         notion.respond = { sent ->
             when {
-                sent.path.startsWith("/databases/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "List"))
-                sent.path.startsWith("/databases/db") -> 200 to FakeNotion.database("db")
+                sent.path.startsWith("/data_sources/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "List"))
+                sent.path.startsWith("/data_sources/db") -> 200 to FakeNotion.database("db")
                 sent.path == "/pages/page-1" -> 200 to FakeNotion.page("page-1", "db", "List")
                 sent.method == "GET" && sent.path.startsWith("/blocks/page-1/children") -> 200 to FakeNotion.list(*blocks.toTypedArray())
                 sent.method == "PATCH" && sent.path == "/blocks/page-1/children" -> {
@@ -257,8 +257,8 @@ class NotesRepositoryTest {
         var next = 0
         notion.respond = { sent ->
             when {
-                sent.path.startsWith("/databases/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "List"))
-                sent.path.startsWith("/databases/db") -> 200 to FakeNotion.database("db")
+                sent.path.startsWith("/data_sources/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "List"))
+                sent.path.startsWith("/data_sources/db") -> 200 to FakeNotion.database("db")
                 sent.path == "/pages/page-1" -> 200 to FakeNotion.page("page-1", "db", "List")
                 sent.method == "GET" && sent.path.startsWith("/blocks/page-1/children") -> 200 to FakeNotion.list(
                     """{"object":"block","id":"t","type":"toggle","has_children":true,"toggle":{"rich_text":[{"plain_text":"Toggle","text":{"content":"Toggle"}}]}}""",
@@ -284,5 +284,32 @@ class NotesRepositoryTest {
         val append = notion.requests.single { it.method == "PATCH" && it.path == "/blocks/t/children" }
         assertTrue(append.body, append.body.contains("\"after\":\"c1\""))
         assertEquals(0, repo.pendingCount.first())
+    }
+
+    @Test
+    fun `a view saved before data sources moves to its database's data source`() = runBlocking {
+        notion.respond = { sent ->
+            when {
+                sent.path.startsWith("/data_sources/ds-1/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "ds-1", "Note"))
+                sent.path.startsWith("/data_sources/ds-1") -> 200 to FakeNotion.database("ds-1")
+                // The old key is a database: Notion has no data source by that ID.
+                sent.path.startsWith("/data_sources/db") -> 404 to """{"object":"error","status":404,"code":"object_not_found","message":"Not found"}"""
+                sent.path == "/databases/db" -> 200 to """{"object":"database","id":"db","data_sources":[{"id":"ds-1","name":"Notes"},{"id":"ds-2","name":"Archive"}]}"""
+                else -> 200 to "{}"
+            }
+        }
+        val repo = repository()
+        repo.updateSettings { it.copy(order = mapOf("db" to listOf("page-1"))) }
+
+        repo.refresh("db", userAsked = true)
+
+        val settings = repo.currentSettings()
+        assertEquals(listOf("ds-1"), settings.databases.map { it.sourceId })
+        assertEquals(listOf("page-1"), settings.order["ds-1"])
+        assertEquals(listOf("page-1"), repo.databases.value["ds-1"]?.notes?.map { it.id })
+        assertFalse(repo.databases.value.containsKey("db"))
+        // Known now: no more lookups for it.
+        assertEquals("ds-1", repo.resolveSource("db"))
+        assertEquals(1, notion.requests.count { it.path == "/databases/db" })
     }
 }

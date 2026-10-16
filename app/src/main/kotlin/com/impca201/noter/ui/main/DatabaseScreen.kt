@@ -1,6 +1,7 @@
 package com.impca201.noter.ui.main
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -12,7 +13,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -24,6 +27,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.impca201.noter.R
@@ -48,27 +52,41 @@ fun DatabaseScreen(databaseId: String, onBack: () -> Unit, onOpenNote: (String) 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            TopAppBar(
-                title = { Text(state.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
+            Column {
+                TopAppBar(
+                    title = { Text(state.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                viewModel.addView(state.title.ifBlank { untitled })
+                                scope.launch { snackbar.showSnackbar(added) }
+                            },
+                        ) {
+                            Icon(
+                                if (state.viewCount > 0) Icons.Rounded.BookmarkAdded else Icons.Rounded.BookmarkAdd,
+                                contentDescription = stringResource(R.string.add_view),
+                            )
+                        }
+                    },
+                )
+                // A database with several data sources: one tab each (they are peers of one database).
+                state.sources?.let { sources ->
+                    PrimaryScrollableTabRow(selectedTabIndex = sources.indexOfFirst { it.id == state.sourceId }.coerceAtLeast(0), edgePadding = 16.dp) {
+                        sources.forEach { source ->
+                            Tab(
+                                selected = source.id == state.sourceId,
+                                onClick = { viewModel.selectSource(source.id) },
+                                text = { Text(source.title.ifBlank { untitled }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            )
+                        }
                     }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            viewModel.addView(state.title.ifBlank { untitled })
-                            scope.launch { snackbar.showSnackbar(added) }
-                        },
-                    ) {
-                        Icon(
-                            if (state.viewCount > 0) Icons.Rounded.BookmarkAdded else Icons.Rounded.BookmarkAdd,
-                            contentDescription = stringResource(R.string.add_view),
-                        )
-                    }
-                },
-            )
+                }
+            }
         },
         floatingActionButton = {
             if (content.hasKey) {

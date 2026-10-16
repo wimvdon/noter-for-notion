@@ -127,8 +127,8 @@ class SyncStressTest {
             synchronized(page) {
                 val body = if (sent.body.isBlank()) JsonObject(emptyMap()) else Json.parseToJsonElement(sent.body).jsonObject
                 when {
-                    sent.path.startsWith("/databases/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "List"))
-                    sent.path.startsWith("/databases/db") -> 200 to FakeNotion.database("db")
+                    sent.path.startsWith("/data_sources/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "List"))
+                    sent.path.startsWith("/data_sources/db") -> 200 to FakeNotion.database("db")
                     sent.path == "/pages/page-1" -> 200 to FakeNotion.page("page-1", "db", "List")
                     sent.path.contains("/children") && sent.method == "GET" -> {
                         val id = sent.path.removePrefix("/blocks/").substringBefore("/children")

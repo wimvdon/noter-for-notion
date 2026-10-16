@@ -3,14 +3,32 @@ package com.impca201.noter.data.notion
 import com.impca201.noter.data.api.arrayOrNull
 import com.impca201.noter.data.api.objOrNull
 import com.impca201.noter.data.api.stringOrNull
+import com.impca201.noter.data.model.PageRef
 import com.impca201.noter.data.model.WorkspaceItem
 import kotlinx.serialization.json.JsonObject
 
 /** Reads Notion's search results into the Browse list. */
 object WorkspaceCodec {
-    /** The database a page belongs to, or null for a page on its own (in a page or the workspace). */
-    fun parentDatabase(page: JsonObject): String? =
-        page.objOrNull("parent")?.takeIf { it.stringOrNull("type") == "database_id" }?.stringOrNull("database_id")
+    /**
+     * The data source a page belongs to (a database's notes; older answers name the database), or
+     * null for a page on its own (in a page or the workspace).
+     */
+    fun parentDatabase(page: JsonObject): String? {
+        val parent = page.objOrNull("parent") ?: return null
+        return when (parent.stringOrNull("type")) {
+            "data_source_id" -> parent.stringOrNull("data_source_id")
+            "database_id" -> parent.stringOrNull("database_id")
+            else -> null
+        }
+    }
+
+    /** A database's data sources (ID and name), in Notion's order. */
+    fun dataSources(database: JsonObject): List<PageRef> =
+        database.arrayOrNull("data_sources").orEmpty().mapNotNull { element ->
+            val source = element as? JsonObject ?: return@mapNotNull null
+            val id = source.stringOrNull("id") ?: return@mapNotNull null
+            PageRef(id, source.stringOrNull("name").orEmpty())
+        }
 
     /**
      * One search result. Pages of a database (the notes) are left out unless [includeNotes]: the
@@ -23,7 +41,8 @@ object WorkspaceCodec {
         val icon = json.objOrNull("icon")?.takeIf { it.stringOrNull("type") == "emoji" }?.stringOrNull("emoji")
         val edited = json.stringOrNull("last_edited_time").orEmpty()
         return when (json.stringOrNull("object")) {
-            "database" -> WorkspaceItem(
+            // A data source is a database's table of notes; a database with several shows each.
+            "data_source", "database" -> WorkspaceItem(
                 id = id,
                 isDatabase = true,
                 title = InlineMarkdown.plainText(json.arrayOrNull("title")).trim(),

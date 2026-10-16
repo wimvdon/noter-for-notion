@@ -7,6 +7,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.impca201.noter.NoterApp
 import com.impca201.noter.data.NotesRepository
+import com.impca201.noter.data.api.NotionException
+import com.impca201.noter.data.model.PageRef
 import com.impca201.noter.data.model.DatabaseConfig
 import com.impca201.noter.data.model.NoteSummary
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,23 +24,36 @@ data class DatabaseUiState(
     val content: MainUiState = MainUiState(),
     /** Views of this database in the navigation. */
     val viewCount: Int = 0,
+    /** A database with several data sources: each of them, for tabs (null: just one). */
+    val sources: List<PageRef>? = null,
+    /** The data source shown. */
+    val sourceId: String = "",
 )
 
-/** A database opened from Browse or from a link in a note: its notes, with filters. */
+/**
+ * A database opened from Browse or from a link in a note: its notes, with filters. [openedId] is a
+ * data source (from Browse) or a database (from a link); a database with several data sources
+ * shows one at a time, with tabs.
+ */
 class DatabaseViewModel(
-    private val databaseId: String,
+    private val openedId: String,
     private val repository: NotesRepository,
     hasKey: StateFlow<Boolean>,
 ) : ViewModel() {
     private val selected = MutableStateFlow<Set<String>>(emptySet())
+    private val source = MutableStateFlow(openedId)
+    private val sources = MutableStateFlow<List<PageRef>?>(null)
+    private val databaseId: String get() = source.value
+    private val status = combine(repository.pendingCount, hasKey, source, sources) { pending, key, id, list -> Status(pending, key, id, list) }
+
+    private data class Status(val pending: Int, val hasKey: Boolean, val sourceId: String, val sources: List<PageRef>?)
 
     val state: StateFlow<DatabaseUiState> = combine(
         repository.settingsFlow(),
         repository.databases,
         selected,
-        repository.pendingCount,
-        hasKey,
-    ) { settings, databases, chips, pending, key ->
+        status,
+    ) { settings, databases, chips, (pending, key, databaseId, list) ->
         val db = databases[databaseId]
         val base = MainUiState(
             ready = true,
@@ -52,13 +67,33 @@ class DatabaseViewModel(
             title = db?.schema?.title.orEmpty(),
             content = databaseContent(base, databaseId, db, defaultChipProperty(databaseId, settings, db), chips, settings),
             viewCount = settings.databases.count { it.sourceId == databaseId },
+            sources = list,
+            sourceId = databaseId,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DatabaseUiState())
 
     val previews: StateFlow<Map<String, String>> = repository.previews
 
     init {
-        viewModelScope.launch { repository.openDatabase(databaseId) }
+        viewModelScope.launch {
+            // A database (from a link) shows its data source; offline it shows what is on the phone.
+            val resolved = try {
+                repository.resolveSource(openedId)
+            } catch (e: NotionException) {
+                openedId
+            }
+            source.value = resolved
+            if (resolved != openedId) sources.value = repository.dataSourcesOf(openedId)
+            repository.openDatabase(resolved)
+        }
+    }
+
+    /** Shows another data source of the database (a tab). */
+    fun selectSource(id: String) {
+        if (id == source.value) return
+        source.value = id
+        selected.value = emptySet()
+        viewModelScope.launch { repository.openDatabase(id) }
     }
 
     fun loadPreviews(notes: List<NoteSummary>) = repository.loadPreviews(notes)

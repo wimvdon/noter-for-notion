@@ -104,13 +104,16 @@ class NotionClient(
     suspend fun testKey(key: String): String =
         call("GET", "/users/me", key = key).stringOrNull("name").orEmpty()
 
-    /** Databases shared with the integration, most recently edited first. */
+    /**
+     * Data sources shared with the integration, most recently edited first. A database usually has
+     * one; a database with several has one result per data source.
+     */
     suspend fun searchDatabases(): List<PageRef> =
         paged { cursor ->
             call(
                 "POST", "/search",
                 buildMap {
-                    put("filter", mapOf("value" to "database", "property" to "object"))
+                    put("filter", mapOf("value" to "data_source", "property" to "object"))
                     put("sort", mapOf("direction" to "descending", "timestamp" to "last_edited_time"))
                     put("page_size", 100)
                     if (cursor != null) put("start_cursor", cursor)
@@ -144,13 +147,17 @@ class NotionClient(
         return results.take(limit)
     }
 
+    /** A database: its title and its data sources (`data_sources`: id and name of each). */
     suspend fun getDatabase(databaseId: String): JsonObject = call("GET", "/databases/$databaseId")
 
-    /** All pages of a database matching [filter] (Notion's filter object), most recently edited first. */
-    suspend fun queryDatabase(databaseId: String, filter: Map<String, Any?>? = null): List<JsonObject> =
+    /** A data source: its title and its properties (the schema). */
+    suspend fun getDataSource(dataSourceId: String): JsonObject = call("GET", "/data_sources/$dataSourceId")
+
+    /** All pages of a data source matching [filter] (Notion's filter object), most recently edited first. */
+    suspend fun queryDataSource(dataSourceId: String, filter: Map<String, Any?>? = null): List<JsonObject> =
         paged { cursor ->
             call(
-                "POST", "/databases/$databaseId/query",
+                "POST", "/data_sources/$dataSourceId/query",
                 buildMap {
                     if (filter != null) put("filter", filter)
                     put("sorts", listOf(mapOf("timestamp" to "last_edited_time", "direction" to "descending")))
@@ -162,11 +169,11 @@ class NotionClient(
 
     suspend fun getPage(pageId: String): JsonObject = call("GET", "/pages/$pageId")
 
-    suspend fun createPage(databaseId: String, properties: Map<String, Any?>, children: List<Map<String, Any?>>): JsonObject =
+    suspend fun createPage(dataSourceId: String, properties: Map<String, Any?>, children: List<Map<String, Any?>>): JsonObject =
         call(
             "POST", "/pages",
             buildMap {
-                put("parent", mapOf("database_id" to databaseId))
+                put("parent", mapOf("type" to "data_source_id", "data_source_id" to dataSourceId))
                 put("properties", properties)
                 if (children.isNotEmpty()) put("children", children.take(MAX_CHILDREN))
             },
@@ -248,7 +255,8 @@ class NotionClient(
 
     private companion object {
         const val BASE_URL = "https://api.notion.com/v1"
-        const val NOTION_VERSION = "2022-06-28"
+        /** Data sources: a database can have several (see decisions.md, 2026-10-16). */
+        const val NOTION_VERSION = "2025-09-03"
         const val MAX_ATTEMPTS = 4
 
         /** Notion accepts at most 100 blocks per request. */
