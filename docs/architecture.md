@@ -89,6 +89,10 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
   each block without an ID takes the ID of a matching block Notion added, so it isn't added
   twice. Notion's answer to adding blocks may also list blocks that were already there; new
   blocks are the ones whose IDs the phone doesn't know.
+  A send that has started is never cancelled (`NotesRepository.flush` runs `NonCancellable`):
+  a new edit only restarts the wait before the next send. Before, typing cancelled the request
+  under way, after Notion had added the block but before its ID was recorded, so the block was
+  added again (empty checklist items twice).
 - **Offline**: unsent changes are retried after 15 s, then waiting longer each time (at most a
   minute without a connection, five minutes after server errors), and at once when the app comes
   to the front or the sync button is tapped. The app doesn't sync while it is closed.
