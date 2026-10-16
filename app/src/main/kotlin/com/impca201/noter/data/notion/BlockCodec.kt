@@ -1,7 +1,6 @@
 package com.impca201.noter.data.notion
 
 import com.impca201.noter.data.api.arrayOrNull
-import com.impca201.noter.data.api.asObjectOrNull
 import com.impca201.noter.data.api.boolOrNull
 import com.impca201.noter.data.api.objOrNull
 import com.impca201.noter.data.api.stringOrNull
@@ -19,7 +18,18 @@ object BlockCodec {
         "bulleted_list_item" to BlockType.BULLETED,
         "numbered_list_item" to BlockType.NUMBERED,
         "to_do" to BlockType.TODO,
+        "toggle" to BlockType.TOGGLE,
+        "quote" to BlockType.QUOTE,
+        "callout" to BlockType.CALLOUT,
+        "code" to BlockType.CODE,
+        "divider" to BlockType.DIVIDER,
     )
+
+    /** Notion's language for a new code block. */
+    const val DEFAULT_CODE_LANGUAGE = "plain text"
+
+    /** The emoji of a new callout (Notion's own default). */
+    const val DEFAULT_CALLOUT_ICON = "💡"
 
     fun notionType(type: BlockType): String =
         typeNames.entries.firstOrNull { it.value == type }?.key ?: error("$type has no Notion type")
@@ -30,42 +40,62 @@ object BlockCodec {
         val hasChildren = block.boolOrNull("has_children") == true
         val body = block.objOrNull(rawType)
         val type = typeNames[rawType]
-        // Toggle headings have their content as children; the editor can't show those, so keep them as they are.
-        if (type == null || body?.boolOrNull("is_toggleable") == true) {
-            return Block(
+            ?: return Block(
                 key = key,
                 notionId = id,
                 type = BlockType.UNSUPPORTED,
                 text = body?.arrayOrNull("rich_text")?.let { InlineMarkdown.plainText(it) }
+                    ?: body?.arrayOrNull("caption")?.let { InlineMarkdown.plainText(it) }?.takeIf { it.isNotBlank() }
                     ?: body?.stringOrNull("url")
                     ?: body?.objOrNull("external")?.stringOrNull("url")
                     ?: body?.stringOrNull("title")
+                    ?: body?.stringOrNull("expression")
                     ?: "",
                 hasChildren = hasChildren,
                 rawType = rawType,
             )
-        }
         return Block(
             key = key,
             notionId = id,
             type = type,
-            text = InlineMarkdown.fromRichText(body?.arrayOrNull("rich_text")),
+            // Code keeps its text exactly (no inline Markdown: asterisks are part of the code).
+            text = if (type == BlockType.CODE) {
+                InlineMarkdown.plainText(body?.arrayOrNull("rich_text"))
+            } else {
+                InlineMarkdown.fromRichText(body?.arrayOrNull("rich_text"))
+            },
             checked = type == BlockType.TODO && body?.boolOrNull("checked") == true,
             hasChildren = hasChildren,
+            toggleable = type.isHeading && body?.boolOrNull("is_toggleable") == true,
+            language = if (type == BlockType.CODE) body?.stringOrNull("language") else null,
+            icon = if (type == BlockType.CALLOUT) body?.objOrNull("icon")?.stringOrNull("emoji") else null,
         )
     }
 
     /** The body for creating [block] (append children / create page). */
     fun toCreateRequest(block: Block): Map<String, Any?> {
         val type = notionType(block.type)
-        return mapOf("object" to "block", "type" to type, type to content(block))
+        val content = when (block.type) {
+            BlockType.DIVIDER -> emptyMap()
+            BlockType.CODE -> content(block) + ("language" to (block.language ?: DEFAULT_CODE_LANGUAGE))
+            BlockType.CALLOUT -> content(block) + ("icon" to mapOf("type" to "emoji", "emoji" to (block.icon ?: DEFAULT_CALLOUT_ICON)))
+            else -> if (block.toggleable) content(block) + ("is_toggleable" to true) else content(block)
+        }
+        return mapOf("object" to "block", "type" to type, type to content)
     }
 
-    /** The body for updating [block] in place (same type). */
+    /**
+     * The body for updating [block] in place (same type). Only the text and checked state are
+     * sent, so what the app doesn't edit (a callout's icon, a code block's language, colours)
+     * stays as it is in Notion.
+     */
     fun toUpdateRequest(block: Block): Map<String, Any?> = mapOf(notionType(block.type) to content(block))
 
     private fun content(block: Block): Map<String, Any?> = buildMap {
-        put("rich_text", InlineMarkdown.toRichText(block.text))
+        put(
+            "rich_text",
+            if (block.type == BlockType.CODE) InlineMarkdown.plainRichText(block.text) else InlineMarkdown.toRichText(block.text),
+        )
         if (block.type == BlockType.TODO) put("checked", block.checked)
     }
 }

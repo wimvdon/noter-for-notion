@@ -73,7 +73,8 @@ import com.impca201.noter.data.model.ThemeMode
 import com.impca201.noter.ui.common.DatabaseIcons
 import com.impca201.noter.ui.theme.AppShapes
 import com.impca201.noter.ui.theme.AppearanceSettings
-import com.impca201.noter.ui.theme.CollapsibleSection
+import com.impca201.noter.ui.theme.SettingsBlock
+import com.impca201.noter.ui.theme.SettingsSection
 import com.impca201.noter.ui.theme.SettingsFooter
 import com.impca201.noter.ui.theme.SettingsScaffold
 import com.impca201.noter.ui.theme.rememberAppVersion
@@ -90,33 +91,19 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
         onBack = onBack,
     ) {
         item(key = "connection") {
-            CollapsibleSection(
-                key = "connection",
-                title = stringResource(R.string.section_connection),
-                icon = painterResource(R.drawable.ic_key),
-                summary = if (state.hasKey) stringResource(R.string.connection_connected) else stringResource(R.string.connection_not_connected),
-                initiallyExpanded = !state.hasKey,
-            ) {
-                ConnectionSettings(state, viewModel)
+            SettingsSection(title = stringResource(R.string.section_connection)) {
+                SettingsBlock { ConnectionSettings(state, viewModel) }
             }
         }
         item(key = "databases") {
-            CollapsibleSection(
-                key = "databases",
-                title = stringResource(R.string.section_databases),
-                icon = painterResource(R.drawable.ic_database),
-                summary = if (state.settings.databases.isEmpty()) {
-                    stringResource(R.string.databases_none)
-                } else {
-                    state.settings.databases.joinToString(", ") { it.name }
-                },
-                initiallyExpanded = state.hasKey && state.settings.databases.isEmpty(),
-            ) {
-                Text(
-                    stringResource(R.string.databases_help),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            SettingsSection(title = stringResource(R.string.section_databases)) {
+                SettingsBlock {
+                    Text(
+                        stringResource(R.string.databases_help),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 state.settings.databases.forEachIndexed { index, db ->
                     DatabaseRow(
                         config = db,
@@ -126,28 +113,25 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                         onMove = { up -> viewModel.moveDatabase(db.id, up) },
                     )
                 }
-                FilledTonalButton(
-                    onClick = {
-                        addingDatabase = true
-                        viewModel.loadAvailable()
-                    },
-                    enabled = state.hasKey,
-                ) {
-                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.add_database))
+                SettingsBlock {
+                    FilledTonalButton(
+                        onClick = {
+                            addingDatabase = true
+                            viewModel.loadAvailable()
+                        },
+                        enabled = state.hasKey,
+                    ) {
+                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.add_database))
+                    }
                 }
             }
         }
         item(key = "appearance") {
             val themes = listOf(ThemeMode.SYSTEM, ThemeMode.LIGHT, ThemeMode.DARK)
             val labels = listOf(stringResource(R.string.theme_system), stringResource(R.string.theme_light), stringResource(R.string.theme_dark))
-            CollapsibleSection(
-                key = "appearance",
-                title = stringResource(R.string.section_appearance),
-                icon = painterResource(R.drawable.ic_palette),
-                summary = labels[themes.indexOf(state.settings.themeMode)],
-            ) {
+            SettingsSection(title = stringResource(R.string.section_appearance)) {
                 AppearanceSettings(
                     themeLabel = stringResource(R.string.theme),
                     themeOptions = labels,
@@ -282,9 +266,7 @@ private fun DatabaseRow(
     onClick: () -> Unit,
     onMove: (Boolean) -> Unit,
 ) {
-    Surface(shape = AppShapes.Item, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-        ListItem(
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ListItem(
             leadingContent = { Icon(DatabaseIcons.icon(config.icon), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
             headlineContent = { Text(config.name) },
             supportingContent = config.chipProperty?.let { { Text(stringResource(R.string.chips_from, it)) } },
@@ -300,7 +282,6 @@ private fun DatabaseRow(
             },
             modifier = Modifier.clickable(onClick = onClick),
         )
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

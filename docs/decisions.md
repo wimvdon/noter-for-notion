@@ -2,6 +2,57 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-16: Keep-style overview, Notion's block types, saving about once a second
+
+After trying v0.0.1 the owner asked for the overview to look and work like Google Keep, for the
+editor to stick to what Notion supports, and for saving as often as Notion allows.
+
+- **Overview:** notes are outlined cards in a staggered grid (`LazyVerticalStaggeredGrid`, two
+  columns on a phone) with a preview of their content, pinned notes on top under "Pinned".
+  Long-press and drag moves a note; a long press without moving opens its menu. The reorder
+  button with drag handles and the pin button on every card are gone (pin and unpin from the
+  menu or the note). Previews come from the on-phone copy; missing or outdated copies are
+  downloaded one note at a time, at most 24 per round (`NotePreviews`), so the overview never
+  floods Notion. Rejected: a preview property in Notion (changes the user's database) and
+  downloading every note's content on each refresh (hundreds of requests).
+- **Navigation:** Home and the databases are top-level destinations in Material's docked
+  `NavigationBar` (the shared design rules: floating bars are for actions), or a navigation drawer
+  when there are more than five. Rejected: keeping the floating pill.
+- **Editor:** the checklist extras (section progress, "Add item" under a list, "Move checked items
+  down", "Delete checked items", the × on every to-do, the Checkbox and Text buttons below a note)
+  are gone: Notion has none of them. Added the block types Notion has with editable text: toggles,
+  toggle headings, quotes, callouts, code and dividers, with Notion's shortcuts (`> ` toggle,
+  `" ` quote, ```` ``` ```` code, `---` divider). Updates send only the text, so a callout's icon and
+  a code block's language stay as they are. Still read-only: images, tables, embeds and other
+  blocks without text, and nested blocks.
+- **Saving:** edits reach the on-phone copy after a 250 ms pause and at most 1 s after the first
+  change, and the queue is sent after a 400 ms pause and at most 1 s after the first unsent change
+  (`SaveTiming`). That is about one round per second while typing, one request per changed block,
+  under Notion's limit of about three requests per second; 429 answers are retried after
+  Retry-After. Rejected: saving on every keystroke (a request per letter hits the limit) and
+  waiting for typing to stop (long notes typed in one go were only sent at the end).
+- **Icon:** a minimal sticky note whose top and left edges show depth, a nod to the Notion cube,
+  with a folded corner, two white text lines and the amber gradient. The previous icon (a checkbox
+  on the note) was too busy.
+
+## 2026-10-15: Noter's building blocks
+
+- **Notion API:** OkHttp and kotlinx.serialization, the same libraries as Time Tracker for Notion,
+  with Notion-Version 2022-06-28. Calls only in `data/api/NotionClient.kt`.
+- **Internet permission**, needed to reach `api.notion.com`; nothing else is contacted.
+- **API key** in `EncryptedSharedPreferences` (androidx.security-crypto), as in Time Tracker for
+  Notion; never backed up.
+- **Material icons extended** for the database icons a user can pick.
+- **On-phone copy as JSON files** in the no-backup folder (`CacheStore`), not DataStore: notes and
+  their content can be large and are a cache of Notion, while DataStore is meant for small
+  settings. Settings (databases, pins, order, theme) are in the DataStore `backed_up_settings`.
+- **Changes are queued and sent as diffs:** every edit goes to the copy at once and into a queue
+  (`Outbox`) that is sent in order and retried when offline; content is sent as the changed blocks
+  (`ContentDiff`), never by rewriting the note, so edits made in Notion elsewhere in the note stay.
+- **minSdk 31**, as the template.
+- **No navigation library:** three screens on a small back stack (`ui/AppNavigation.kt`).
+  Rejected: Navigation Compose (another dependency for three screens).
+
 ## 2026-10-15: Android's backup copies settings only, from an allow list
 
 Users expect their settings back after a reset or on a new phone, and Android does that for free with its own backup (Google account) and phone-to-phone transfer. The template now lists exactly one file, the DataStore `backed_up_settings`, in `data_extraction_rules.xml`; everything else stays on the phone. An allow list means a file added later (a sign-in token, device state) is never backed up by accident, and `BackupRulesTest` fails if the rules drift. Rules for what goes where are in `docs/architecture.md`, "Backup". Rejected: backing up everything with exclusions (one forgotten exclusion leaks a token into the backup), switching backup off (users lose their settings) and our own backup to Google Drive (needs network access, sign-in and more code for what Android already does).

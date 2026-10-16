@@ -19,9 +19,26 @@ Run all of it locally before pushing:
 python3 -m unittest discover -s scripts/tests
 ```
 
+### What the unit tests cover
+| Test | Covers |
+|---|---|
+| `logic/DocumentEditorTest` | Enter, Backspace, Markdown shortcuts (Notion's), dividers, code blocks, numbering |
+| `data/notion/BlockCodecTest` | Reading and writing every editable block type; other blocks kept read-only |
+| `data/notion/InlineMarkdownTest` | Bold, italic, strikethrough, code and links ⇄ Notion rich text |
+| `data/notion/PropertyCodecTest` | Reading and writing page properties |
+| `data/sync/ContentDiffTest` | The block changes sent to Notion for an edit |
+| `data/sync/OutboxTest` | The queue of unsent changes (merging, renaming new notes) |
+| `data/sync/SyncPolicyTest` | When to refresh, and merging refreshed notes |
+| `data/sync/SaveTimingTest` | How soon edits are saved while typing (within Notion's rate limit) |
+| `data/store/CacheStoreTest` | On-phone copies survive a restart |
+| `logic/NoteOrderingTest`, `logic/ChipFilterTest` | Pins, custom order, filter chips |
+| `logic/NotePreviewsTest` | Which previews are downloaded, and the preview text |
+| `logic/NotionDatesTest` | Dates as Notion sends them |
+| `BackupRulesTest` | Only the settings file is backed up |
+
 ### Writing unit tests
 - Every logic change gets a test. Put logic in plain Kotlin classes (no Android types) and test
-  them with JUnit in `app/src/test/kotlin/`, mirroring the package. See `TapCounterTest`.
+  them with JUnit in `app/src/test/kotlin/`, mirroring the package. See `DocumentEditorTest`.
 - Test names describe behaviour in words: `` fun `tap stops at the maximum`() ``.
 - No device tests (instrumented/UI tests) are set up: they need an emulator, which makes CI slow and
   flaky. Add them only if a decision in `decisions.md` says so.
@@ -34,7 +51,11 @@ description. In addition, check every now and then (always before a release):
 
 - [ ] The app starts, and the changed screen looks right.
 - [ ] **Dark mode**: switch the phone's dark theme on/off. Text stays readable.
-- [ ] **Rotation** (if auto-rotate is on): the screen still works and keeps its state (e.g. the tap count).
+- [ ] **Rotation** (if auto-rotate is on): the screen still works and keeps its state.
+- [ ] **Offline**: turn on flight mode, edit a note, turn it off. The cloud icon in the top bar
+      disappears and the change shows up in Notion.
+- [ ] **Notion round trip**: edit a note in Notion, pull down to refresh the overview. The card's
+      preview and the note show the change.
 - [ ] **Language**: Settings → System → Languages → App languages → this app → Nederlands.
       All text is translated.
 - [ ] **Large text**: Settings → Display → Font size at maximum. Nothing is cut off.

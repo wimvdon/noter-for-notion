@@ -1,12 +1,11 @@
 # Design
 
-Master copy of the design language shared by the apps built from this template: Tracker for
-Simkl, Time Tracker for Notion and Snoozer. Each app keeps a copy of this file in its own
-repository, with its own "This app" section at the end.
+Noter for Notion is one of the sibling Android apps (Tracker for Simkl, Time Tracker for Notion,
+Snoozer, RSS Reader and Noter for Notion) that share one design language.
 
-To change a shared rule: change it here first, then copy every section except "This app"
-unchanged into `DESIGN.md` of all three apps. A new app made from this template follows these
-rules too: copy this file into it and fill in "This app".
+The shared rules (every section except "This app") have their master copy in `DESIGN.md` of
+the android-app template (`wimvdon/android-app`). Change them there first, then copy them
+unchanged to every app. Only the "This app" section belongs to this repository.
 
 ## Icons
 
@@ -21,6 +20,8 @@ rules too: copy this file into it and fill in "This app".
 | Tracker for Simkl | TV screen with a checkmark | `#3D7BFF` → `#7A5CFF` → `#D15CE6` |
 | Time Tracker for Notion | Stopwatch dial with a hand | `#FF8A3D` → `#F04438` → `#C81E5A` |
 | Snoozer | Nine-lobed "cookie" (the home screen toggle) with a bell | `#22C3B4` → `#3E7BDA` → `#4E5BB0` |
+| RSS Reader | The feed symbol on its own (owner's choice, see its "This app") | `#4FC3F7` → `#0091EA` → `#0D47A1` |
+| Noter for Notion | Sticky note on a 3D box with a folded corner | `#FFC94D` → `#F5A623` → `#E8710A` |
 
 ## Colour
 
@@ -41,19 +42,47 @@ rules too: copy this file into it and fill in "This app".
 - Icons come from Material's Rounded set; direction-dependent icons use `AutoMirrored`.
 - Cards and grouped surfaces use the `surfaceContainer*` roles.
 - Components keep Material's shape scale (`MaterialTheme.shapes`). App-level containers use
-  `AppShapes`: `Group` (24dp) for grouped settings and banners, `Item` (20dp) for rows in a list.
+  `AppShapes`: `Group` (24dp) for banners and grouped content, `Item` (20dp) for tiles and
+  highlighted rows.
+
+## Navigation and structure
+
+Follows Material 3's split between destinations and actions:
+
+- Top-level destinations (two to five) sit in Material's `NavigationBar`, docked at the bottom
+  edge. On wide windows an app may switch to a `NavigationRail` with the same destinations in
+  the same order. Floating bars (M3 Expressive's floating toolbar) are for actions on the
+  current screen, never for switching sections.
+- Tabs are only for peer views of the same content. Chips filter or sort a collection; they are
+  not navigation and not general buttons.
+- Every other page is a child page: a top app bar with a back arrow, no navigation bar.
+- One FAB at most, for the screen's main action (add, start). Destructive actions never sit in
+  a FAB or next to routine actions without separation, and ask for confirmation or offer Undo.
+- Lists are lists: `ListItem` rows (or rows with the same paddings), separated by spacing or
+  dividers. A card is for a unit that stands on its own (a poster, a banner, a running timer),
+  not for every row or section.
+- Content keeps a readable width on wide windows (about 640dp for lists and settings).
 
 ## Settings screen
 
-Built from `ui/theme/SettingsKit.kt`, so every app's settings look and behave the same:
+Built from `ui/theme/SettingsKit.kt`, so every app's settings look and behave the same. It
+follows the Android and Material 3 settings pattern: one scrolling list, grouped by headers.
 
 - `SettingsScaffold`: a large top app bar ("Settings") that collapses on scroll, with a back
-  button, over a list of sections.
-- Every section is a `CollapsibleSection` card: icon, title and the current value as summary;
-  tap to expand. Sections start collapsed, except one the user still has to fill in (no API key
-  or workspace yet).
-- Inside a section: `SwitchSetting` rows (the whole row is the switch), segmented buttons for a
-  single choice, `CollapsibleSubsection` for longer instructions.
+  button, over one list, at most 640dp wide.
+- `SettingsSection`: a section header (Title Small in the primary colour) above its rows. No
+  cards and no collapsing: every setting is visible and one tap away.
+- Rows inside a section:
+  - `SwitchSetting`: a `ListItem` with a switch; the whole row is the switch and the change
+    applies at once (no Save button).
+  - `SettingItem`: a `ListItem` that opens something (a page, a dialog, another app), with a
+    chevron or "opens elsewhere" icon when it leaves the screen.
+  - `ExpandableSetting`: a row that shows longer instructions below it (setup steps most people
+    read once).
+  - `SettingsBlock`: anything else (a text field, segmented buttons for a single choice among
+    two to four options, an explanation, a button), lined up with the rows' text.
+- A choice among more than four options, or with long labels, opens a dialog with radio buttons
+  from a `SettingItem` that shows the current value.
 - Sections in this order, leaving out what an app does not have:
   1. Connection (account, API key, sync)
   2. The app's own features
@@ -104,9 +133,8 @@ English, Dutch, German, French, Spanish and Italian).
 
 ## Shared design kit
 
-These files live in each app (the template does not include them). They are identical in the
-three apps apart from their package (and `R` import) lines. Copy a change to the other two
-repositories:
+These files live in each app (the template does not include them). They are identical in every
+app apart from their package (and `R` import) lines. Copy a change to the other repositories:
 
 - `ui/theme/Motion.kt`: motion tokens, the shared-axis transition and `rememberReducedMotion()`.
 - `ui/theme/Shapes.kt`: `AppShapes`.
@@ -119,5 +147,18 @@ repositories:
 
 ## This app
 
-Each app replaces this section with its own rules: the seed colour of its theme and its
-signature element.
+- Icon: a sticky note seen as a block (its top and left edges show depth, a nod to the Notion
+  cube) with a folded corner and two white text lines; gradient `#FFC94D` → `#F5A623` →
+  `#E8710A` (amber) on the white background. Themed layer: the same shapes with a thin gap
+  between edge and note, text lines cut out.
+- Seed `#F5A623` (amber): a full Material 3 tonal scheme from the icon's middle stop.
+- Signature element: the overview in the style of Google Keep. Notes are `OutlinedCard`s in a
+  staggered grid (cells at least 160dp wide: two columns on a phone) with the title (Title
+  Medium), up to ten lines of content preview (Body Medium, `onSurfaceVariant`) and the chip
+  property's options in Notion's colours. "Pinned" and "Others" are Label Large headers spanning
+  the grid. A dragged card lifts (shadow, 3% larger, `surfaceContainerHigh`).
+- The note editor follows Notion's look: headings in SemiBold, quotes with a bar, callouts and
+  code on `surfaceContainerHigh` (code in a monospace font), dividers as `outlineVariant` lines.
+  Read-only blocks sit in a `surfaceContainer` box with "(edit in Notion)".
+- The block toolbar sits above the keyboard on `surfaceContainerHigh`; the selected kind uses
+  `secondaryContainer`.

@@ -1,6 +1,7 @@
 # Rules for Claude Code sessions in this repository
 
-The owner is **not a developer and does not review code**. CI, tests, lint and these rules
+Noter for Notion, an Android note app on Notion databases, built from the `android-app` template
+(a private repository). The owner is **not a developer and does not review code**. CI, tests, lint and these rules
 are the safety net. Follow them every time.
 
 ## Workflow
@@ -26,7 +27,9 @@ are the safety net. Follow them every time.
 ## Never do these without asking first (and saying why)
 - Delete, skip, `@Ignore`, or weaken tests, lint checks, CI steps or workflows to make something
   pass. Don't add a lint baseline or disable a lint check. **Never remove the release workflow.**
-- Add Android permissions, network access, analytics, crash reporting, ads or tracking.
+- Add Android permissions or network destinations beyond the ones in `PRIVACY.md` (only Notion's
+  API, `api.notion.com`), analytics, crash reporting, ads or tracking. Notion calls only in
+  `data/api/NotionClient.kt`, within Notion's rate limit (about three requests per second).
 - Add new dependencies (libraries or Gradle plugins). Prefer what is already in
   `gradle/libs.versions.toml`. Use **DataStore** if the app needs to store data.
 - Change the `applicationId` or the signing setup of an app that has already been released
@@ -54,9 +57,10 @@ Secrets, keystores (`*.jks`, `*.keystore`), `keystore.properties`, passwords or 
 - Notable decision (new library, architecture choice, minSdk change, …) → add a dated entry to
   `docs/decisions.md`.
 - Structure and conventions: `docs/architecture.md`. What is tested and how: `docs/testing.md`.
-- Look and feel: `DESIGN.md` is the **master copy** of the design language shared by the apps
-  built from this template (Tracker for Simkl, Time Tracker for Notion, Snoozer). After changing
-  it, copy every section except "This app" unchanged into `DESIGN.md` of all three apps.
+- `DESIGN.md`: only its "This app" section belongs to this repository. The other sections are
+  copied from the master copy in the android-app template (`wimvdon/android-app`): change a
+  shared rule there first, then copy it unchanged to every app (Tracker for Simkl, Time Tracker
+  for Notion, Snoozer, RSS Reader, Noter for Notion).
 
 ## Releasing (only when the owner asks)
 Actions → Release → Run workflow on `main` → choose `patch`, `minor` or `major`.
