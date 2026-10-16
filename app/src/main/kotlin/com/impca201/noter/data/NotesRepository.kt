@@ -173,10 +173,12 @@ class NotesRepository(
 
     /**
      * The note [pageId] as it changes. Also follows a note created on this phone when it gets its
-     * Notion ID, so an open editor keeps showing it.
+     * Notion ID (under either ID while the change happens), so an open editor keeps showing it.
      */
     fun note(pageId: String): Flow<NoteSummary?> =
-        combine(_databases, renamed) { map, ids -> findNote(map, ids[pageId] ?: pageId) }.distinctUntilChanged()
+        combine(_databases, renamed) { map, ids ->
+            ids[pageId]?.let { findNote(map, it) } ?: findNote(map, pageId)
+        }.distinctUntilChanged()
 
     private fun findNote(map: Map<String, DatabaseState>, id: String): NoteSummary? =
         map.values.firstNotNullOfOrNull { db -> db.notes.firstOrNull { it.id == id } }
@@ -493,7 +495,6 @@ class NotesRepository(
                 cache.saveOutbox(_outbox.value)
                 return@withLock
             }
-            // Renamed first, so screens that follow the note (see [note]) find it under its new ID.
             renamed.update { it + (oldId to newId) }
             val current = findNote(_databases.value, oldId) ?: note
             // Values changed while the note was being created are sent as normal edits.
