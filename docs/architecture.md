@@ -1,39 +1,95 @@
 # Architecture
 
-> Template skeleton. Fill in the "This app" section for each app and keep it up to date.
-
 ## This app
-_What the app does, its screens, and where its data lives. (Placeholder: one home screen with a tap counter. No stored data.)_
+
+Noter shows the pages of Notion databases as notes, in the style of Google Keep, and edits their
+title, properties and content.
+
+### Screens
+- **Overview** (`ui/main/`): Material's navigation bar with Home and one destination per added
+  database (a navigation drawer instead when there are more than five). Notes are cards in a
+  staggered grid with a preview of their content; pinned notes come first under "Pinned".
+  Long-press and drag moves a note within its section; a long press without moving opens its menu
+  (pin, move to trash). Filter chips come from one select, status, multi-select or person property
+  per database. Home shows the pinned notes of every database.
+- **Note** (`ui/note/`): title, editable properties (`PropertyEditors.kt`), then the content as a
+  list of blocks, each its own text field. A toolbar above the keyboard changes the block's kind,
+  adds a divider or deletes the block. Tapping below the content continues at the end.
+- **Settings** (`ui/settings/`): Connection (API key, sync status), Databases (add, edit, order),
+  Appearance; built from the shared `SettingsKit.kt`.
+- `ui/AppNavigation.kt`: a small back stack of three screens (no navigation library).
+
+### Data flow
+```
+Notion API ── data/api/NotionClient (OkHttp, Notion-Version 2022-06-28, retries 429/5xx)
+     │
+data/NotesRepository ── single source for the screens
+     │   reads:  on-phone copy first (data/store/CacheStore), then refresh (data/sync/SyncPolicy)
+     │   writes: on-phone copy at once, queued in data/sync/Outbox, sent in order
+     │   content: sent as a diff of blocks (data/sync/ContentDiff), never by rewriting the note
+     ▼
+ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
+```
+
+- **Blocks** (`data/notion/BlockCodec.kt`): paragraphs, headings (also toggle headings), bulleted,
+  numbered and to-do lists, toggles, quotes, callouts, code and dividers are editable. Other blocks
+  (images, tables, embeds, …) are shown as a read-only box and left untouched. Nested blocks
+  (inside a toggle, a list item, …) are not shown; a toggle, callout or quote with nested content
+  says so. A block with nested content can't change its kind, because Notion can't change a
+  block's kind and recreating it would lose what is nested.
+- **Inline styles** (`data/notion/InlineMarkdown.kt`): bold, italic, strikethrough, inline code and
+  links are kept as Markdown in the editor and turned back into Notion rich text. Code blocks keep
+  their text literally.
+- **Editing rules** (`logic/DocumentEditor.kt`): Enter, Backspace at the start of a line and the
+  Markdown shortcuts, following Notion's own editor.
+- **Saving** (`data/sync/SaveTiming.kt`): an edit reaches the on-phone copy after a short pause in
+  typing (at most 1 s later), and the queue goes to Notion after a pause (at most 1 s after the
+  first unsent change). While typing, that is about one round of requests per second, one per
+  changed block, under Notion's limit of about three requests per second; `NotionClient` waits when
+  Notion answers 429. Leaving a note sends at once.
+- **Previews** (`logic/NotePreviews.kt`): the overview shows the start of each note's content from
+  the on-phone copy. Copies that are missing or older than the note's last edit in Notion are
+  downloaded one note at a time (at most 24 per round).
+- **Order and pins** are only on this phone (`AppSettings.order`, `AppSettings.pinned`); Notion is
+  not changed.
+
+### Where data lives
+| What | Where | Backed up |
+|---|---|---|
+| Databases, pins, order, theme | DataStore `backed_up_settings` | Yes |
+| API key | `EncryptedSharedPreferences` `notion_key_encrypted_prefs` | No |
+| Copies of notes, schemas, users; unsent changes | JSON files in `noBackupFilesDir/notion_cache` | No |
 
 ## Structure
 ```
-app/src/main/kotlin/<package>/
-  MainActivity.kt          Entry point. Only sets up the theme and the first screen.
-  ui/theme/Theme.kt        Material 3 theme (light/dark, dynamic colour).
-  ui/<feature>/            One folder per screen/feature:
-    <Feature>Screen.kt       Composables: display state, forward clicks. No logic.
-    <Feature>….kt            Plain Kotlin logic (no Android types) → unit tested.
-app/src/main/res/
-  values/strings.xml       All user-visible text (English, the default).
-  values-nl/strings.xml    Dutch translation. Every string must exist in every language.
-app/src/test/kotlin/       JVM unit tests (mirrors the main package structure).
-scripts/                   Release helpers (Python/Java) with their own tests.
-.github/workflows/         ci.yml (every PR), release.yml (signed releases).
+app/src/main/kotlin/com/impca201/noter/
+  MainActivity.kt, NoterApp.kt   Entry point; the app object creates the repository.
+  data/api/                      NotionClient: every HTTP call.
+  data/model/                    Notes, blocks, properties, schemas.
+  data/notion/                   Notion JSON ⇄ models (blocks, properties, rich text).
+  data/store/                    Settings (DataStore), API key, on-phone copies.
+  data/sync/                     Outbox, ContentDiff, SyncPolicy, SaveTiming.
+  data/NotesRepository.kt        The single source of notes for the screens.
+  logic/                         Plain Kotlin rules: editor, ordering, chips, previews, dates.
+  ui/main/, ui/note/, ui/settings/, ui/common/, ui/theme/   Screens and the shared design kit.
+app/src/test/kotlin/             JVM unit tests (mirrors the main package structure).
+scripts/                         Release helpers (Python/Java) with their own tests.
+.github/workflows/               ci.yml (every PR), release.yml (signed releases).
 ```
 
 ## Conventions
 - **Single `app` module.** Split into modules only if the app grows large; record it in `decisions.md`.
 - **Logic in plain Kotlin classes** with no `Context`, `View` or Compose types, so it can be
-  tested on the JVM. Example: `ui/home/TapCounter.kt` (immutable; methods return a new value).
+  tested on the JVM. Example: `logic/DocumentEditor.kt`.
 - **UI state**: small screens use `rememberSaveable`. When a screen gets real logic or data,
   add a `ViewModel` (`androidx.lifecycle:lifecycle-viewmodel-compose`) that exposes a
   `StateFlow<UiState>` and calls into the plain-Kotlin logic. Record it in `decisions.md`.
-- **Navigation**: one screen today. With several screens, use Navigation Compose.
+- **Navigation**: three screens on a small back stack in `ui/AppNavigation.kt` (see `decisions.md`).
 - **Persistence**: Jetpack DataStore (version already in the catalog). Wrap it behind a small
   repository interface so logic tests can use a fake. Decide per value whether it is backed up
   (see "Backup" below).
-- **No network, analytics, crash reporting or ads** unless the owner agreed (see `CLAUDE.md`),
-  in which case update `PRIVACY.md`.
+- **Network: only Notion's API**, only in `data/api/NotionClient.kt`. No analytics, crash
+  reporting or ads (see `CLAUDE.md` and `PRIVACY.md`).
 - **Strings** in resources only; plurals via `<plurals>`.
 - **Versions** of libraries only in `gradle/libs.versions.toml`.
 - **App identity** (`applicationId`/`namespace`) only in `app/build.gradle.kts` (`appId`).

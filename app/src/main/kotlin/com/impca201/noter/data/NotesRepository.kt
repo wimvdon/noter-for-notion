@@ -25,10 +25,12 @@ import com.impca201.noter.data.sync.ContentDiff
 import com.impca201.noter.data.sync.ContentOp
 import com.impca201.noter.data.sync.Outbox
 import com.impca201.noter.data.sync.PendingOp
+import com.impca201.noter.data.sync.SaveTiming
 import com.impca201.noter.data.sync.RefreshKind
 import com.impca201.noter.data.sync.SyncPolicy
 import com.impca201.noter.data.sync.withProperty
 import com.impca201.noter.logic.NoteOrdering
+import com.impca201.noter.logic.NotePreviews
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -75,7 +77,7 @@ sealed interface RepoEvent {
  * - **Reading**: everything is shown from the on-phone copy first, then refreshed in the
  *   background (see [SyncPolicy]), so lists and notes open instantly and work offline.
  * - **Writing**: edits change the on-phone copy at once and go into a queue ([Outbox]) that is
- *   sent to Notion shortly after typing stops, in order, retried when offline. Content is sent
+ *   sent to Notion soon after each edit (see [SaveTiming]), in order, retried when offline. Content is sent
  *   as a diff of changed blocks ([ContentDiff]), never by rewriting the whole note.
  */
 class NotesRepository(
@@ -101,6 +103,12 @@ class NotesRepository(
 
     /** True when the last attempt to reach Notion failed for lack of a connection. */
     val offline: StateFlow<Boolean> = _offline.asStateFlow()
+
+    private val _previews = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    /** Preview text of notes' content for the overview cards, by page ID (see [NotePreviews]). */
+    val previews: StateFlow<Map<String, String>> = _previews.asStateFlow()
+    private val previewLock = Mutex()
 
     private val _events = MutableSharedFlow<RepoEvent>(extraBufferCapacity = 8)
     val events: SharedFlow<RepoEvent> = _events
@@ -305,7 +313,9 @@ class NotesRepository(
         lock.withLock {
             val existing = cache.content(id) ?: PageContent(id, blocks = emptyList(), base = emptyList())
             val dirty = ContentDiff.plan(existing.base, blocks).isNotEmpty()
-            cache.saveContent(existing.copy(blocks = blocks, dirty = dirty))
+            val saved = existing.copy(blocks = blocks, dirty = dirty)
+            cache.saveContent(saved)
+            updatePreview(id, saved)
             if (dirty) enqueue(PendingOp.SaveContent(id))
         }
         scheduleFlush()
@@ -333,6 +343,7 @@ class NotesRepository(
                 val now = cache.content(id)
                 if (now?.dirty == true) return@withLock null
                 cache.saveContent(fresh)
+                updatePreview(id, fresh)
                 fresh
             }
         } catch (e: NotionException) {
@@ -358,11 +369,22 @@ class NotesRepository(
 
     // ---- Sending changes ------------------------------------------------------------------
 
-    /** Sends the queue shortly after the last edit, so typing doesn't cause a request per letter. */
-    fun scheduleFlush(delayMs: Long = FLUSH_DELAY_MS) {
+    /** When the oldest change not handed to [flush] yet was queued (0: none waiting). */
+    private var firstUnsentMs = 0L
+
+    /**
+     * Sends the queue soon after an edit: after a short pause in typing, and at least about once a
+     * second while typing goes on ([SaveTiming.NOTION]), so a letter isn't a request of its own.
+     * [delayMs] overrides the timing (leaving a note sends at once).
+     */
+    fun scheduleFlush(delayMs: Long? = null) {
+        val now = clock()
+        if (firstUnsentMs == 0L) firstUnsentMs = now
+        val wait = delayMs ?: SaveTiming.NOTION.delayMs(now, firstUnsentMs)
         flushJob?.cancel()
         flushJob = scope.launch {
-            delay(delayMs)
+            delay(wait)
+            firstUnsentMs = 0L
             flush()
         }
     }
@@ -565,6 +587,49 @@ class NotesRepository(
         }
     }
 
+    // ---- Previews -------------------------------------------------------------------------
+
+    private fun updatePreview(pageId: String, content: PageContent?) {
+        val text = NotePreviews.text(content)
+        _previews.update { if (text == null) it - pageId else it + (pageId to text) }
+    }
+
+    /**
+     * Fills in the previews of [notes]: first from the copies on this phone, then by downloading
+     * content that is missing or out of date, one note after the other (see [NotePreviews]).
+     */
+    fun loadPreviews(notes: List<NoteSummary>) {
+        scope.launch(Dispatchers.IO) {
+            if (previewLock.isLocked) return@launch
+            previewLock.withLock {
+                val stale = notes.filter { note ->
+                    val cached = cache.content(note.id)
+                    if (note.id !in _previews.value) updatePreview(note.id, cached)
+                    NotePreviews.needsDownload(note, cached)
+                }
+                if (!hasKey()) return@withLock
+                for (note in stale.take(NotePreviews.MAX_DOWNLOADS)) {
+                    try {
+                        val previous = cache.content(note.id)
+                        val fresh = downloadContent(note.id, previous?.blocks.orEmpty(), note.lastEditedTime)
+                        lock.withLock {
+                            // Never replace edits made meanwhile.
+                            if (cache.content(note.id)?.dirty != true) {
+                                cache.saveContent(fresh)
+                                updatePreview(note.id, fresh)
+                            }
+                        }
+                    } catch (e: NotionException) {
+                        if (e.isOffline) {
+                            _offline.value = true
+                            return@withLock
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // ---- Lookups for property editors ------------------------------------------------------
 
     /** People in the workspace, for person properties (cached for a day). */
@@ -679,7 +744,6 @@ class NotesRepository(
     suspend fun updateSettings(transform: (AppSettings) -> AppSettings) = settings.update(transform)
 
     private companion object {
-        const val FLUSH_DELAY_MS = 1_500L
         const val RETRY_MIN_MS = 15_000L
         const val RETRY_MAX_MS = 5 * 60_000L
         const val LOOKUP_TTL_MS = 24 * 60 * 60_000L

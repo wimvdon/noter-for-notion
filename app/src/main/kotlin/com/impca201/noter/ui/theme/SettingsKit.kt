@@ -8,26 +8,25 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
@@ -63,9 +62,12 @@ import com.impca201.noter.R
 // (see DESIGN.md). It needs R.drawable.ic_arrow_back, R.drawable.ic_expand_more and the strings
 // section_expanded and section_collapsed.
 
+/** Readable width of the settings list on wide windows (tablets, landscape, desktop). */
+private val SettingsMaxWidth = 640.dp
+
 /**
- * The settings screen: a large top app bar that collapses on scroll, over a list of
- * [CollapsibleSection]s in the order DESIGN.md gives, ending with a [SettingsFooter].
+ * The settings screen: a large top app bar that collapses on scroll, over one list of
+ * [SettingsSection]s in the order DESIGN.md gives, ending with a [SettingsFooter].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,140 +96,66 @@ fun SettingsScaffold(
             )
         },
     ) { innerPadding ->
-        LazyColumn(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            content = content,
-        )
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            LazyColumn(
+                modifier =
+                    Modifier
+                        .widthIn(max = SettingsMaxWidth)
+                        .fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 24.dp),
+                content = content,
+            )
+        }
     }
 }
 
 /**
- * A settings section: a card whose header (icon, title and the current value as [summary])
- * expands and collapses its content. Expanded state survives rotation.
+ * A group of related settings under a section header (Title Small in the primary colour).
+ * Its rows are [SwitchSetting], [SettingItem], [ExpandableSetting] and [SettingsBlock].
  */
 @Composable
-fun CollapsibleSection(
-    key: String,
+fun SettingsSection(
     title: String,
-    icon: Painter,
     modifier: Modifier = Modifier,
-    summary: String? = null,
-    initiallyExpanded: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    var expanded by rememberSaveable(key) { mutableStateOf(initiallyExpanded) }
-    Card(
-        shape = AppShapes.Group,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        ExpandableHeader(
-            title = title,
-            summary = summary,
-            icon = icon,
-            expanded = expanded,
-            onToggle = { expanded = !expanded },
-            titleStyleLarge = true,
+    Column(modifier.fillMaxWidth()) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier =
+                Modifier
+                    .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp)
+                    .semantics { heading() },
         )
-        AnimatedVisibility(
-            visible = expanded,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            Column(
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                content = content,
-            )
-        }
+        content()
     }
 }
 
-/** A nested, collapsible part of a [CollapsibleSection]. */
+/**
+ * Content inside a section that is not a list row (a text field, segmented buttons, an
+ * explanation, a button), indented to line up with the rows' text.
+ */
 @Composable
-fun CollapsibleSubsection(
-    key: String,
-    title: String,
-    initiallyExpanded: Boolean = false,
+fun SettingsBlock(
+    modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    var expanded by rememberSaveable(key) { mutableStateOf(initiallyExpanded) }
-    Column {
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        ExpandableHeader(
-            title = title,
-            summary = null,
-            icon = null,
-            expanded = expanded,
-            onToggle = { expanded = !expanded },
-            titleStyleLarge = false,
-            horizontalPadding = 0,
-        )
-        AnimatedVisibility(
-            visible = expanded,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            Column(
-                modifier = Modifier.padding(bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                content = content,
-            )
-        }
-    }
+    Column(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        content = content,
+    )
 }
 
-@Composable
-private fun ExpandableHeader(
-    title: String,
-    summary: String?,
-    icon: Painter?,
-    expanded: Boolean,
-    onToggle: () -> Unit,
-    titleStyleLarge: Boolean,
-    horizontalPadding: Int = 20,
-) {
-    val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "chevron")
-    val stateText = stringResource(if (expanded) R.string.section_expanded else R.string.section_collapsed)
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(role = Role.Button, onClick = onToggle)
-                .semantics { stateDescription = stateText }
-                .padding(horizontal = horizontalPadding.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        if (icon != null) Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = if (titleStyleLarge) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
-                modifier = Modifier.semantics { heading() },
-            )
-            if (summary != null) {
-                Text(
-                    text = summary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        Icon(
-            painter = painterResource(R.drawable.ic_expand_more),
-            contentDescription = null,
-            modifier = Modifier.rotate(chevronRotation),
-        )
-    }
-}
-
-/** A setting with a switch. The whole row is one accessible switch. */
+/** A setting with a switch. The whole row is one accessible switch and applies at once. */
 @Composable
 fun SwitchSetting(
     title: String,
@@ -235,53 +163,108 @@ fun SwitchSetting(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean = true,
+    icon: Painter? = null,
     warning: String? = null,
     onWarningClick: (() -> Unit)? = null,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(
+    Column {
+        ListItem(
+            headlineContent = { Text(title) },
+            supportingContent = summary?.let { { Text(it) } },
+            leadingContent = icon?.let { { Icon(it, contentDescription = null) } },
+            trailingContent = { Switch(checked = checked, onCheckedChange = null, enabled = enabled) },
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .toggleable(
-                        value = checked,
-                        enabled = enabled,
-                        role = Role.Switch,
-                        onValueChange = onCheckedChange,
-                    ),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.bodyLarge)
-                if (summary != null) {
-                    Text(
-                        summary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Switch(checked = checked, onCheckedChange = null, enabled = enabled)
-        }
+                Modifier.toggleable(
+                    value = checked,
+                    enabled = enabled,
+                    role = Role.Switch,
+                    onValueChange = onCheckedChange,
+                ),
+        )
         if (warning != null) {
             Text(
                 text = warning,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error,
                 modifier =
-                    if (onWarningClick != null) {
-                        Modifier.clickable(role = Role.Button, onClick = onWarningClick).padding(vertical = 8.dp)
-                    } else {
-                        Modifier
-                    },
+                    Modifier
+                        .fillMaxWidth()
+                        .then(if (onWarningClick != null) Modifier.clickable(role = Role.Button, onClick = onWarningClick) else Modifier)
+                        .padding(start = if (icon != null) 56.dp else 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
             )
         }
     }
 }
 
 /**
- * The content of every app's Appearance section: the theme as segmented buttons
+ * A row that opens something: another page, a dialog or another app. [trailing] can show a
+ * chevron or an "opens elsewhere" icon.
+ */
+@Composable
+fun SettingItem(
+    title: String,
+    summary: String?,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    icon: Painter? = null,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    ListItem(
+        headlineContent = { Text(title) },
+        supportingContent = summary?.let { { Text(it) } },
+        leadingContent = icon?.let { { Icon(it, contentDescription = null) } },
+        trailingContent = trailing,
+        modifier = Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+    )
+}
+
+/**
+ * A row that shows or hides more content below it, for longer instructions that most people
+ * only read once. Expanded state survives rotation.
+ */
+@Composable
+fun ExpandableSetting(
+    key: String,
+    title: String,
+    summary: String? = null,
+    initiallyExpanded: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    var expanded by rememberSaveable(key) { mutableStateOf(initiallyExpanded) }
+    val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f, label = "chevron")
+    val stateText = stringResource(if (expanded) R.string.section_expanded else R.string.section_collapsed)
+    Column {
+        ListItem(
+            headlineContent = { Text(title) },
+            supportingContent = summary?.let { { Text(it) } },
+            trailingContent = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_expand_more),
+                    contentDescription = null,
+                    modifier = Modifier.rotate(chevronRotation),
+                )
+            },
+            modifier =
+                Modifier
+                    .clickable(role = Role.Button, onClick = { expanded = !expanded })
+                    .semantics { stateDescription = stateText },
+        )
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            Column(
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                content = content,
+            )
+        }
+    }
+}
+
+/**
+ * The rows of every app's Appearance section: the theme as segmented buttons
  * (System / Light / Dark) and, on Android 12+, the Dynamic color switch.
  */
 @Composable
@@ -296,14 +279,16 @@ fun AppearanceSettings(
     onDynamicColorChange: (Boolean) -> Unit,
     dynamicColorSupported: Boolean,
 ) {
-    Text(themeLabel, style = MaterialTheme.typography.bodyLarge)
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        themeOptions.forEachIndexed { index, label ->
-            SegmentedButton(
-                selected = index == selectedTheme,
-                onClick = { onThemeSelect(index) },
-                shape = SegmentedButtonDefaults.itemShape(index, themeOptions.size),
-            ) { Text(label) }
+    SettingsBlock {
+        Text(themeLabel, style = MaterialTheme.typography.bodyLarge)
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            themeOptions.forEachIndexed { index, label ->
+                SegmentedButton(
+                    selected = index == selectedTheme,
+                    onClick = { onThemeSelect(index) },
+                    shape = SegmentedButtonDefaults.itemShape(index, themeOptions.size),
+                ) { Text(label) }
+            }
         }
     }
     if (dynamicColorSupported) {
@@ -323,7 +308,7 @@ fun SettingsFooter(
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {

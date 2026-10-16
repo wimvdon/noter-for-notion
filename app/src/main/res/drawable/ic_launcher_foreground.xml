@@ -1,45 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A sticky note with a 3D edge (like a block) and a folded corner, with a white checkbox.
-     Gradient #FFC93C → #F5A623 → #E8731A. See DESIGN.md, "Icons". -->
+<!-- A sticky note seen as a block: its top and left edges show depth, like the Notion cube,
+     with a folded corner and two white lines of text. Gradient #FFC94D → #F5A623 → #E8710A on
+     the white background. Everything sits inside the 66dp safe zone (21..87). See DESIGN.md. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Scaled to stay inside the 66dp safe zone of every icon mask. -->
-    <group
-        android:pivotX="54"
-        android:pivotY="54"
-        android:scaleX="0.8"
-        android:scaleY="0.8">
-        <!-- The note's thickness, behind it. -->
-        <path
-            android:fillColor="#B4561A"
-            android:pathData="M34,29h46a4,4 0,0 1,4 4v34l-16,16h-34a4,4 0,0 1,-4 -4v-46a4,4 0,0 1,4 -4z" />
-        <path android:pathData="M30,24h46a4,4 0,0 1,4 4v34l-16,16h-34a4,4 0,0 1,-4 -4v-46a4,4 0,0 1,4 -4z">
-            <aapt:attr name="android:fillColor">
-                <gradient
-                    android:type="linear"
-                    android:startX="26"
-                    android:startY="24"
-                    android:endX="80"
-                    android:endY="78">
-                    <item android:offset="0" android:color="#FFFFC93C" />
-                    <item android:offset="0.5" android:color="#FFF5A623" />
-                    <item android:offset="1" android:color="#FFE8731A" />
-                </gradient>
-            </aapt:attr>
-        </path>
-        <!-- Folded corner. -->
-        <path
-            android:fillColor="#FFC9601A"
-            android:pathData="M80,62l-16,16v-12a4,4 0,0 1,4 -4z" />
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M42,36h18a6,6 0,0 1,6 6v18a6,6 0,0 1,-6 6h-18a6,6 0,0 1,-6 -6v-18a6,6 0,0 1,6 -6zM43.5,40.5a3,3 0,0 0,-3 3v15a3,3 0,0 0,3 3h15a3,3 0,0 0,3 -3v-15a3,3 0,0 0,-3 -3z" />
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M44,51l3,-3l3.5,3.5l7,-7l3,3l-10,10z" />
-    </group>
+    <!-- The block's depth: top and left edges, behind the note. -->
+    <path android:pathData="M29,24h45l7,7h-46a4,4 0,0 0,-4 4v46l-7,-7v-45a5,5 0,0 1,5 -5z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="24"
+                android:startY="24"
+                android:endX="60"
+                android:endY="60">
+                <item android:offset="0" android:color="#FFE8901C" />
+                <item android:offset="1" android:color="#FFC25A08" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- The note, with its bottom right corner folded. -->
+    <path android:pathData="M35,31h44a4,4 0,0 1,4 4v32l-16,16h-32a4,4 0,0 1,-4 -4v-44a4,4 0,0 1,4 -4z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="31"
+                android:startY="31"
+                android:endX="83"
+                android:endY="83">
+                <item android:offset="0" android:color="#FFFFC94D" />
+                <item android:offset="0.5" android:color="#FFF5A623" />
+                <item android:offset="1" android:color="#FFE8710A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:fillColor="#FFC25A08"
+        android:pathData="M83,67l-16,16v-12a4,4 0,0 1,4 -4z" />
+    <!-- Two lines of text. -->
+    <path
+        android:pathData="M42,47H72M42,58H62"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round" />
 </vector>

@@ -25,7 +25,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** A tab of the floating bar: Home or a database. */
+/** A destination of the navigation bar: Home or a database. */
 data class Tab(val key: String, val name: String, val icon: String?)
 
 data class MainUiState(
@@ -151,6 +151,12 @@ class MainViewModel(private val repository: NotesRepository, hasKey: StateFlow<B
             }
         }
     }
+
+    /** Preview text of each note's content, by page ID. */
+    val previews: StateFlow<Map<String, String>> = repository.previews
+
+    /** Fills in the previews of the notes on screen (from the phone's copies, else from Notion). */
+    fun loadPreviews(notes: List<NoteSummary>) = repository.loadPreviews(notes)
 
     fun togglePin(id: String) = viewModelScope.launch { repository.togglePin(id) }
 

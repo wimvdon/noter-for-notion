@@ -1,16 +1,31 @@
-# Android app template
+# Noter for Notion
 
-A starting point for Android apps built with Claude Code and GitHub. Out of the box it
-**builds, tests and releases**. The only app content is a placeholder screen with a tap
-counter.
+A note app for Android in the style of Google Keep, with your notes kept in **Notion databases**.
+Each database you add gets its own section; Home shows the notes you pinned from all of them.
 
-- Kotlin, Jetpack Compose, Material 3 (light/dark, wallpaper colours), Android 12+.
-- CI on every pull request: unit tests, lint, debug and release builds, and an installable APK.
-- One-click signed releases on GitHub, with automatic version numbers.
-- Weekly dependency updates (Dependabot).
-- Rules for Claude Code sessions in [`CLAUDE.md`](CLAUDE.md).
+- Notes as cards with a preview of their content, pinned notes on top, drag and drop to reorder.
+- A note's content is edited like in Notion: text, three heading sizes, bulleted, numbered and
+  to-do lists, toggles, quotes, callouts, code and dividers, with Notion's Markdown shortcuts
+  (`# `, `- `, `[] `, `> `, `" `, ```` ``` ````, `---`) and bold, italic, strikethrough, code and links.
+- The note's properties (select, status, dates, people, relations, …) are edited above the content.
+- Opens instantly and works offline: the app keeps a copy on the phone and sends changes to Notion
+  about once a second while you type, within Notion's limits.
+- Material 3 (light/dark, wallpaper colours), English and Dutch, Android 12+.
 
-> **New app from this template?** Start with [Using this template](#using-this-template).
+What the app sends and stores: [`PRIVACY.md`](PRIVACY.md). Rules for Claude Code sessions:
+[`CLAUDE.md`](CLAUDE.md).
+
+---
+
+## Getting started
+
+1. Install the app (see below) and open it.
+2. In Notion, go to <https://www.notion.so/my-integrations>, create an **internal integration** and
+   copy its secret (the API key).
+3. In Notion, open each database you want in the app, tap **⋯ › Connections** and add the
+   integration.
+4. In the app: **Settings › Connection**, paste the key and tap **Test and save**. Then
+   **Settings › Databases › Add database**.
 
 ---
 
@@ -28,42 +43,16 @@ Every pull request builds a **debug APK**:
 1. Open the pull request → **Checks** → **CI** → scroll to **Artifacts**.
 2. Download `<app>-<version>-debug.apk` and install it like above.
 
-The debug app installs **next to** the released app (it has its own ID ending in `.debug` and
-its own data), so you will see two icons with the same name. Uninstall the debug one when you're
-done testing.
+The debug app ("Noter Dev") installs **next to** the released app, with its own data and its own
+API key. Uninstall it when you're done testing.
 
 ---
 
-## Using this template
+## Maintaining the app
 
-Work through this list once for every new app. You can ask Claude Code to do steps 2–4
-(for example: *"Rename this app to Plant Diary with package com.yourname.plantdiary and replace
-the icon with a green leaf"*). Steps 5–7 involve secrets and must be done by you.
-
-- [ ] **1. Create the repository.** On GitHub, open this template → **Use this template** →
-      **Create a new repository**.
-- [ ] **2. Rename the package / application ID.** Choose a unique ID you will never change
-      again, e.g. `com.yourname.plantdiary` (lowercase letters, digits, dots).
-  - In `app/build.gradle.kts`, change `val appId = "com.example.template"`.
-  - Move the folders `app/src/main/kotlin/com/example/template` and
-    `app/src/test/kotlin/com/example/template` to match the new ID, and update the `package`
-    and `import com.example.template…` lines in the `.kt` files.
-  - In `settings.gradle.kts`, change `rootProject.name` (used in the APK file name).
-  - In `.github/workflows/release.yml`, change `PACKAGE_NAME` in the (commented-out) Play job.
-- [ ] **3. Rename the app.** Change `app_name` in `app/src/main/res/values/strings.xml` and in
-      every `values-xx/strings.xml`. Update the title of this README.
-- [ ] **4. Replace the icon.** The icon is a vector in
-      `app/src/main/res/drawable/ic_launcher_foreground.xml` with a background colour in
-      `res/values/ic_launcher_background.xml`. Follow the icon rules in `DESIGN.md`. In Android Studio: right-click `res` →
-      **New → Image Asset**. Keep the important part inside the centre 66 dp of the 108 dp canvas.
-- [ ] **5. Create a signing key and add the four secrets.** See [Signing key](#signing-key) below.
-- [ ] **6. Apply the GitHub settings.** See [GitHub settings](#github-settings).
-- [ ] **7. Make the first release.** See [Making a release](#making-a-release).
-- [ ] **8. Back up the keystore and passwords.** See [Backing up the key](#backing-up-the-key).
-      **If you lose them, the app can never be updated again**: phones only accept updates
-      signed with the same key.
-- [ ] **9. Update `PRIVACY.md`, `docs/architecture.md`** and the top of this README for your app.
-- [ ] **10. Choose a licence.** See [Licence](#licence). The default is *all rights reserved*.
+The app was made from the android-app template (`wimvdon/android-app`). The signing key, the four
+repository secrets and the GitHub settings are set up; the sections below describe them for when
+something needs to change.
 
 ### Signing key
 

@@ -179,6 +179,10 @@ object InlineMarkdown {
             }
         }
 
+    /** Notion rich text items for [text] taken literally (code blocks: no Markdown). */
+    fun plainRichText(text: String): List<Map<String, Any?>> =
+        text.chunked(MAX_ITEM_LENGTH).map { chunk -> mapOf("type" to "text", "text" to mapOf("content" to chunk)) }
+
     /** Text without Markdown markers, for previews and sorting. */
     fun stripped(markdown: String): String = parse(markdown).joinToString("") { it.text }
 

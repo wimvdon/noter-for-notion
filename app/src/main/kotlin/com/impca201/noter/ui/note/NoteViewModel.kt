@@ -15,6 +15,7 @@ import com.impca201.noter.data.model.NoteSummary
 import com.impca201.noter.data.model.NotionUser
 import com.impca201.noter.data.model.PageRef
 import com.impca201.noter.data.model.PropertyValue
+import com.impca201.noter.data.sync.SaveTiming
 import com.impca201.noter.logic.DocumentEditor
 import com.impca201.noter.logic.EditResult
 import kotlinx.coroutines.Job
@@ -58,9 +59,12 @@ class NoteViewModel(
     private val _focus = MutableStateFlow<FocusTarget?>(null)
     val focus: StateFlow<FocusTarget?> = _focus.asStateFlow()
 
-    /** Edits not yet handed to the repository (it is saved shortly after typing stops). */
+    /** Edits are handed to the repository soon after they are made (see [SaveTiming.LOCAL]). */
     private var editedSinceOpen = false
     private var saveJob: Job? = null
+
+    /** When the oldest edit not saved yet was made (0: everything is saved). */
+    private var firstUnsavedMs = 0L
     private val propertyJobs = mutableMapOf<String, Job>()
     private val pendingProperties = mutableMapOf<String, NoteProperty>()
     private var serial = 0L
@@ -137,23 +141,17 @@ class NoteViewModel(
 
     fun delete(key: String) = apply(editor.delete(blocks.value, key))
 
-    fun addCheckboxAtEnd() = apply(editor.addCheckboxAtEnd(blocks.value))
-
-    fun addTextAtEnd() = apply(editor.insertAfter(blocks.value, null, BlockType.PARAGRAPH))
-
-    fun addCheckboxToSection(key: String) = apply(editor.addCheckboxToSection(blocks.value, key))
+    /** Tapping below the content: a text line at the end to type in. */
+    fun addLineAtEnd() {
+        val result = editor.addLineAtEnd(blocks.value)
+        if (result.blocks === blocks.value) {
+            result.focusKey?.let { focusBlock(it, 0) }
+        } else {
+            apply(result)
+        }
+    }
 
     fun insertAfter(key: String, type: BlockType) = apply(editor.insertAfter(blocks.value, key, type))
-
-    fun sortCheckedToBottom() {
-        blocks.value = editor.sortCheckedToBottom(blocks.value)
-        scheduleSave(fast = true)
-    }
-
-    fun deleteChecked() {
-        blocks.value = editor.deleteChecked(blocks.value)
-        scheduleSave(fast = true)
-    }
 
     fun canChangeType(block: Block) = editor.canChangeType(block)
 
@@ -164,9 +162,13 @@ class NoteViewModel(
 
     private fun scheduleSave(fast: Boolean = false) {
         editedSinceOpen = true
+        val now = System.currentTimeMillis()
+        if (firstUnsavedMs == 0L) firstUnsavedMs = now
+        val wait = if (fast) 0L else SaveTiming.LOCAL.delayMs(now, firstUnsavedMs)
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
-            delay(if (fast) 300 else 800)
+            delay(wait)
+            firstUnsavedMs = 0L
             repository.saveContent(pageId, savable())
         }
     }
@@ -186,7 +188,7 @@ class NoteViewModel(
         pendingProperties[property.name] = property
         propertyJobs[property.name]?.cancel()
         propertyJobs[property.name] = viewModelScope.launch {
-            if (debounce) delay(600)
+            if (debounce) delay(SaveTiming.LOCAL.quietMs)
             pendingProperties.remove(property.name)
             repository.updateProperty(pageId, property)
         }

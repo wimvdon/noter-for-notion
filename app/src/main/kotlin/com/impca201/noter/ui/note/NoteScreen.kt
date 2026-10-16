@@ -112,9 +112,21 @@ import com.impca201.noter.data.model.NoteProperty
 import com.impca201.noter.data.model.NoteSummary
 import com.impca201.noter.data.model.PropertyValue
 import com.impca201.noter.logic.DocumentEditor
-import com.impca201.noter.logic.SectionProgress
 import com.impca201.noter.ui.theme.AppShapes
 import com.impca201.noter.ui.theme.SkeletonLine
+import androidx.compose.material.icons.automirrored.rounded.ArrowRight
+import androidx.compose.material.icons.rounded.FormatQuote
+import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.HorizontalRule
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.impca201.noter.data.notion.BlockCodec
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -142,7 +154,6 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
         if (itemIndex !in visible || itemIndex >= (visible.maxOrNull() ?: 0)) listState.animateScrollToItem(itemIndex)
     }
 
-    val hasChecked = state.blocks.any { it.type == BlockType.TODO && it.checked }
     Scaffold(
         contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
         topBar = {
@@ -178,18 +189,6 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
                                     )
                                 }
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.action_checked_to_bottom)) },
-                                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Sort, null) },
-                                    enabled = hasChecked,
-                                    onClick = { menu = false; viewModel.sortCheckedToBottom() },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.action_delete_checked)) },
-                                    leadingIcon = { Icon(Icons.Rounded.DeleteSweep, null) },
-                                    enabled = hasChecked,
-                                    onClick = { menu = false; viewModel.deleteChecked() },
-                                )
-                                DropdownMenuItem(
                                     text = { Text(stringResource(R.string.action_trash)) },
                                     leadingIcon = { Icon(Icons.Rounded.Delete, null) },
                                     onClick = { menu = false; viewModel.trash(onBack) },
@@ -208,7 +207,7 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
                         block = block,
                         canChangeType = viewModel.canChangeType(block),
                         onType = { viewModel.setType(block.key, it) },
-                        onAddCheckbox = { viewModel.insertAfter(block.key, BlockType.TODO) },
+                        onAddDivider = { viewModel.insertAfter(block.key, BlockType.DIVIDER) },
                         onDelete = { viewModel.delete(block.key) },
                         onDone = { keyboard?.hide(); focusManager.clearFocus() },
                     )
@@ -224,8 +223,6 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
             return@Scaffold
         }
         val numbers = remember(state.blocks) { DocumentEditor.numbers(state.blocks) }
-        val sections = remember(state.blocks) { DocumentEditor.sections(state.blocks) }
-        val lastCheckboxes = remember(state.blocks) { DocumentEditor.lastCheckboxes(state.blocks) }
         val styling = MarkdownStyling(MaterialTheme.colorScheme.outline, MaterialTheme.colorScheme.primary)
         val titleProperty = note.properties.firstOrNull { it.type == "title" }
         val lookups = PropertyLookups(state.users, state.relatedPages, viewModel::loadUsers, viewModel::loadRelated)
@@ -270,39 +267,33 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
                         BlockRow(
                             block = block,
                             number = numbers[block.key],
-                            section = sections[block.key],
                             onlyBlock = state.blocks.size == 1,
                             focus = focus,
                             styling = styling,
                             onText = { text, cursor -> viewModel.changeText(block.key, text, cursor) },
                             onBackspaceAtStart = { viewModel.backspaceAtStart(block.key) },
                             onToggle = { viewModel.toggleChecked(block.key) },
-                            onDelete = { viewModel.delete(block.key) },
                             onFocusChange = { focused ->
                                 if (focused) focusedKey = block.key else if (focusedKey == block.key) focusedKey = null
                             },
                         )
-                        if (block.key in lastCheckboxes) {
-                            AddItemRow { viewModel.addCheckboxToSection(block.key) }
-                        }
                     }
                 }
                 item(key = "__footer") {
-                    Row(
-                        Modifier.padding(top = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        androidx.compose.material3.FilledTonalButton(onClick = viewModel::addCheckboxAtEnd) {
-                            Icon(Icons.Rounded.AddTask, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.add_checkbox))
-                        }
-                        androidx.compose.material3.OutlinedButton(onClick = viewModel::addTextAtEnd) {
-                            Icon(Icons.AutoMirrored.Rounded.Notes, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.add_text))
-                        }
-                    }
+                    // As in Notion: tapping below the content continues writing at the end.
+                    val label = stringResource(R.string.add_line)
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(160.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClickLabel = label,
+                                role = Role.Button,
+                                onClick = viewModel::addLineAtEnd,
+                            ),
+                    )
                 }
             }
         }
@@ -401,19 +392,24 @@ private fun PropertiesPanel(
 private fun BlockRow(
     block: Block,
     number: Int?,
-    section: SectionProgress?,
     onlyBlock: Boolean,
     focus: FocusTarget?,
     styling: MarkdownStyling,
     onText: (String, Int) -> Unit,
     onBackspaceAtStart: () -> Unit,
     onToggle: () -> Unit,
-    onDelete: () -> Unit,
     onFocusChange: (Boolean) -> Unit,
 ) {
-    if (block.type == BlockType.UNSUPPORTED) {
-        UnsupportedBlock(block)
-        return
+    when (block.type) {
+        BlockType.UNSUPPORTED -> {
+            UnsupportedBlock(block)
+            return
+        }
+        BlockType.DIVIDER -> {
+            HorizontalDivider(Modifier.padding(top = 12.dp, bottom = 12.dp, end = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            return
+        }
+        else -> Unit
     }
     var value by remember(block.key) { mutableStateOf(TextFieldValue(block.text)) }
     val requester = remember(block.key) { FocusRequester() }
@@ -428,106 +424,118 @@ private fun BlockRow(
         }
     }
 
-    val baseStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface)
+    val colors = MaterialTheme.colorScheme
+    val baseStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onSurface)
     val style: TextStyle = when (block.type) {
-        BlockType.HEADING_1 -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold)
-        BlockType.HEADING_2 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)
-        BlockType.HEADING_3 -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-        BlockType.PARAGRAPH -> if (section != null) MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold) else baseStyle
+        BlockType.HEADING_1 -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold, color = colors.onSurface)
+        BlockType.HEADING_2 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold, color = colors.onSurface)
+        BlockType.HEADING_3 -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold, color = colors.onSurface)
         BlockType.TODO -> if (block.checked) baseStyle.copy(textDecoration = TextDecoration.LineThrough) else baseStyle
+        BlockType.CODE -> MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace, color = colors.onSurface)
+        BlockType.QUOTE -> baseStyle.copy(fontStyle = FontStyle.Italic)
         else -> baseStyle
-    }.let { if (block.type != BlockType.TODO && block.type.isHeading || section != null) it.copy(color = MaterialTheme.colorScheme.onSurface) else it }
+    }
+
+    // Code and callouts sit in a container and quotes get a bar, as in Notion; the rest is plain text.
+    val container: Modifier = when (block.type) {
+        BlockType.CODE, BlockType.CALLOUT -> Modifier
+            .padding(top = 4.dp, bottom = 4.dp, end = 8.dp)
+            .background(colors.surfaceContainerHigh, AppShapes.Item)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+        BlockType.QUOTE -> Modifier
+            .padding(vertical = 4.dp)
+            .drawBehind { drawRect(colors.onSurface, size = Size(3.dp.toPx(), size.height)) }
+            .padding(start = 14.dp)
+        else -> Modifier
+    }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = if (block.type.isHeading || section != null) 12.dp else 0.dp),
+            .padding(top = if (block.type.isHeading) 12.dp else 0.dp)
+            .then(container),
         verticalAlignment = if (block.type == BlockType.TODO) Alignment.CenterVertically else Alignment.Top,
     ) {
-        when (block.type) {
-            BlockType.TODO -> Checkbox(
-                checked = block.checked,
-                onCheckedChange = { onToggle() },
-                modifier = Modifier.size(40.dp),
-            )
-            BlockType.BULLETED -> Box(Modifier.width(28.dp).height(28.dp), contentAlignment = Alignment.Center) { Bullet() }
-            BlockType.NUMBERED -> Box(Modifier.width(28.dp).padding(top = 2.dp), contentAlignment = Alignment.TopCenter) {
+        when {
+            block.type == BlockType.TODO -> Checkbox(checked = block.checked, onCheckedChange = { onToggle() })
+            block.type == BlockType.BULLETED -> Box(Modifier.width(28.dp).height(28.dp), contentAlignment = Alignment.Center) { Bullet() }
+            block.type == BlockType.NUMBERED -> Box(Modifier.width(28.dp).padding(top = 2.dp), contentAlignment = Alignment.TopCenter) {
                 Text("${number ?: 1}.", style = baseStyle)
             }
-            else -> Unit
+            block.type == BlockType.TOGGLE || block.toggleable -> Icon(
+                Icons.AutoMirrored.Rounded.ArrowRight,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = colors.onSurfaceVariant,
+            )
+            block.type == BlockType.CALLOUT ->
+                Text(block.icon ?: BlockCodec.DEFAULT_CALLOUT_ICON, style = baseStyle, modifier = Modifier.padding(top = 4.dp, end = 10.dp))
         }
         val placeholder = when {
             block.type == BlockType.TODO -> stringResource(R.string.placeholder_item)
             block.type.isHeading -> stringResource(R.string.placeholder_heading)
+            block.type == BlockType.TOGGLE -> stringResource(R.string.type_toggle)
+            block.type == BlockType.QUOTE -> stringResource(R.string.type_quote)
+            block.type == BlockType.CALLOUT -> stringResource(R.string.type_callout)
+            block.type == BlockType.CODE -> stringResource(R.string.type_code)
             onlyBlock -> stringResource(R.string.placeholder_start)
             else -> null
         }
-        BasicTextField(
-            value = value,
-            onValueChange = { new ->
-                if (new.text == value.text) {
-                    value = new
-                } else if (new.text.contains('\n')) {
-                    onText(new.text, new.selection.start)
-                } else {
-                    value = new
-                    onText(new.text, new.selection.start)
-                }
-            },
-            textStyle = style,
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            visualTransformation = styling,
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-            modifier = Modifier
-                .weight(1f)
-                .padding(vertical = if (block.type == BlockType.TODO) 6.dp else 4.dp)
-                .alpha(if (block.type == BlockType.TODO && block.checked) 0.55f else 1f)
-                .focusRequester(requester)
-                .onFocusChanged { onFocusChange(it.isFocused) }
-                .onPreviewKeyEvent { event ->
-                    val atStart = value.selection.start == 0 && value.selection.end == 0
-                    if (event.type == KeyEventType.KeyDown && event.key == Key.Backspace && atStart) {
-                        onBackspaceAtStart()
-                        true
+        Column(Modifier.weight(1f)) {
+            BasicTextField(
+                value = value,
+                onValueChange = { new ->
+                    if (new.text == value.text) {
+                        value = new
+                    } else if (new.text.contains('\n') && block.type != BlockType.CODE) {
+                        onText(new.text, new.selection.start)
                     } else {
-                        false
+                        value = new
+                        onText(new.text, new.selection.start)
                     }
-                }
-                .then(if (block.type.isHeading || section != null) Modifier.semantics { heading() } else Modifier),
-            decorationBox = { inner ->
-                if (value.text.isEmpty() && placeholder != null) {
-                    Text(placeholder, style = style, color = MaterialTheme.colorScheme.outline)
-                }
-                inner()
-            },
-        )
-        if (section != null) {
-            Text(
-                stringResource(R.string.section_progress, section.done, section.total),
-                style = MaterialTheme.typography.labelLarge,
-                color = if (section.done == section.total) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 8.dp, top = 4.dp, end = 8.dp),
+                },
+                textStyle = style,
+                cursorBrush = SolidColor(colors.primary),
+                // Code is shown exactly as typed: no Markdown styling.
+                visualTransformation = if (block.type == BlockType.CODE) VisualTransformation.None else styling,
+                keyboardOptions = if (block.type == BlockType.CODE) {
+                    KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false)
+                } else {
+                    KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = if (block.type == BlockType.TODO) 6.dp else 4.dp)
+                    .alpha(if (block.type == BlockType.TODO && block.checked) 0.55f else 1f)
+                    .focusRequester(requester)
+                    .onFocusChanged { onFocusChange(it.isFocused) }
+                    .onPreviewKeyEvent { event ->
+                        val atStart = value.selection.start == 0 && value.selection.end == 0
+                        if (event.type == KeyEventType.KeyDown && event.key == Key.Backspace && atStart) {
+                            onBackspaceAtStart()
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    .then(if (block.type.isHeading) Modifier.semantics { heading() } else Modifier),
+                decorationBox = { inner ->
+                    if (value.text.isEmpty() && placeholder != null) {
+                        Text(placeholder, style = style, color = colors.outline)
+                    }
+                    inner()
+                },
             )
-        }
-        if (block.type == BlockType.TODO) {
-            IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
-                Icon(
-                    Icons.Rounded.Close,
-                    contentDescription = stringResource(R.string.action_delete_item),
-                    tint = MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.size(20.dp),
+            // Nested blocks (inside a toggle, a callout, …) aren't shown here; say so.
+            if (block.hasChildren && !block.type.isListItem) {
+                Text(
+                    stringResource(R.string.nested_content),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp),
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun AddItemRow(onClick: () -> Unit) {
-    TextButton(onClick = onClick, contentPadding = PaddingValues(start = 8.dp, end = 12.dp)) {
-        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(12.dp))
-        Text(stringResource(R.string.add_item))
     }
 }
 
@@ -554,13 +562,16 @@ private fun UnsupportedBlock(block: Block) {
     }
 }
 
-/** Shown above the keyboard while a line is being edited: change its kind, add a checkbox, delete it. */
+/**
+ * Shown above the keyboard while a block is being edited: change its kind (the block types
+ * Notion has that the app can edit), add a divider below it, delete it, hide the keyboard.
+ */
 @Composable
 private fun FormatToolbar(
     block: Block,
     canChangeType: Boolean,
     onType: (BlockType) -> Unit,
-    onAddCheckbox: () -> Unit,
+    onAddDivider: () -> Unit,
     onDelete: () -> Unit,
     onDone: () -> Unit,
 ) {
@@ -596,8 +607,12 @@ private fun FormatToolbar(
             typeButton(BlockType.BULLETED, R.string.type_bulleted) { Icon(Icons.AutoMirrored.Rounded.FormatListBulleted, null) }
             typeButton(BlockType.NUMBERED, R.string.type_numbered) { Icon(Icons.Rounded.FormatListNumbered, null) }
             typeButton(BlockType.TODO, R.string.type_checkbox) { Icon(Icons.Rounded.CheckBox, null) }
+            typeButton(BlockType.TOGGLE, R.string.type_toggle) { Icon(Icons.AutoMirrored.Rounded.ArrowRight, null) }
+            typeButton(BlockType.QUOTE, R.string.type_quote) { Icon(Icons.Rounded.FormatQuote, null) }
+            typeButton(BlockType.CALLOUT, R.string.type_callout) { Icon(Icons.Rounded.Lightbulb, null) }
+            typeButton(BlockType.CODE, R.string.type_code) { Icon(Icons.Rounded.Code, null) }
             VerticalDivider(Modifier.height(24.dp).padding(horizontal = 4.dp))
-            IconButton(onClick = onAddCheckbox) { Icon(Icons.Rounded.AddTask, contentDescription = stringResource(R.string.add_checkbox_below)) }
+            IconButton(onClick = onAddDivider) { Icon(Icons.Rounded.HorizontalRule, contentDescription = stringResource(R.string.insert_divider)) }
             IconButton(onClick = onDelete) { Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.action_delete_line)) }
             IconButton(onClick = onDone) { Icon(Icons.Rounded.KeyboardHide, contentDescription = stringResource(R.string.action_hide_keyboard)) }
         }
