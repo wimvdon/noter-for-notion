@@ -668,20 +668,16 @@ class NotesRepository(
         if (reload) {
             val fresh = downloadContent(pageId, cache.content(pageId)?.blocks.orEmpty(), null)
             return lock.withLock {
-                val now = cache.content(pageId)
-                val unchanged = now == null || now.blocks.map { it.copy(notionId = null) } == snapshot.map { it.copy(notionId = null) }
-                if (unchanged) {
-                    cache.saveContent(fresh)
-                    true
-                } else {
-                    // Edited meanwhile: keep the edits, but compare against what Notion has now.
-                    val freshIds = fresh.blocks.mapNotNull { it.notionId }.toSet()
-                    val blocks = BlockMatch.keepIds(now.blocks, fresh.blocks).map { b ->
-                        if (b.notionId != null && b.notionId !in freshIds) b.copy(notionId = null) else b
-                    }
-                    cache.saveContent(now.copy(blocks = blocks, base = fresh.blocks, dirty = true))
-                    false
+                val now = cache.content(pageId) ?: return@withLock true
+                // Compare what is on the phone (edited meanwhile or not) with what Notion has now:
+                // blocks that couldn't be sent yet (inside a block whose ID is unknown) still go.
+                val freshIds = fresh.blocks.mapNotNull { it.notionId }.toSet()
+                val blocks = BlockMatch.keepIds(now.blocks, fresh.blocks).map { b ->
+                    if (b.notionId != null && b.notionId !in freshIds) b.copy(notionId = null) else b
                 }
+                val dirty = ContentDiff.plan(fresh.blocks, blocks).isNotEmpty()
+                cache.saveContent(now.copy(blocks = blocks, base = fresh.blocks, dirty = dirty, nestedLoaded = true, remoteEditedTime = null))
+                !dirty
             }
         }
         return lock.withLock {
