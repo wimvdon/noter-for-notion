@@ -12,6 +12,7 @@ import com.impca201.noter.data.model.DatabaseConfig
 import com.impca201.noter.data.model.NoteProperty
 import com.impca201.noter.data.model.NoteSummary
 import com.impca201.noter.data.model.NotionUser
+import com.impca201.noter.data.model.PropertyLayout
 import com.impca201.noter.data.model.PropertyValue
 import com.impca201.noter.data.store.AppSettings
 import com.impca201.noter.logic.FilterChip
@@ -40,6 +41,8 @@ data class MainUiState(
     val pinnedIds: Set<String> = emptySet(),
     val databaseIcons: Map<String, String> = emptyMap(),
     val chipProperty: String? = null,
+    /** How each database shows its properties, for the properties on the cards. */
+    val propertyLayouts: Map<String, PropertyLayout> = emptyMap(),
     /** True while nothing is cached yet for this tab and the first download runs. */
     val loading: Boolean = false,
     val refreshing: Boolean = false,
@@ -79,6 +82,7 @@ class MainViewModel(private val repository: NotesRepository, hasKey: StateFlow<B
             currentTab = tabKey,
             pinnedIds = settings.pinned.toSet(),
             databaseIcons = dbConfigs.associate { it.id to it.icon },
+            propertyLayouts = settings.propertyLayouts,
             pendingCount = pending,
             offline = offline,
             hasDatabases = dbConfigs.isNotEmpty(),

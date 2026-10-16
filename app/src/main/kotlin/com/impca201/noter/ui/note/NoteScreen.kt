@@ -40,6 +40,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AddTask
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.ExpandMore
@@ -90,6 +91,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -116,6 +118,7 @@ import com.impca201.noter.data.model.NoteProperty
 import com.impca201.noter.data.model.NoteSummary
 import com.impca201.noter.data.model.PropertyValue
 import com.impca201.noter.logic.DocumentEditor
+import com.impca201.noter.logic.PropertyLayouts
 import com.impca201.noter.ui.theme.AppShapes
 import com.impca201.noter.ui.theme.SkeletonLine
 import androidx.compose.material.icons.automirrored.rounded.ArrowRight
@@ -142,6 +145,7 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
     var focusedKey by remember { mutableStateOf<String?>(null) }
     var menu by remember { mutableStateOf(false) }
     var confirmTrash by remember { mutableStateOf(false) }
+    var customize by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -158,6 +162,17 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
         val itemIndex = index + blocksOffset(note)
         val visible = listState.layoutInfo.visibleItemsInfo.map { it.index }
         if (itemIndex !in visible || itemIndex >= (visible.maxOrNull() ?: 0)) listState.animateScrollToItem(itemIndex)
+    }
+
+    if (customize && note != null) {
+        PropertyLayoutSheet(
+            properties = note.properties,
+            layout = state.layout,
+            onReorder = viewModel::reorderProperties,
+            onToggleShown = viewModel::toggleShown,
+            onToggleOnCard = viewModel::toggleOnCard,
+            onDismiss = { customize = false },
+        )
     }
 
     if (confirmTrash && note != null) {
@@ -274,7 +289,9 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
                 )
             }
             item(key = "__properties") {
-                PropertiesPanel(note, state, lookups) { prop, debounce -> viewModel.setProperty(prop, debounce) }
+                PropertiesPanel(note, state, lookups, onCustomize = { customize = true }) { prop, debounce ->
+                    viewModel.setProperty(prop, debounce)
+                }
             }
             item(key = "__divider") {
                 HorizontalDivider(Modifier.padding(top = 8.dp, bottom = 8.dp, end = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
@@ -410,34 +427,48 @@ private fun PropertiesPanel(
     note: NoteSummary,
     state: NoteUiState,
     lookups: PropertyLookups,
+    onCustomize: () -> Unit,
     onChange: (NoteProperty, Boolean) -> Unit,
 ) {
-    val (editable, readOnly) = note.properties.filter { it.type != "title" }.partition { it.isEditable }
-    var showReadOnly by rememberSaveable { mutableStateOf(false) }
+    val arranged = remember(note.properties, state.layout) { PropertyLayouts.arrange(note.properties, state.layout) }
+    var showHidden by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.padding(end = 8.dp)) {
-        editable.forEach { prop ->
+        arranged.shown.forEach { prop ->
             PropertyRow(prop, state.schema?.property(prop.name), lookups, onChange)
         }
-        if (readOnly.isNotEmpty()) {
-            val rotation by animateFloatAsState(if (showReadOnly) 180f else 0f, label = "chevron")
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(role = Role.Button) { showReadOnly = !showReadOnly }
-                    .padding(vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    androidx.compose.ui.res.pluralStringResource(R.plurals.read_only_properties, readOnly.size, readOnly.size),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.weight(1f),
-                )
-                Icon(Icons.Rounded.ExpandMore, contentDescription = null, modifier = Modifier.rotate(rotation), tint = MaterialTheme.colorScheme.primary)
+        AnimatedVisibility(showHidden, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+            Column {
+                arranged.hidden.forEach { prop -> PropertyRow(prop, state.schema?.property(prop.name), lookups, onChange) }
             }
-            AnimatedVisibility(showReadOnly, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-                Column {
-                    readOnly.forEach { prop -> PropertyRow(prop, state.schema?.property(prop.name), lookups, onChange) }
+        }
+        // The collapsed properties, and the button to choose which properties are shown.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            if (arranged.hidden.isNotEmpty()) {
+                val rotation by animateFloatAsState(if (showHidden) 180f else 0f, label = "chevron")
+                Row(
+                    Modifier
+                        .weight(1f)
+                        .clickable(role = Role.Button) { showHidden = !showHidden }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        if (showHidden) {
+                            stringResource(R.string.hide_properties)
+                        } else {
+                            pluralStringResource(R.plurals.more_properties, arranged.hidden.size, arranged.hidden.size)
+                        },
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Icon(Icons.Rounded.ExpandMore, contentDescription = null, modifier = Modifier.rotate(rotation), tint = MaterialTheme.colorScheme.primary)
+                }
+            } else {
+                Spacer(Modifier.weight(1f))
+            }
+            if (arranged.shown.isNotEmpty() || arranged.hidden.isNotEmpty()) {
+                IconButton(onClick = onCustomize) {
+                    Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.customize_properties), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

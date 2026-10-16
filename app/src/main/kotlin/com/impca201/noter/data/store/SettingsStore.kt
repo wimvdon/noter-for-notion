@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.impca201.noter.data.model.DatabaseConfig
+import com.impca201.noter.data.model.PropertyLayout
 import com.impca201.noter.data.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -25,6 +26,8 @@ data class AppSettings(
     val pinned: List<String> = emptyList(),
     /** Custom note order per database ID, and for Home under [HOME]. */
     val order: Map<String, List<String>> = emptyMap(),
+    /** How each database's properties are shown, by database ID. */
+    val propertyLayouts: Map<String, PropertyLayout> = emptyMap(),
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = false,
 ) {

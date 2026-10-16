@@ -14,10 +14,12 @@ import com.impca201.noter.data.model.NoteProperty
 import com.impca201.noter.data.model.NoteSummary
 import com.impca201.noter.data.model.NotionUser
 import com.impca201.noter.data.model.PageRef
+import com.impca201.noter.data.model.PropertyLayout
 import com.impca201.noter.data.model.PropertyValue
 import com.impca201.noter.data.sync.SaveTiming
 import com.impca201.noter.logic.DocumentEditor
 import com.impca201.noter.logic.EditResult
+import com.impca201.noter.logic.PropertyLayouts
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +45,8 @@ data class NoteUiState(
     val users: List<NotionUser> = emptyList(),
     /** Pages of related databases, by database ID (null while loading or when not shared). */
     val relatedPages: Map<String, List<PageRef>?> = emptyMap(),
+    /** How the note's database shows its properties (null: the default). */
+    val layout: PropertyLayout? = null,
 )
 
 class NoteViewModel(
@@ -82,6 +86,7 @@ class NoteViewModel(
             note = note,
             schema = note?.let { databases[it.databaseId]?.schema },
             pinned = note != null && repository.resolve(pageId) in settings.pinned,
+            layout = note?.let { settings.propertyLayouts[it.databaseId] },
             blocks = blocks,
             loadingContent = loading,
         )
@@ -191,6 +196,24 @@ class NoteViewModel(
             if (debounce) delay(SaveTiming.LOCAL.quietMs)
             pendingProperties.remove(property.name)
             repository.updateProperty(pageId, property)
+        }
+    }
+
+    // ---- How properties are shown (per database) ----
+
+    private val propertyNames: List<String>
+        get() = state.value.note?.properties.orEmpty().filter { it.type != "title" }.map { it.name }
+
+    fun reorderProperties(names: List<String>) = updateLayout { PropertyLayouts.reorder(it, names) }
+
+    fun toggleShown(name: String) = updateLayout { PropertyLayouts.toggleShown(it, propertyNames, name) }
+
+    fun toggleOnCard(name: String) = updateLayout { PropertyLayouts.toggleOnCard(it, name) }
+
+    private fun updateLayout(transform: (PropertyLayout?) -> PropertyLayout) {
+        val databaseId = state.value.note?.databaseId ?: return
+        viewModelScope.launch {
+            repository.updateSettings { s -> s.copy(propertyLayouts = s.propertyLayouts + (databaseId to transform(s.propertyLayouts[databaseId]))) }
         }
     }
 

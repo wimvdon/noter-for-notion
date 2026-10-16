@@ -99,8 +99,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.impca201.noter.R
 import com.impca201.noter.data.RepoEvent
 import com.impca201.noter.data.model.NoteSummary
+import com.impca201.noter.data.model.PropertyLayout
 import com.impca201.noter.data.model.PropertyValue
 import com.impca201.noter.data.notion.InlineMarkdown
+import com.impca201.noter.data.notion.PropertyCodec
+import com.impca201.noter.logic.NotionDates
+import com.impca201.noter.logic.PropertyLayouts
 import com.impca201.noter.ui.common.DatabaseIcons
 import com.impca201.noter.ui.common.OptionChip
 import com.impca201.noter.ui.theme.SkeletonBlock
@@ -473,6 +477,7 @@ private fun NoteGrid(
                         showDatabaseIcon = state.isHome,
                         databaseIcon = state.databaseIcons[item.note.databaseId],
                         chipProperty = state.chipProperty,
+                        layout = state.propertyLayouts[item.note.databaseId],
                         lifted = isDragging,
                         // The card's own click also ends a long press; that one opened the menu or moved the card.
                         onOpen = { if (draggingKey != key) onOpen(key) },
@@ -591,6 +596,7 @@ private fun NoteCard(
     showDatabaseIcon: Boolean,
     databaseIcon: String?,
     chipProperty: String?,
+    layout: PropertyLayout?,
     lifted: Boolean,
     onOpen: () -> Unit,
     menu: @Composable () -> Unit,
@@ -636,25 +642,35 @@ private fun NoteCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                NoteLabels(note, chipProperty, showDatabaseIcon, databaseIcon)
+                NoteLabels(note, chipProperty, layout, showDatabaseIcon, databaseIcon)
             }
             menu()
         }
     }
 }
 
-/** The card's footer: the chip property's options, the database (on Home), "not synced yet". */
+/**
+ * The card's footer: the properties chosen for cards (see PropertyLayouts), else the filter
+ * property's options; the database (on Pinned); "not synced yet".
+ */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun NoteLabels(note: NoteSummary, chipProperty: String?, showDatabaseIcon: Boolean, databaseIcon: String?) {
-    val chipValue = chipProperty?.let { note.property(it)?.value }
-    val options = when (chipValue) {
-        is PropertyValue.Select -> listOfNotNull(chipValue.option)
-        is PropertyValue.MultiSelect -> chipValue.options
-        else -> emptyList()
-    }
-    if (options.isEmpty() && !note.isLocal && !showDatabaseIcon) return
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+private fun NoteLabels(
+    note: NoteSummary,
+    chipProperty: String?,
+    layout: PropertyLayout?,
+    showDatabaseIcon: Boolean,
+    databaseIcon: String?,
+) {
+    val chosen = remember(note.properties, layout) { PropertyLayouts.cardProperties(note.properties, layout).filterNot { it.isEmpty } }
+    val shown = chosen.ifEmpty { listOfNotNull(chipProperty?.let { note.property(it) }) }
+    if (shown.all { it.isEmpty } && !note.isLocal && !showDatabaseIcon) return
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
         if (showDatabaseIcon) {
             Icon(
                 DatabaseIcons.icon(databaseIcon),
@@ -663,7 +679,28 @@ private fun NoteLabels(note: NoteSummary, chipProperty: String?, showDatabaseIco
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
-        options.take(3).forEach { OptionChip(it, small = true) }
+        shown.forEach { prop ->
+            when (val value = prop.value) {
+                is PropertyValue.Select -> value.option?.let { OptionChip(it, small = true) }
+                is PropertyValue.MultiSelect -> value.options.take(3).forEach { OptionChip(it, small = true) }
+                else -> {
+                    val text = when (value) {
+                        is PropertyValue.Date -> NotionDates.displayRange(value.start, value.end, locale)
+                        is PropertyValue.Checkbox -> if (value.checked) "✓ ${prop.name}" else ""
+                        else -> PropertyCodec.displayText(value)
+                    }
+                    if (text.isNotBlank()) {
+                        Text(
+                            text,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
         if (note.isLocal) {
             Icon(
                 Icons.Rounded.CloudSync,

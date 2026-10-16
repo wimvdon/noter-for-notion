@@ -12,10 +12,15 @@ title, properties and content.
   Long-press and drag moves a note within its section; a long press without moving opens its menu
   (pin, move to trash). Filters (Material filter chips) come from one select, status, multi-select
   or person property per database. Pinned shows the pinned notes of every database.
-- **Note** (`ui/note/`): title, editable properties (`PropertyEditors.kt`), then the content as a
+- **Note** (`ui/note/`): header image, icon, title, properties (`PropertyEditors.kt`), then the content as a
   list of blocks, each its own text field. To-do items have an × to delete them. A toolbar above the keyboard changes the block's kind,
   adds a divider or deletes the block. Tapping below the content continues at the end. Moving a
   note to the trash asks first.
+- **Properties per database** (`logic/PropertyLayouts.kt`, `PropertyLayoutSheet.kt`): the first
+  three are shown and the rest collapsed under "N more properties", until the user chooses
+  otherwise with the tune button: drag to reorder, the eye to show or collapse, the card icon to
+  show up to three on the note's card in the overview (else the card shows the filter property).
+  Kept per database in `AppSettings.propertyLayouts` (backed up).
 - **Settings** (`ui/settings/`): Connection (API key, sync status), Databases (add, edit, order),
   Appearance; built from the shared `SettingsKit.kt`.
 - `ui/AppNavigation.kt`: a small back stack of three screens (no navigation library).
@@ -65,7 +70,7 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
 ### Where data lives
 | What | Where | Backed up |
 |---|---|---|
-| Databases, pins, order, theme | DataStore `backed_up_settings` | Yes |
+| Databases, pins, order, property layouts, theme | DataStore `backed_up_settings` | Yes |
 | API key | `EncryptedSharedPreferences` `notion_key_encrypted_prefs` | No |
 | Copies of notes, schemas, users; unsent changes | JSON files in `noBackupFilesDir/notion_cache` | No |
 | Images | Coil's cache in `cacheDir/images` | No |

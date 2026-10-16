@@ -55,6 +55,12 @@
     <string name="placeholder_start">Begin met schrijven… Typ # voor een kop, - voor een lijst, [] voor een selectievakje.</string>
     <string name="include_time">Met tijd</string>
     <string name="no_options">Niets om uit te kiezen.</string>
+    <string name="customize_properties">Eigenschappen aanpassen</string>
+    <string name="hide_properties">Eigenschappen verbergen</string>
+    <string name="properties_title">Eigenschappen</string>
+    <string name="properties_help">Sleep om de volgorde te veranderen. Getoonde eigenschappen staan boven de notitie, de andere zijn ingeklapt. Maximaal drie kunnen ook op de kaart van de notitie staan. Dit geldt voor elke notitie in de database.</string>
+    <string name="property_shown">%1$s tonen</string>
+    <string name="property_on_card">%1$s op de kaart tonen</string>
     <string name="unsupported_block">%1$s (bewerken in Notion)</string>
     <string name="block_image">Afbeelding</string>
     <string name="block_linked_page">Gekoppelde pagina</string>
@@ -125,9 +131,9 @@
         <item quantity="one">%d wijziging wacht om naar Notion te gaan</item>
         <item quantity="other">%d wijzigingen wachten om naar Notion te gaan</item>
     </plurals>
-    <plurals name="read_only_properties">
-        <item quantity="one">%d alleen-lezen eigenschap</item>
-        <item quantity="other">%d alleen-lezen eigenschappen</item>
+    <plurals name="more_properties">
+        <item quantity="one">Nog %d eigenschap</item>
+        <item quantity="other">Nog %d eigenschappen</item>
     </plurals>
     <plurals name="linked_pages">
         <item quantity="one">%d gekoppelde pagina</item>

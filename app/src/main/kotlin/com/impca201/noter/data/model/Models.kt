@@ -17,6 +17,20 @@ data class DatabaseConfig(
     }
 }
 
+/**
+ * How a database's properties are shown, chosen by the user (kept on this phone, backed up).
+ * Property names that are not listed (added in Notion later) come last and are collapsed.
+ */
+@Serializable
+data class PropertyLayout(
+    /** The user's order; properties not in it follow in their usual order. */
+    val order: List<String> = emptyList(),
+    /** Properties shown in the note; the others are collapsed. Null: the first three (default). */
+    val shown: List<String>? = null,
+    /** Properties shown on the note's card in the overview (at most three). */
+    val onCard: List<String> = emptyList(),
+)
+
 /** A colored option of a select, multi-select or status property. */
 @Serializable
 data class SelectOption(

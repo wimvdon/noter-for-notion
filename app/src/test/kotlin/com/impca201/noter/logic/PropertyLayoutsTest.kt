@@ -1,0 +1,47 @@
+package com.impca201.noter.logic
+
+import com.impca201.noter.data.model.NoteProperty
+import com.impca201.noter.data.model.PropertyLayout
+import com.impca201.noter.data.model.PropertyValue
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class PropertyLayoutsTest {
+    private fun prop(name: String, type: String = "rich_text") = NoteProperty(name, type, PropertyValue.Text(name))
+
+    private val properties = listOf(prop("Name", "title"), prop("A"), prop("B"), prop("C"), prop("D"), prop("E"))
+    private val names = listOf("A", "B", "C", "D", "E")
+
+    @Test
+    fun `shows the first three by default and collapses the rest`() {
+        val arranged = PropertyLayouts.arrange(properties, null)
+        assertEquals(listOf("A", "B", "C"), arranged.shown.map { it.name })
+        assertEquals(listOf("D", "E"), arranged.hidden.map { it.name })
+    }
+
+    @Test
+    fun `follows the user's order, new properties last`() {
+        val layout = PropertyLayout(order = listOf("E", "C", "Gone"))
+        assertEquals(listOf("E", "C", "A", "B", "D"), PropertyLayouts.ordered(names, layout))
+        assertEquals(listOf("E", "C", "A"), PropertyLayouts.arrange(properties, layout).shown.map { it.name })
+    }
+
+    @Test
+    fun `showing or collapsing a property keeps the others as they were`() {
+        val hidden = PropertyLayouts.toggleShown(null, names, "B")
+        assertEquals(listOf("A", "C"), hidden.shown)
+        val shown = PropertyLayouts.toggleShown(hidden, names, "E")
+        assertEquals(listOf("A", "C", "E"), shown.shown)
+        assertEquals(listOf("B", "D"), PropertyLayouts.arrange(properties, shown).hidden.map { it.name })
+    }
+
+    @Test
+    fun `a card shows at most three properties, in order`() {
+        var layout: PropertyLayout? = null
+        listOf("D", "A", "B", "C").forEach { layout = PropertyLayouts.toggleOnCard(layout, it) }
+        assertEquals(listOf("D", "A", "B"), layout!!.onCard)
+        assertEquals(listOf("A", "B", "D"), PropertyLayouts.cardProperties(properties, layout).map { it.name })
+        layout = PropertyLayouts.toggleOnCard(layout, "A")
+        assertEquals(listOf("D", "B"), layout!!.onCard)
+    }
+}
