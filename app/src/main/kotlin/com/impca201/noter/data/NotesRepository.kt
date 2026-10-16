@@ -174,7 +174,8 @@ class NotesRepository(
                         notes = notes,
                         lastSyncMs = cached?.lastSyncMs ?: 0,
                         lastFullSyncMs = cached?.lastFullSyncMs ?: 0,
-                        loaded = existing?.loaded == true || cached != null,
+                        // The pages on their own are only what was opened here: nothing to download.
+                        loaded = existing?.loaded == true || cached != null || id == PAGES,
                     )
                     )
             }

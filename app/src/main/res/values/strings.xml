@@ -11,7 +11,7 @@
     <string name="browse_edited">Edited %1$s</string>
     <string name="source_pages">Pages</string>
     <string name="add_view">Add to navigation</string>
-    <string name="view_added">Added to the navigation. Change it in Settings › Views.</string>
+    <string name="view_added">Added to the views. Change it in ☰ › Manage views.</string>
     <string name="view_filters">Show only</string>
     <string name="view_filters_help">The filters that are on when the view opens. None: all notes.</string>
     <string name="view_filtered">%1$s: %2$s</string>
@@ -151,4 +151,19 @@
         <item quantity="one">%d linked page</item>
         <item quantity="other">%d linked pages</item>
     </plurals>
+    <!-- Manage views and the navigation bar -->
+    <string name="manage_views">Manage views</string>
+    <plurals name="views_count">
+        <item quantity="one">%d view</item>
+        <item quantity="other">%d views</item>
+    </plurals>
+    <plurals name="bar_room">
+        <item quantity="one">The bar at the bottom has room for %d view on this screen, next to Pinned and Browse. Every view is also in the menu (☰).</item>
+        <item quantity="other">The bar at the bottom has room for %d views on this screen, next to Pinned and Browse. Every view is also in the menu (☰).</item>
+    </plurals>
+    <string name="view_in_bar">In the bar at the bottom</string>
+    <string name="view_no_room">Pinned to the bar, but there’s no room on this screen</string>
+    <string name="view_in_drawer">In the menu</string>
+    <string name="pin_to_bar">Show in the bar at the bottom</string>
+    <string name="pin_to_bar_help">When there’s room. The view is always in the menu (☰).</string>
 </resources>

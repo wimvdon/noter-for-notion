@@ -64,12 +64,11 @@ data class MainUiState(
     val offline: Boolean = false,
     /** The database of the view shown (null on Pinned and Browse). */
     val databaseId: String? = null,
-    /** The views' databases, for "New note" on Pinned. */
-    val viewDatabases: List<DatabaseConfig> = emptyList(),
+    /** The views, for the navigation bar and "New note" on Pinned and Browse. */
+    val views: List<DatabaseConfig> = emptyList(),
 ) {
     val isHome: Boolean get() = currentTab == Destinations.PINNED
     val isBrowse: Boolean get() = currentTab == Destinations.BROWSE
-    val useDrawer: Boolean get() = tabs.size > Destinations.MAX_BAR_ITEMS
 }
 
 /** The Browse list: pages and databases shared with the integration. */
@@ -165,7 +164,7 @@ class MainViewModel(private val repository: NotesRepository, hasKey: StateFlow<B
             propertyLayouts = settings.propertyLayouts,
             pendingCount = pending,
             offline = offline,
-            viewDatabases = views.distinctBy { it.sourceId },
+            views = views,
         )
         when (tabKey) {
             Destinations.BROWSE -> base

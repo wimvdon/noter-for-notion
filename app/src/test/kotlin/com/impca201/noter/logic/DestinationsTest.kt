@@ -2,19 +2,27 @@ package com.impca201.noter.logic
 
 import com.impca201.noter.data.model.DatabaseConfig
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DestinationsTest {
     private fun views(n: Int) = (1..n).map { DatabaseConfig("v$it", "View $it", databaseId = "db") }
 
     @Test
-    fun `up to three views fit in the navigation bar, more go to a drawer`() {
-        assertFalse(Destinations.useDrawer(views(0)))
-        assertFalse(Destinations.useDrawer(views(3)))
-        assertTrue(Destinations.useDrawer(views(4)))
+    fun `the bar holds as many destinations as fit on the screen`() {
+        assertEquals(5, Destinations.barCapacity(411))
+        assertEquals(10, Destinations.barCapacity(800))
+        // Pinned and Browse always stay.
+        assertEquals(2, Destinations.barCapacity(120))
         assertEquals(listOf("home", "browse", "v1"), Destinations.keys(views(1)))
+    }
+
+    @Test
+    fun `only views pinned to the bar are in it, as many as fit`() {
+        val all = views(6).mapIndexed { i, v -> v.copy(inBar = i != 1) }
+        assertEquals(listOf("v1", "v3", "v4"), Destinations.barViews(all, 411).map { it.id })
+        assertEquals(listOf("v1", "v3", "v4", "v5", "v6"), Destinations.barViews(all, 800).map { it.id })
+        assertEquals(0, Destinations.barRoom(all, 411))
+        assertEquals(3, Destinations.barRoom(all, 800))
     }
 
     @Test
