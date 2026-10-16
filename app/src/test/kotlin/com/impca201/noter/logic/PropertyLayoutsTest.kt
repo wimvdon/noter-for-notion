@@ -4,6 +4,8 @@ import com.impca201.noter.data.model.NoteProperty
 import com.impca201.noter.data.model.PropertyLayout
 import com.impca201.noter.data.model.PropertyValue
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PropertyLayoutsTest {
@@ -43,5 +45,17 @@ class PropertyLayoutsTest {
         assertEquals(listOf("A", "B", "D"), PropertyLayouts.cardProperties(properties, layout).map { it.name })
         layout = PropertyLayouts.toggleOnCard(layout, "A")
         assertEquals(listOf("D", "B"), layout!!.onCard)
+    }
+
+    @Test
+    fun `cards show the content by default, the header image only when chosen`() {
+        assertTrue(PropertyLayouts.showsContent(null))
+        assertFalse(PropertyLayouts.showsCover(null, "https://img"))
+
+        val layout = PropertyLayouts.setContentOnCard(PropertyLayouts.setCoverOnCard(null, true), false)
+        assertFalse(PropertyLayouts.showsContent(layout))
+        assertTrue(PropertyLayouts.showsCover(layout, "https://img"))
+        // A note without a header image has nothing to show.
+        assertFalse(PropertyLayouts.showsCover(layout, null))
     }
 }

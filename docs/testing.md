@@ -38,7 +38,7 @@ python3 -m unittest discover -s scripts/tests
 | `logic/DestinationsTest`, `data/notion/WorkspaceCodecTest` | Which views fit in the navigation bar, views and their filters; Browse's list from Notion's search |
 | `data/icons/IconCatalogTest` | Reading the icon file, icon search, old icon keys, and that the bundled file has every suggested icon |
 | `logic/NoteTargetsTest` | The databases "New note" offers on Pinned and Browse |
-| `logic/PropertyLayoutsTest` | Which properties are shown, collapsed and on the card, and in which order |
+| `logic/PropertyLayoutsTest` | Which properties are shown, collapsed and on the card, and in which order; header image and content on cards |
 | `logic/NotePreviewsTest` | Which previews are downloaded, and the preview text |
 | `logic/NotionDatesTest` | Dates as Notion sends them |
 | `BackupRulesTest` | Only the settings file is backed up |

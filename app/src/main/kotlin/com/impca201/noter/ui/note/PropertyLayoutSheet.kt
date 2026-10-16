@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Dashboard
@@ -19,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,6 +39,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,9 +51,10 @@ import com.impca201.noter.data.model.PropertyLayout
 import com.impca201.noter.logic.PropertyLayouts
 
 /**
- * Chooses how a database's properties are shown (for every note of the database): drag the
- * handle to change the order, the eye to show a property or collapse it, and the card icon to
- * show it on the note's card in the overview (at most three).
+ * Chooses how a database's notes are shown (for every note of the database): whether their cards
+ * in the overview show the header image and the start of the content; then the properties: drag
+ * the handle to change the order, the eye to show a property or collapse it, and the card icon to
+ * show it on the note's card (at most three).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +64,8 @@ fun PropertyLayoutSheet(
     onReorder: (List<String>) -> Unit,
     onToggleShown: (String) -> Unit,
     onToggleOnCard: (String) -> Unit,
+    onCoverOnCard: (Boolean) -> Unit,
+    onContentOnCard: (Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val names = remember(properties) { properties.filter { it.type != "title" }.map { it.name } }
@@ -93,6 +99,20 @@ fun PropertyLayoutSheet(
                 stringResource(R.string.properties_title),
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(horizontal = 24.dp),
+            )
+            Text(
+                stringResource(R.string.cards_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 4.dp),
+            )
+            CardSwitch(stringResource(R.string.card_cover), layout?.coverOnCard == true, onCoverOnCard)
+            CardSwitch(stringResource(R.string.card_content), PropertyLayouts.showsContent(layout), onContentOnCard)
+            Text(
+                stringResource(R.string.properties_section),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp),
             )
             Text(
                 stringResource(R.string.properties_help),
@@ -187,6 +207,22 @@ fun PropertyLayoutSheet(
                 }
             }
         }
+    }
+}
+
+/** A switch row for what the cards show; the whole row toggles. */
+@Composable
+private fun CardSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(ROW_HEIGHT)
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
+            .padding(horizontal = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 

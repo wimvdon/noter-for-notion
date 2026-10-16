@@ -219,6 +219,10 @@ class NoteViewModel(
 
     fun toggleOnCard(name: String) = updateLayout { PropertyLayouts.toggleOnCard(it, name) }
 
+    fun setCoverOnCard(shown: Boolean) = updateLayout { PropertyLayouts.setCoverOnCard(it, shown) }
+
+    fun setContentOnCard(shown: Boolean) = updateLayout { PropertyLayouts.setContentOnCard(it, shown) }
+
     private fun updateLayout(transform: (PropertyLayout?) -> PropertyLayout) {
         val databaseId = state.value.note?.databaseId ?: return
         viewModelScope.launch {

@@ -32,6 +32,8 @@ properties and content: the pages of databases and pages on their own.
   three are shown and the rest collapsed under "N more properties", until the user chooses
   otherwise with the tune button: drag to reorder, the eye to show or collapse, the card icon to
   show up to three on the note's card in the overview (else the card shows the filter property).
+  Two switches above them choose what the cards show: the header image (off by default) and the
+  start of the content (on; when off, no previews are downloaded for that database).
   Kept per database in `AppSettings.propertyLayouts` (backed up).
 - **Manage views** (`ui/views/`): the views in their order (up/down), each with a pin for the
   navigation bar (`DatabaseConfig.inBar`; disabled when the bar is full); tapping one edits its

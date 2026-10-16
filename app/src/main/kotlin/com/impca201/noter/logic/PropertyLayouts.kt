@@ -53,6 +53,18 @@ object PropertyLayouts {
         }
     }
 
+    /** Shows the header image on the cards, or not. */
+    fun setCoverOnCard(layout: PropertyLayout?, shown: Boolean): PropertyLayout = (layout ?: PropertyLayout()).copy(coverOnCard = shown)
+
+    /** Shows the start of the content on the cards, or not. */
+    fun setContentOnCard(layout: PropertyLayout?, shown: Boolean): PropertyLayout = (layout ?: PropertyLayout()).copy(contentOnCard = shown)
+
+    /** True when a card shows its note's header image (only when the note has one). */
+    fun showsCover(layout: PropertyLayout?, cover: String?): Boolean = cover != null && layout?.coverOnCard == true
+
+    /** True when a card shows the start of its note's content (so the preview is needed). */
+    fun showsContent(layout: PropertyLayout?): Boolean = layout?.contentOnCard != false
+
     /** The properties shown on a card, in the user's order. */
     fun cardProperties(properties: List<NoteProperty>, layout: PropertyLayout?): List<NoteProperty> {
         val onCard = layout?.onCard.orEmpty()

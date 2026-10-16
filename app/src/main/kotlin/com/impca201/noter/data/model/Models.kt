@@ -44,6 +44,10 @@ data class PropertyLayout(
     val shown: List<String>? = null,
     /** Properties shown on the note's card in the overview (at most three). */
     val onCard: List<String> = emptyList(),
+    /** The note's header image (Notion's cover) on top of its card. */
+    val coverOnCard: Boolean = false,
+    /** The start of the note's content on its card. */
+    val contentOnCard: Boolean = true,
 )
 
 /** A colored option of a select, multi-select or status property. */
