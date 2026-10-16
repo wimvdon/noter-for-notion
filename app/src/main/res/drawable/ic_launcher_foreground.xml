@@ -1,48 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A sticky note seen as a block: its top and left edges show depth, like the Notion cube,
-     with a folded corner and two white lines of text. Gradient #FFC94D → #F5A623 → #E8710A on
-     the white background. Everything sits inside the 66dp safe zone (21..87). See DESIGN.md. -->
+<!-- Two stacked notes, after Notion Calendar's logo: a note behind (only its top and left edges
+     show) and a note in front with a folded bottom right corner and two white lines of text.
+     Gradients run from top left to bottom right, #FFC94D → #F5A623 → #E8710A, on the white
+     background. Everything sits inside the 66dp safe zone (21..87). See DESIGN.md. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- The block's depth: top and left edges, behind the note. -->
-    <path android:pathData="M29,24h45l7,7h-46a4,4 0,0 0,-4 4v46l-7,-7v-45a5,5 0,0 1,5 -5z">
+    <!-- The note behind. -->
+    <path android:pathData="M30,22h38a8,8 0,0 1,8 8v38a8,8 0,0 1,-8 8h-38a8,8 0,0 1,-8 -8v-38a8,8 0,0 1,8 -8z">
         <aapt:attr name="android:fillColor">
             <gradient
                 android:type="linear"
-                android:startX="24"
-                android:startY="24"
-                android:endX="60"
-                android:endY="60">
-                <item android:offset="0" android:color="#FFE8901C" />
-                <item android:offset="1" android:color="#FFC25A08" />
+                android:startX="22"
+                android:startY="22"
+                android:endX="76"
+                android:endY="76">
+                <item android:offset="0" android:color="#FFFFD66E" />
+                <item android:offset="1" android:color="#FFF5A623" />
             </gradient>
         </aapt:attr>
     </path>
-    <!-- The note, with its bottom right corner folded. -->
-    <path android:pathData="M35,31h44a4,4 0,0 1,4 4v32l-16,16h-32a4,4 0,0 1,-4 -4v-44a4,4 0,0 1,4 -4z">
+    <!-- A white gap around the note in front. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M38.5,28.5h42a9.5,9.5 0,0 1,9.5 9.5v34l-18,18h-33.5a9.5,9.5 0,0 1,-9.5 -9.5v-42.5a9.5,9.5 0,0 1,9.5 -9.5z" />
+    <!-- The note in front, its bottom right corner folded. -->
+    <path android:pathData="M39,32h40a7,7 0,0 1,7 7v31l-16,16h-31a7,7 0,0 1,-7 -7v-40a7,7 0,0 1,7 -7z">
         <aapt:attr name="android:fillColor">
             <gradient
                 android:type="linear"
-                android:startX="31"
-                android:startY="31"
-                android:endX="83"
-                android:endY="83">
+                android:startX="32"
+                android:startY="32"
+                android:endX="86"
+                android:endY="86">
                 <item android:offset="0" android:color="#FFFFC94D" />
                 <item android:offset="0.5" android:color="#FFF5A623" />
                 <item android:offset="1" android:color="#FFE8710A" />
             </gradient>
         </aapt:attr>
     </path>
-    <path
-        android:fillColor="#FFC25A08"
-        android:pathData="M83,67l-16,16v-12a4,4 0,0 1,4 -4z" />
+    <!-- The folded corner: the note's paler back side. -->
+    <path android:pathData="M86,70l-16,16v-11a5,5 0,0 1,5 -5z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="86"
+                android:startY="70"
+                android:endX="74"
+                android:endY="82">
+                <item android:offset="0" android:color="#FFFFE3A3" />
+                <item android:offset="1" android:color="#FFFFC94D" />
+            </gradient>
+        </aapt:attr>
+    </path>
     <!-- Two lines of text. -->
     <path
-        android:pathData="M42,47H72M42,58H62"
+        android:pathData="M43,48H71M43,59H62"
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="5"
         android:strokeLineCap="round" />
