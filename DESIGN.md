@@ -147,10 +147,12 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
 
 ## This app
 
-- Icon: a sticky note seen as a block (its top and left edges show depth, a nod to the Notion
-  cube) with a folded corner and two white text lines; gradient `#FFC94D` → `#F5A623` →
-  `#E8710A` (amber) on the white background. Themed layer: the same shapes with a thin gap
-  between edge and note, text lines cut out.
+- Icon (owner's sketch, after Notion Calendar's logo): two stacked notes. Of the note behind,
+  only the top and left edges show; the note in front has a folded bottom right corner and two
+  white text lines, with a white gap between the notes. Gradient `#FFC94D` → `#F5A623` →
+  `#E8710A` (amber) from top left to bottom right, on the white background; the folded corner
+  shows the paler back of the paper. Themed layer: the same shapes with thin gaps, text lines
+  cut out.
 - Seed `#F5A623` (amber): a full Material 3 tonal scheme from the icon's middle stop.
 - Signature element: the overview in the style of Google Keep. Notes are `OutlinedCard`s in a
   staggered grid (cells at least 160dp wide: two columns on a phone) with the title (Title
