@@ -10,12 +10,14 @@ import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import com.impca201.noter.data.NotesRepository
 import com.impca201.noter.data.api.NotionClient
+import com.impca201.noter.data.icons.IconCatalog
 import com.impca201.noter.data.store.ApiKeyStore
 import com.impca201.noter.data.store.CacheStore
 import com.impca201.noter.data.store.DataFiles
 import com.impca201.noter.data.store.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import okhttp3.OkHttpClient
 import okio.Path.Companion.toOkioPath
@@ -27,6 +29,11 @@ class NoterApp : Application(), SingletonImageLoader.Factory {
         private set
     lateinit var repository: NotesRepository
         private set
+
+    /** View icons (Material Symbols), read from the assets the first time they are needed. */
+    val iconCatalog: IconCatalog by lazy {
+        IconCatalog.parse(assets.open("material_symbols.txt").bufferedReader().use { it.readText() })
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -40,6 +47,8 @@ class NoterApp : Application(), SingletonImageLoader.Factory {
             scope = scope,
         )
         repository.start()
+        // Read the icons in the background now, so the first screen doesn't wait for them.
+        scope.launch(Dispatchers.Default) { iconCatalog }
     }
 
     /**

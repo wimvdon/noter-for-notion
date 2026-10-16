@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PushPin
@@ -38,7 +37,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -50,7 +48,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
@@ -58,7 +55,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.impca201.noter.R
@@ -66,6 +62,7 @@ import com.impca201.noter.data.model.DatabaseConfig
 import com.impca201.noter.data.model.PropertySchema
 import com.impca201.noter.logic.Destinations
 import com.impca201.noter.ui.common.DatabaseIcons
+import com.impca201.noter.ui.common.IconPicker
 import com.impca201.noter.ui.theme.SettingsBlock
 import com.impca201.noter.ui.theme.SettingsScaffold
 
@@ -290,34 +287,7 @@ private fun DatabaseEditorSheet(
                 modifier = Modifier.fillMaxWidth(),
             )
             Text(stringResource(R.string.database_icon), style = MaterialTheme.typography.titleSmall)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                DatabaseIcons.all.forEachIndexed { index, (key, icon) ->
-                    val selected = draft.config.icon == key
-                    val label = stringResource(R.string.icon_option, index + 1)
-                    Box(
-                        Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .selectable(selected = selected, role = Role.RadioButton) { onChange { it.copy(icon = key) } }
-                            .semantics { contentDescription = label },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-                            modifier = Modifier.size(44.dp),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    icon,
-                                    contentDescription = null,
-                                    tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            IconPicker(draft.config.icon) { name -> onChange { it.copy(icon = name) } }
             Row(
                 Modifier
                     .fillMaxWidth()

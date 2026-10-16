@@ -2,6 +2,16 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-16: View icons from the whole Material Symbols set, with search
+
+The owner asked for many more view icons, searchable like RSS Reader's folder icons. The app now
+bundles the same file as RSS Reader: the Material Symbols set (4 229 icons, outlined rounded
+style, Apache 2.0, licence in `assets/`) as one text file of names, categories and SVG path data
+(about 0.9 MB in the APK), with the same search. Views store the icon's name; the 29 icons from
+before are mapped to their Material Symbols names. Rejected: `material-icons-extended` alone (the
+app already uses it, but it has no search words, and listing thousands of its icons by hand is
+not practical). Trade-off: search words are English.
+
 ## 2026-10-16: Drawer for everything, the bar for pinned views as far as they fit
 
 The owner asked for Settings in the menu, a separate Manage views screen, and Pinned and Browse

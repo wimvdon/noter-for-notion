@@ -117,7 +117,6 @@
     <string name="no_databases_found">No databases found. Share a database with your integration in Notion first.</string>
     <string name="database_name">Name</string>
     <string name="database_icon">Icon</string>
-    <string name="icon_option">Icon %1$d</string>
     <string name="chip_property">Filters</string>
     <string name="chip_property_help">The options of this property are shown as filters above the notes.</string>
     <string name="chip_property_none_available">This database has no select, status, multi-select or person property.</string>
@@ -166,4 +165,6 @@
     <string name="view_in_drawer">In the menu</string>
     <string name="pin_to_bar">Show in the bar at the bottom</string>
     <string name="pin_to_bar_help">When there’s room. The view is always in the menu (☰).</string>
+    <string name="icon_search">Search icons (in English)</string>
+    <string name="icon_none_found">No icons found. Try another word, such as “list”, “food” or “work”.</string>
 </resources>

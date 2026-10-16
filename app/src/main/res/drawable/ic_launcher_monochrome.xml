@@ -7,16 +7,26 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- The note behind: its top and left edges (the rest is hidden behind the gap). -->
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M30,22h38a8,8 0,0 1,8 8v-1.5h-37.5a9.5,9.5 0,0 0,-9.5 9.5v38h-1a8,8 0,0 1,-8 -8v-38a8,8 0,0 1,8 -8z" />
-    <path
-        android:fillColor="#FF000000"
-        android:fillType="evenOdd"
-        android:pathData="M39,32h40a7,7 0,0 1,7 7v28.5h-11a7.5,7.5 0,0 0,-7.5 7.5v11h-28.5a7,7 0,0 1,-7 -7v-40a7,7 0,0 1,7 -7zM45.5,45.5h23a2.5,2.5 0,0 1,0 5h-23a2.5,2.5 0,0 1,0 -5zM45.5,56.5h14a2.5,2.5 0,0 1,0 5h-14a2.5,2.5 0,0 1,0 -5z" />
-    <!-- The folded corner, with a thin gap to the note. -->
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M86,70l-16,16v-11a5,5 0,0 1,5 -5z" />
+    <!-- Scaled to 75% around the middle (the drawing is centred on 56,56), so it keeps some
+         padding inside the launcher's circle or squircle mask. -->
+    <group
+        android:pivotX="56"
+        android:pivotY="56"
+        android:scaleX="0.75"
+        android:scaleY="0.75"
+        android:translateX="-2"
+        android:translateY="-2">
+        <!-- The note behind: its top and left edges (the rest is hidden behind the gap). -->
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M30,22h38a8,8 0,0 1,8 8v-1.5h-37.5a9.5,9.5 0,0 0,-9.5 9.5v38h-1a8,8 0,0 1,-8 -8v-38a8,8 0,0 1,8 -8z" />
+        <path
+            android:fillColor="#FF000000"
+            android:fillType="evenOdd"
+            android:pathData="M39,32h40a7,7 0,0 1,7 7v28.5h-11a7.5,7.5 0,0 0,-7.5 7.5v11h-28.5a7,7 0,0 1,-7 -7v-40a7,7 0,0 1,7 -7zM45.5,45.5h23a2.5,2.5 0,0 1,0 5h-23a2.5,2.5 0,0 1,0 -5zM45.5,56.5h14a2.5,2.5 0,0 1,0 5h-14a2.5,2.5 0,0 1,0 -5z" />
+        <!-- The folded corner, with a thin gap to the note. -->
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M86,70l-16,16v-11a5,5 0,0 1,5 -5z" />
+    </group>
 </vector>

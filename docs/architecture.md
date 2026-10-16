@@ -37,6 +37,11 @@ properties and content: the pages of databases and pages on their own.
   navigation bar (`DatabaseConfig.inBar`; disabled when the bar is full); tapping one edits its
   name, icon, bar pin, filter property and filters; "Add view" picks a database. Opens from the
   drawer and from Settings.
+- **View icons** (`data/icons/IconCatalog.kt`, `ui/common/IconPicker.kt`, `DatabaseIcons.kt`):
+  the Material Symbols set (4 229 icons) from `assets/material_symbols.txt` (name, categories and
+  SVG path data per icon, from RSS Reader), drawn as vectors and searchable by English name,
+  category and a few related words. Views store the icon's name; the 29 keys from before are
+  mapped to their Material Symbols names.
 - **Settings** (`ui/settings/`): Connection (API key, sync status), Views (a link to Manage
   views), Appearance; built from the shared `SettingsKit.kt`.
 - **New note** on Pinned and Browse asks which database (`logic/NoteTargets.kt`): the views'
