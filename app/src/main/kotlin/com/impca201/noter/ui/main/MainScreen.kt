@@ -65,14 +65,14 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -82,7 +82,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
@@ -108,13 +107,22 @@ import com.impca201.noter.logic.PropertyLayouts
 import com.impca201.noter.ui.common.DatabaseIcons
 import com.impca201.noter.ui.common.OptionChip
 import com.impca201.noter.ui.common.SyncButton
+import com.impca201.noter.ui.views.rememberWindowWidthDp
+import com.impca201.noter.logic.Destinations
+import com.impca201.noter.logic.NoteTargets
+import androidx.compose.material.icons.automirrored.rounded.ViewList
+import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.FilterAltOff
+import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.automirrored.rounded.StickyNote2
 import com.impca201.noter.ui.theme.SkeletonBlock
 import kotlinx.coroutines.launch
 
 /**
- * The overview, in the style of Google Keep. Top-level destinations (Material's navigation bar,
- * or a drawer with more than five): Pinned (the pinned notes of everything), Browse (the pages and
- * databases shared with the integration) and the user's views (a database with its filters).
+ * The overview, in the style of Google Keep. Top-level destinations: Pinned (the pinned notes of
+ * everything), Browse (the pages and databases shared with the integration) and the user's views
+ * (a database with its filters). All are in the navigation drawer, with Manage views and
+ * Settings; the navigation bar holds Pinned, Browse and the views pinned to it, as many as fit.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -123,6 +131,7 @@ fun MainScreen(
     onOpenNote: (String) -> Unit,
     onOpenDatabase: (String) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenViews: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val browse by viewModel.browse.collectAsStateWithLifecycle()
@@ -132,7 +141,6 @@ fun MainScreen(
     var choosingDatabase by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val useDrawer = state.useDrawer
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -151,8 +159,65 @@ fun MainScreen(
     val labels = TabLabels(stringResource(R.string.tab_home), stringResource(R.string.tab_browse))
     val title = state.tabs.firstOrNull { it.key == state.currentTab }?.let { labels.of(it) } ?: labels.pinned
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val width = rememberWindowWidthDp()
+    val barIds = Destinations.barViews(state.views, width).map { it.id }.toSet()
+    val barTabs = state.tabs.filter { it.isPinned || it.isBrowse || it.key in barIds }
+    val targets = NoteTargets.of(state.views, if (state.isBrowse) browse.items else null)
 
-    val screen: @Composable () -> Unit = {
+    fun closeDrawerThen(action: () -> Unit) {
+        scope.launch { drawerState.close() }
+        action()
+    }
+
+    // Material's modal drawer opens from its menu button; swiping only closes it, so the swipe
+    // from the edge stays Android's back gesture.
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = drawerState.isOpen,
+        drawerContent = {
+            ModalDrawerSheet {
+                Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 12.dp)) {
+                    Text(
+                        stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    )
+                    state.tabs.forEachIndexed { index, tab ->
+                        if (index == 2) {
+                            // Pinned and Browse, then the views under their own header.
+                            HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                            Text(
+                                stringResource(R.string.section_views),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            )
+                        }
+                        NavigationDrawerItem(
+                            label = { Text(labels.of(tab), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            icon = { Icon(tab.iconVector(), contentDescription = null) },
+                            selected = tab.key == state.currentTab,
+                            onClick = { closeDrawerThen { viewModel.selectTab(tab.key) } },
+                        )
+                    }
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                    NavigationDrawerItem(
+                        label = { Text(stringResource(R.string.manage_views)) },
+                        icon = { Icon(Icons.AutoMirrored.Rounded.ViewList, contentDescription = null) },
+                        selected = false,
+                        onClick = { closeDrawerThen(onOpenViews) },
+                    )
+                    NavigationDrawerItem(
+                        label = { Text(stringResource(R.string.settings_title)) },
+                        icon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
+                        selected = false,
+                        onClick = { closeDrawerThen(onOpenSettings) },
+                    )
+                }
+            }
+        },
+    ) {
         Scaffold(
             modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             snackbarHost = { SnackbarHost(snackbar) },
@@ -160,44 +225,37 @@ fun MainScreen(
                 TopAppBar(
                     title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     navigationIcon = {
-                        if (useDrawer) {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(Icons.Rounded.Menu, contentDescription = stringResource(R.string.open_navigation))
-                            }
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(Icons.Rounded.Menu, contentDescription = stringResource(R.string.open_navigation))
                         }
                     },
                     actions = {
                         SyncButton(state.pendingCount, state.offline, syncing = false, onSync = viewModel::refresh, alwaysShown = false)
-                        IconButton(onClick = onOpenSettings) {
-                            Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings_title))
-                        }
                     },
                     scrollBehavior = scrollBehavior,
                 )
             },
             bottomBar = {
-                if (!useDrawer) {
-                    NavigationBar {
-                        state.tabs.forEach { tab ->
-                            NavigationBarItem(
-                                selected = tab.key == state.currentTab,
-                                onClick = { viewModel.selectTab(tab.key) },
-                                icon = { Icon(tab.iconVector(), contentDescription = null) },
-                                label = { Text(labels.of(tab), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            )
-                        }
+                NavigationBar {
+                    barTabs.forEach { tab ->
+                        NavigationBarItem(
+                            selected = tab.key == state.currentTab,
+                            onClick = { viewModel.selectTab(tab.key) },
+                            icon = { Icon(tab.iconVector(), contentDescription = null) },
+                            label = { Text(labels.of(tab), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        )
                     }
                 }
             },
             floatingActionButton = {
-                val canCreate = state.hasKey && !state.isBrowse && (!state.isHome || state.viewDatabases.isNotEmpty())
-                if (canCreate) {
+                // A view adds to its database; Pinned and Browse ask which database (when there is a choice).
+                val inView = !state.isHome && !state.isBrowse
+                if (state.hasKey && (inView || targets.isNotEmpty())) {
                     FloatingActionButton(
                         onClick = {
-                            val dbs = state.viewDatabases
                             when {
-                                !state.isHome -> viewModel.createNote(onCreated = onOpenNote)
-                                dbs.size == 1 -> viewModel.createNote(dbs.first().sourceId, onOpenNote)
+                                inView -> viewModel.createNote(onCreated = onOpenNote)
+                                targets.size == 1 -> viewModel.createNote(targets.first().databaseId, onOpenNote)
                                 else -> choosingDatabase = true
                             }
                         },
@@ -211,6 +269,7 @@ fun MainScreen(
                 when {
                     !state.ready -> Unit
                     !state.hasKey -> EmptyState(
+                        Icons.Rounded.Key,
                         stringResource(R.string.empty_no_key),
                         stringResource(R.string.empty_no_key_action),
                         onOpenSettings,
@@ -239,42 +298,6 @@ fun MainScreen(
         }
     }
 
-    if (useDrawer) {
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            drawerContent = {
-                ModalDrawerSheet {
-                    Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 12.dp)) {
-                        state.tabs.forEachIndexed { index, tab ->
-                            if (index == 2) {
-                                // Pinned and Browse, then the views under their own header.
-                                HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-                                Text(
-                                    stringResource(R.string.section_views),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                                )
-                            }
-                            NavigationDrawerItem(
-                                label = { Text(labels.of(tab), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                icon = { Icon(tab.iconVector(), contentDescription = null) },
-                                selected = tab.key == state.currentTab,
-                                onClick = {
-                                    viewModel.selectTab(tab.key)
-                                    scope.launch { drawerState.close() }
-                                },
-                            )
-                        }
-                    }
-                }
-            },
-            content = screen,
-        )
-    } else {
-        screen()
-    }
-
     if (choosingDatabase) {
         ModalBottomSheet(onDismissRequest = { choosingDatabase = false }) {
             Text(
@@ -282,17 +305,27 @@ fun MainScreen(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
             )
-            state.viewDatabases.forEach { db ->
-                ListItem(
-                    headlineContent = { Text(db.name) },
-                    leadingContent = { Icon(DatabaseIcons.icon(db.icon), contentDescription = null) },
-                    modifier = Modifier.clickable {
-                        choosingDatabase = false
-                        viewModel.createNote(db.sourceId, onOpenNote)
-                    },
-                )
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                targets.forEach { target ->
+                    ListItem(
+                        headlineContent = { Text(target.name.ifBlank { stringResource(R.string.untitled) }) },
+                        leadingContent = {
+                            Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                                if (target.emoji != null) {
+                                    Text(target.emoji, style = MaterialTheme.typography.titleMedium)
+                                } else {
+                                    Icon(DatabaseIcons.icon(target.iconKey), contentDescription = null)
+                                }
+                            }
+                        },
+                        modifier = Modifier.clickable {
+                            choosingDatabase = false
+                            viewModel.createNote(target.databaseId, onOpenNote)
+                        },
+                    )
+                }
+                Spacer(Modifier.padding(bottom = 24.dp))
             }
-            Spacer(Modifier.padding(bottom = 24.dp))
         }
     }
 }
@@ -343,16 +376,12 @@ internal fun NotesPane(
         ) {
             when {
                 state.loading && state.pinned.isEmpty() && state.others.isEmpty() -> LoadingGrid()
-                state.pinned.isEmpty() && state.others.isEmpty() -> EmptyState(
-                    when {
-                        state.selectedChips.isNotEmpty() -> stringResource(R.string.empty_filtered)
-                        state.isHome -> stringResource(R.string.empty_home)
-                        state.error != null -> stringResource(R.string.empty_error, state.error)
-                        else -> stringResource(R.string.empty_database)
-                    },
-                    null,
-                    null,
-                )
+                state.pinned.isEmpty() && state.others.isEmpty() -> when {
+                    state.selectedChips.isNotEmpty() -> EmptyState(Icons.Rounded.FilterAltOff, stringResource(R.string.empty_filtered), stringResource(R.string.chip_all), onClearChips)
+                    state.isHome -> EmptyState(Icons.Rounded.PushPin, stringResource(R.string.empty_home), null, null)
+                    state.error != null -> EmptyState(Icons.Rounded.CloudOff, stringResource(R.string.empty_error, state.error), stringResource(R.string.retry), onRefresh)
+                    else -> EmptyState(Icons.AutoMirrored.Rounded.StickyNote2, stringResource(R.string.empty_database), null, null)
+                }
                 else -> NoteGrid(
                     state = state,
                     previews = previews,
@@ -767,33 +796,32 @@ private fun LoadingGrid() {
 
 private val SKELETON_HEIGHTS = listOf(120, 88, 96, 140, 72, 110, 88, 120)
 
+/**
+ * What an empty list shows: a large icon, a short text and an optional button. It scrolls, so
+ * pull-to-refresh also works on an empty screen.
+ */
 @Composable
-internal fun EmptyState(text: String, action: String?, onAction: (() -> Unit)?) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+internal fun EmptyState(icon: ImageVector, text: String, action: String?, onAction: (() -> Unit)?) {
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 32.dp, vertical = 64.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // Keeps pull-to-refresh working on an empty screen.
-        LazyColumn(Modifier.widthIn(max = 480.dp)) {
-            item {
-                Text(
-                    text,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            if (action != null && onAction != null) {
-                item {
-                    Box(Modifier.fillMaxWidth().padding(top = 16.dp), contentAlignment = Alignment.Center) {
-                        androidx.compose.material3.FilledTonalButton(onClick = onAction) { Text(action) }
-                    }
-                }
-            }
+        item {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.outline)
+        }
+        item {
+            Text(
+                text,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth(),
+            )
+        }
+        if (action != null && onAction != null) {
+            item { androidx.compose.material3.FilledTonalButton(onClick = onAction) { Text(action) } }
         }
     }
 }

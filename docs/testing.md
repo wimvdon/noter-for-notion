@@ -35,7 +35,8 @@ python3 -m unittest discover -s scripts/tests
 | `data/NotesRepositoryTest` | The repository against a fake Notion server (`FakeNotion`, the JDK's own HTTP server): new notes stay open while Notion creates them, nothing is sent for a note in the trash, table rows, expired image links, pages from Browse and linked pages, new to-dos added once (also after a lost answer) |
 | `data/store/CacheStoreTest` | On-phone copies survive a restart |
 | `logic/NoteOrderingTest`, `logic/ChipFilterTest` | Pins, custom order, filters |
-| `logic/DestinationsTest`, `data/notion/WorkspaceCodecTest` | Navigation bar or drawer, views and their filters; Browse's list from Notion's search |
+| `logic/DestinationsTest`, `data/notion/WorkspaceCodecTest` | Which views fit in the navigation bar, views and their filters; Browse's list from Notion's search |
+| `logic/NoteTargetsTest` | The databases "New note" offers on Pinned and Browse |
 | `logic/PropertyLayoutsTest` | Which properties are shown, collapsed and on the card, and in which order |
 | `logic/NotePreviewsTest` | Which previews are downloaded, and the preview text |
 | `logic/NotionDatesTest` | Dates as Notion sends them |

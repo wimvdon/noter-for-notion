@@ -6,8 +6,11 @@ Noter shows Notion pages as notes, in the style of Google Keep, and edits their 
 properties and content: the pages of databases and pages on their own.
 
 ### Screens
-- **Overview** (`ui/main/`): top-level destinations (`logic/Destinations.kt`) in Material's
-  navigation bar, or all of them in a navigation drawer when there are more than five:
+- **Overview** (`ui/main/`): top-level destinations (`logic/Destinations.kt`). All of them are in
+  the navigation drawer behind the menu button (it opens only from the button; a swipe from the
+  edge stays Android's back gesture), together with Manage views and Settings. The navigation bar
+  at the bottom holds Pinned, Browse and the views pinned to it, as many as fit: one item per
+  80dp of window width (five on a phone).
   - **Pinned**: the pinned notes of everything (databases and pages), filtered by source.
   - **Browse** (`BrowsePane.kt`): the databases and pages shared with the integration, from
     Notion's search, most recently edited first, with a search field. Without a search a
@@ -30,9 +33,16 @@ properties and content: the pages of databases and pages on their own.
   otherwise with the tune button: drag to reorder, the eye to show or collapse, the card icon to
   show up to three on the note's card in the overview (else the card shows the filter property).
   Kept per database in `AppSettings.propertyLayouts` (backed up).
-- **Settings** (`ui/settings/`): Connection (API key, sync status), Views (add, edit, order),
-  Appearance; built from the shared `SettingsKit.kt`.
-- `ui/AppNavigation.kt`: a small back stack of four screens (no navigation library).
+- **Manage views** (`ui/views/`): the views in their order (up/down), each with a pin for the
+  navigation bar (`DatabaseConfig.inBar`; disabled when the bar is full); tapping one edits its
+  name, icon, bar pin, filter property and filters; "Add view" picks a database. Opens from the
+  drawer and from Settings.
+- **Settings** (`ui/settings/`): Connection (API key, sync status), Views (a link to Manage
+  views), Appearance; built from the shared `SettingsKit.kt`.
+- **New note** on Pinned and Browse asks which database (`logic/NoteTargets.kt`): the views'
+  databases, then (on Browse) the other databases listed there. A note made on Pinned is pinned.
+- **Empty lists** show a large icon, a short text and, where it helps, a button (Show all, Retry).
+- `ui/AppNavigation.kt`: a small back stack of five screens (no navigation library).
 - **Pages on their own** (not in a database) are kept like a database's notes under the key
   `NotesRepository.PAGES`, so editing, pinning and the trash work the same. Linked pages and
   databases in a note (child pages, links to pages) open in the app.

@@ -2,6 +2,16 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-16: Drawer for everything, the bar for pinned views as far as they fit
+
+The owner asked for Settings in the menu, a separate Manage views screen, and Pinned and Browse
+always in a bottom bar with views pinned to it "up to the number the screen size allows". The
+drawer now always holds every destination plus Manage views and Settings, and opens only from
+its menu button: Material's drawer also opens with a swipe from the edge, which on Android's
+gesture navigation fights the back gesture. The bar holds one item per 80dp of window width, so
+five on a phone and more on a tablet or unfolded phone; this goes beyond Material's three to five
+on wide windows, by the owner's choice. Rejected: the bar only up to five, with a drawer instead
+of it beyond that (the old behaviour: the bar disappeared once a sixth destination was added).
 ## 2026-10-16: Browse, pages on their own, and views instead of added databases
 
 The owner asked for pages outside databases, one list of all pages and databases, and for "added

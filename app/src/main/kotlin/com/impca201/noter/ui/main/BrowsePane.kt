@@ -14,6 +14,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.TableChart
@@ -24,7 +27,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,7 +36,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.impca201.noter.R
@@ -80,12 +81,14 @@ fun BrowsePane(
             val items = state.items
             when {
                 items == null && state.error == null -> LoadingRows()
-                state.error != null && items.isNullOrEmpty() -> Message(stringResource(R.string.empty_error, state.error)) {
-                    TextButton(onClick = onRefresh) { Text(stringResource(R.string.retry)) }
-                }
-                items.isNullOrEmpty() -> Message(
+                state.error != null && items.isNullOrEmpty() ->
+                    EmptyState(Icons.Rounded.CloudOff, stringResource(R.string.empty_error, state.error), stringResource(R.string.retry), onRefresh)
+                items.isNullOrEmpty() -> EmptyState(
+                    if (state.query.isBlank()) Icons.Rounded.Explore else Icons.Rounded.SearchOff,
                     stringResource(if (state.query.isBlank()) R.string.browse_empty else R.string.browse_nothing_found),
-                ) {}
+                    null,
+                    null,
+                )
                 else -> BrowseList(items, onOpenPage, onOpenDatabase)
             }
         }
@@ -154,22 +157,5 @@ private fun LoadingRows() {
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         repeat(6) { SkeletonLine(Modifier.fillMaxWidth(if (it % 2 == 0) 0.7f else 0.5f)) }
-    }
-}
-
-@Composable
-private fun Message(text: String, action: @Composable () -> Unit) {
-    // A list, so pull-to-refresh also works on an empty screen.
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        item {
-            Text(
-                text,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-        item { action() }
     }
 }

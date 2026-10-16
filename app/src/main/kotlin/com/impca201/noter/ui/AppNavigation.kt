@@ -32,6 +32,8 @@ import com.impca201.noter.ui.main.MainViewModel
 import com.impca201.noter.ui.note.NoteScreen
 import com.impca201.noter.ui.settings.SettingsScreen
 import com.impca201.noter.ui.settings.SettingsViewModel
+import com.impca201.noter.ui.views.ViewsScreen
+import com.impca201.noter.ui.views.ViewsViewModel
 import com.impca201.noter.ui.theme.Motion
 import com.impca201.noter.ui.theme.rememberReducedMotion
 import kotlinx.coroutines.delay
@@ -70,7 +72,7 @@ private class ScreenOwner(
  */
 @Composable
 fun AppNavigation() {
-    // Entries: "main", "settings", "note:<page id>" or "database:<database id>".
+    // Entries: "main", "settings", "views", "note:<page id>" or "database:<database id>".
     var stack by rememberSaveable { mutableStateOf(listOf(MAIN)) }
     val mainViewModel: MainViewModel = viewModel(factory = MainViewModel.Factory)
     val stores: ScreenStores = viewModel()
@@ -115,12 +117,18 @@ fun AppNavigation() {
                 onOpenNote = { push(NOTE + it) },
                 onOpenDatabase = { push(DATABASE + it) },
                 onOpenSettings = { push(SETTINGS) },
+                onOpenViews = { push(VIEWS) },
             )
         } else {
             CompositionLocalProvider(LocalViewModelStoreOwner provides ScreenOwner(stores.store(top), application)) {
                 when {
                     top == SETTINGS -> SettingsScreen(
                         viewModel = viewModel(factory = SettingsViewModel.Factory),
+                        onBack = ::pop,
+                        onOpenViews = { push(VIEWS) },
+                    )
+                    top == VIEWS -> ViewsScreen(
+                        viewModel = viewModel(factory = ViewsViewModel.Factory),
                         onBack = ::pop,
                     )
                     top.startsWith(NOTE) -> NoteScreen(
@@ -143,5 +151,6 @@ fun AppNavigation() {
 private const val CLEAR_DELAY_MS = 1_000L
 private const val MAIN = "main"
 private const val SETTINGS = "settings"
+private const val VIEWS = "views"
 private const val NOTE = "note:"
 private const val DATABASE = "database:"

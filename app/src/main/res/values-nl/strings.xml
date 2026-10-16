@@ -11,7 +11,7 @@
     <string name="browse_edited">Bewerkt %1$s</string>
     <string name="source_pages">Pagina’s</string>
     <string name="add_view">Aan navigatie toevoegen</string>
-    <string name="view_added">Toegevoegd aan de navigatie. Pas het aan bij Instellingen › Weergaven.</string>
+    <string name="view_added">Toegevoegd aan de weergaven. Wijzig het via ☰ › Weergaven beheren.</string>
     <string name="view_filters">Alleen tonen</string>
     <string name="view_filters_help">De filters die aan staan als de weergave opent. Geen: alle notities.</string>
     <string name="view_filtered">%1$s: %2$s</string>
@@ -151,4 +151,19 @@
         <item quantity="one">%d gekoppelde pagina</item>
         <item quantity="other">%d gekoppelde pagina’s</item>
     </plurals>
+    <!-- Manage views and the navigation bar -->
+    <string name="manage_views">Weergaven beheren</string>
+    <plurals name="views_count">
+        <item quantity="one">%d weergave</item>
+        <item quantity="other">%d weergaven</item>
+    </plurals>
+    <plurals name="bar_room">
+        <item quantity="one">De balk onderaan heeft op dit scherm plaats voor %d weergave, naast Vastgezet en Bladeren. Elke weergave staat ook in het menu (☰).</item>
+        <item quantity="other">De balk onderaan heeft op dit scherm plaats voor %d weergaven, naast Vastgezet en Bladeren. Elke weergave staat ook in het menu (☰).</item>
+    </plurals>
+    <string name="view_in_bar">In de balk onderaan</string>
+    <string name="view_no_room">Vastgezet in de balk, maar er is geen plaats op dit scherm</string>
+    <string name="view_in_drawer">In het menu</string>
+    <string name="pin_to_bar">Tonen in de balk onderaan</string>
+    <string name="pin_to_bar_help">Als er plaats is. De weergave staat altijd in het menu (☰).</string>
 </resources>

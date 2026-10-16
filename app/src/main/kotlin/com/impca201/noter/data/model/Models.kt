@@ -18,6 +18,11 @@ data class DatabaseConfig(
     val databaseId: String? = null,
     /** Filters (options of [chipProperty]) selected when the view opens. */
     val filters: List<String> = emptyList(),
+    /**
+     * Pinned to the navigation bar at the bottom (when there is room, see Destinations). Every
+     * view is in the navigation drawer. Views saved before this existed were in the bar.
+     */
+    val inBar: Boolean = true,
 ) {
     /** The database this view shows. */
     val sourceId: String get() = databaseId ?: id
