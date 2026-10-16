@@ -24,7 +24,7 @@ class NoterApp : Application() {
         apiKeyStore = ApiKeyStore(this)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         repository = NotesRepository(
-            client = NotionClient { apiKeyStore.get() },
+            client = NotionClient(apiKey = { apiKeyStore.get() }),
             hasKey = { apiKeyStore.get().isNotBlank() },
             settings = SettingsStore(this),
             cache = CacheStore(File(noBackupFilesDir, DataFiles.CACHE_DIR)),

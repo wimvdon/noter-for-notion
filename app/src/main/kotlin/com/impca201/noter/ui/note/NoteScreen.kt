@@ -50,6 +50,7 @@ import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -127,6 +128,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import com.impca201.noter.data.notion.BlockCodec
+import com.impca201.noter.data.notion.InlineMarkdown
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,6 +138,7 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
     val focus by viewModel.focus.collectAsStateWithLifecycle()
     var focusedKey by remember { mutableStateOf<String?>(null) }
     var menu by remember { mutableStateOf(false) }
+    var confirmTrash by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -152,6 +155,14 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
         val itemIndex = index + BLOCKS_OFFSET
         val visible = listState.layoutInfo.visibleItemsInfo.map { it.index }
         if (itemIndex !in visible || itemIndex >= (visible.maxOrNull() ?: 0)) listState.animateScrollToItem(itemIndex)
+    }
+
+    if (confirmTrash && note != null) {
+        TrashDialog(
+            title = InlineMarkdown.stripped(note.title).ifBlank { stringResource(R.string.untitled) },
+            onConfirm = { confirmTrash = false; viewModel.trash(onBack) },
+            onDismiss = { confirmTrash = false },
+        )
     }
 
     Scaffold(
@@ -191,7 +202,7 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.action_trash)) },
                                     leadingIcon = { Icon(Icons.Rounded.Delete, null) },
-                                    onClick = { menu = false; viewModel.trash(onBack) },
+                                    onClick = { menu = false; confirmTrash = true },
                                 )
                             }
                         }
@@ -273,6 +284,7 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
                             onText = { text, cursor -> viewModel.changeText(block.key, text, cursor) },
                             onBackspaceAtStart = { viewModel.backspaceAtStart(block.key) },
                             onToggle = { viewModel.toggleChecked(block.key) },
+                            onDelete = { viewModel.delete(block.key) },
                             onFocusChange = { focused ->
                                 if (focused) focusedKey = block.key else if (focusedKey == block.key) focusedKey = null
                             },
@@ -298,6 +310,17 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun TrashDialog(title: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.trash_title)) },
+        text = { Text(stringResource(R.string.trash_body, title)) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.trash_confirm)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
 }
 
 /** Index of the first block in the list (after title, properties and divider). */
@@ -398,6 +421,7 @@ private fun BlockRow(
     onText: (String, Int) -> Unit,
     onBackspaceAtStart: () -> Unit,
     onToggle: () -> Unit,
+    onDelete: () -> Unit,
     onFocusChange: (Boolean) -> Unit,
 ) {
     when (block.type) {
@@ -533,6 +557,17 @@ private fun BlockRow(
                     style = MaterialTheme.typography.labelMedium,
                     color = colors.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
+        }
+        // A checklist item can be removed with one tap, as in Google Keep.
+        if (block.type == BlockType.TODO) {
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Rounded.Close,
+                    contentDescription = stringResource(R.string.action_delete_item),
+                    tint = colors.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }

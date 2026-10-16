@@ -30,8 +30,9 @@ python3 -m unittest discover -s scripts/tests
 | `data/sync/OutboxTest` | The queue of unsent changes (merging, renaming new notes) |
 | `data/sync/SyncPolicyTest` | When to refresh, and merging refreshed notes |
 | `data/sync/SaveTimingTest` | How soon edits are saved while typing (within Notion's rate limit) |
+| `data/NotesRepositoryTest` | The repository against a fake Notion server (`FakeNotion`, the JDK's own HTTP server): new notes stay open while Notion creates them, nothing is sent for a note in the trash |
 | `data/store/CacheStoreTest` | On-phone copies survive a restart |
-| `logic/NoteOrderingTest`, `logic/ChipFilterTest` | Pins, custom order, filter chips |
+| `logic/NoteOrderingTest`, `logic/ChipFilterTest` | Pins, custom order, filters |
 | `logic/NotePreviewsTest` | Which previews are downloaded, and the preview text |
 | `logic/NotionDatesTest` | Dates as Notion sends them |
 | `BackupRulesTest` | Only the settings file is backed up |

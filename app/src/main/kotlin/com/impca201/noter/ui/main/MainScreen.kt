@@ -32,9 +32,8 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
@@ -113,7 +112,7 @@ private const val MAX_BAR_ITEMS = 5
 /**
  * The overview, in the style of Google Keep: notes as cards in a staggered grid with a preview
  * of their content, pinned notes in their own section on top, and long-press-and-drag to move a
- * note. Home and each database are top-level destinations in Material's navigation bar.
+ * note. Pinned and each database are top-level destinations in Material's navigation bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -322,7 +321,7 @@ private fun Tab.isHome(): Boolean = name.isEmpty() && icon == null
 
 private fun Tab.label(homeLabel: String): String = if (isHome()) homeLabel else name
 
-private fun Tab.iconVector(): ImageVector = if (isHome()) Icons.Rounded.Home else DatabaseIcons.icon(icon)
+private fun Tab.iconVector(): ImageVector = if (isHome()) Icons.Rounded.PushPin else DatabaseIcons.icon(icon)
 
 @Composable
 private fun SyncStatusIcon(pending: Int, offline: Boolean) {
