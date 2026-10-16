@@ -44,4 +44,23 @@ class WorkspaceCodecTest {
     fun `pages in the trash are left out`() {
         assertNull(WorkspaceCodec.parse(obj("""{"object":"page","id":"x","archived":true,"properties":{}}"""), includeNotes = true, pagesKey = "pages"))
     }
+
+    @Test
+    fun `data sources are listed like databases, and their pages belong to them`() {
+        val source = obj("""{"object":"data_source","id":"ds1","title":[{"plain_text":"Archive"}],"parent":{"type":"database_id","database_id":"db1"}}""")
+        val item = WorkspaceCodec.parse(source, includeNotes = false, pagesKey = "pages")!!
+        assertTrue(item.isDatabase)
+        assertEquals("ds1", item.id)
+        assertEquals("Archive", item.title)
+
+        val inSource = obj("""{"object":"page","id":"n2","parent":{"type":"data_source_id","data_source_id":"ds1","database_id":"db1"},"properties":{}}""")
+        assertEquals("ds1", WorkspaceCodec.parentDatabase(inSource))
+        assertEquals("db1", WorkspaceCodec.parentDatabase(note))
+    }
+
+    @Test
+    fun `a database lists its data sources`() {
+        val db = obj("""{"object":"database","id":"db1","data_sources":[{"id":"ds1","name":"Notes"},{"id":"ds2","name":"Archive"}]}""")
+        assertEquals(listOf("ds1" to "Notes", "ds2" to "Archive"), WorkspaceCodec.dataSources(db).map { it.id to it.title })
+    }
 }

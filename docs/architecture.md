@@ -54,9 +54,17 @@ properties and content: the pages of databases and pages on their own.
   `NotesRepository.PAGES`, so editing, pinning and the trash work the same. Linked pages and
   databases in a note (child pages, links to pages) open in the app.
 
+- **Data sources** (Notion API 2025-09-03): a Notion database holds one or more data sources,
+  each with its own properties and pages. The app treats every data source as a database of its
+  own: Browse and Add view list them separately, and notes, views, order and property layouts are
+  kept under the data source's ID. A link to a database (a child database or a link in a note)
+  opens its first data source, with a tab per data source when it has several. Keys saved before
+  (database IDs) are looked up once (`NotesRepository.resolveSource`, remembered in
+  `sources.json`) and renamed everywhere to the data source's ID (`data/sync/SourceKeys.kt`).
+
 ### Data flow
 ```
-Notion API ── data/api/NotionClient (OkHttp, Notion-Version 2022-06-28, retries 429/5xx)
+Notion API ── data/api/NotionClient (OkHttp, Notion-Version 2025-09-03, retries 429/5xx)
      │
 data/NotesRepository ── single source for the screens
      │   reads:  on-phone copy first (data/store/CacheStore), then refresh (data/sync/SyncPolicy)

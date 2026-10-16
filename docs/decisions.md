@@ -2,6 +2,17 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-16: Notion API 2025-09-03, every data source a database of its own
+
+The owner asked for databases with several data sources ("it's fine if each source appears as a
+separate database"). Notion's API version 2022-06-28 can't read or write such databases, so the
+app moves to 2025-09-03: schemas and queries go to the data source, new pages name their data
+source, and search lists data sources. The app keeps each data source as a database of its own.
+Views and copies saved under a database's ID are renamed to its (first) data source's ID the
+first time Notion is reached, so nothing has to be set up again. Rejected: staying on 2022-06-28
+(databases with a second data source stop working) and showing a database's data sources merged
+into one list (their properties differ, so filters and new notes wouldn't work).
+
 ## 2026-10-16: Nested blocks as one flat list with a depth
 
 The owner asked for nested blocks. They are kept in the editor's flat list of blocks, each with

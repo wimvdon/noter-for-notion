@@ -30,6 +30,7 @@ import com.impca201.noter.data.sync.ContentOp
 import com.impca201.noter.data.sync.Outbox
 import com.impca201.noter.data.sync.PendingOp
 import com.impca201.noter.data.sync.SaveTiming
+import com.impca201.noter.data.sync.SourceKeys
 import com.impca201.noter.data.sync.RefreshKind
 import com.impca201.noter.data.sync.SyncPolicy
 import com.impca201.noter.data.sync.withProperty
@@ -209,9 +210,15 @@ class NotesRepository(
         setState(databaseId) { it.copy(refreshing = true, error = null) }
         val started = clock()
         try {
+            // A key from before data sources: from now on the notes are kept under the data source.
+            val sourceId = resolveSource(databaseId)
+            if (sourceId != databaseId) {
+                renameSource(databaseId, sourceId)
+                return refresh(sourceId, userAsked)
+            }
             withContext(Dispatchers.IO) {
                 val schema = if (kind == RefreshKind.FULL || current.schema == null) {
-                    PropertyCodec.parseSchema(client.getDatabase(databaseId))
+                    PropertyCodec.parseSchema(client.getDataSource(databaseId))
                 } else {
                     current.schema
                 }
@@ -221,7 +228,7 @@ class NotesRepository(
                 } else {
                     null
                 }
-                val pages = client.queryDatabase(databaseId, filter)
+                val pages = client.queryDataSource(databaseId, filter)
                 val fetched = pages.filterNot { PropertyCodec.isTrashed(it) }.mapNotNull { PropertyCodec.parsePage(it, databaseId) }
                 val trashed = pages.filter { PropertyCodec.isTrashed(it) }.mapNotNull { it.stringOrNull("id") }.toSet()
                 lock.withLock {
@@ -261,6 +268,78 @@ class NotesRepository(
         cache.saveDatabase(id, DatabaseCache(state.schema, state.notes, state.lastSyncMs, state.lastFullSyncMs))
     }
 
+    // ---- Data sources ---------------------------------------------------------------------
+
+    /** Which data source each key is, as far as known (kept on this phone, see [resolveSource]). */
+    private val sources = mutableMapOf<String, String>()
+    private var sourcesRead = false
+
+    /**
+     * The data source that [key] stands for: [key] itself when it is a data source; for a database's
+     * ID (from links, and views saved before data sources) its first data source.
+     */
+    suspend fun resolveSource(key: String): String = withContext(Dispatchers.IO) {
+        lock.withLock {
+            if (!sourcesRead) {
+                sources.putAll(cache.sources())
+                sourcesRead = true
+            }
+            sources[key]
+        }?.let { return@withContext it }
+        val source = try {
+            client.getDataSource(key)
+            key
+        } catch (e: NotionException) {
+            if (e.isTemporary || e.status == 401) throw e
+            WorkspaceCodec.dataSources(client.getDatabase(key)).firstOrNull()?.id
+                ?: throw NotionException("This database has no data source", status = 404)
+        }
+        lock.withLock {
+            sources[key] = source
+            sources[source] = source
+            cache.saveSources(sources.toMap())
+        }
+        source
+    }
+
+    /**
+     * The data sources of [key] when it is a database with more than one (to choose from), else
+     * null. Null too when Notion can't be reached.
+     */
+    suspend fun dataSourcesOf(key: String): List<PageRef>? = withContext(Dispatchers.IO) {
+        try {
+            WorkspaceCodec.dataSources(client.getDatabase(key)).takeIf { it.size > 1 }
+        } catch (e: NotionException) {
+            null
+        }
+    }
+
+    /** Moves everything kept under database [old] to its data source [new] (see [SourceKeys]). */
+    private suspend fun renameSource(old: String, new: String) {
+        withContext(Dispatchers.IO) {
+            lock.withLock {
+                cacheRead += new
+                val oldState = _databases.value[old]
+                if (oldState != null) {
+                    val target = _databases.value[new]
+                    val merged = (target ?: oldState).copy(
+                        notes = SourceKeys.mergeNotes(oldState.notes, target?.notes.orEmpty(), new),
+                        // A different key's sync times don't count: refresh in full.
+                        lastSyncMs = 0,
+                        lastFullSyncMs = 0,
+                        refreshing = false,
+                    )
+                    _databases.update { (it - old) + (new to merged) }
+                    saveDatabaseCache(new, merged)
+                }
+                cache.deleteDatabase(old)
+                _outbox.value = SourceKeys.renameInOutbox(_outbox.value, old, new)
+                cache.saveOutbox(_outbox.value)
+            }
+        }
+        settings.update { SourceKeys.renameInSettings(it, old, new) }
+    }
+
     // ---- Notes ----------------------------------------------------------------------------
 
     /**
@@ -272,7 +351,7 @@ class NotesRepository(
             loadDatabase(databaseId)
             var schema = _databases.value[databaseId]?.schema
             if (schema == null) {
-                schema = runCatching { PropertyCodec.parseSchema(client.getDatabase(databaseId)) }.getOrNull()
+                schema = runCatching { PropertyCodec.parseSchema(client.getDataSource(resolveSource(databaseId))) }.getOrNull()
                     ?: return@withContext null
                 setState(databaseId) { it.copy(schema = schema) }
             }
@@ -545,7 +624,7 @@ class NotesRepository(
     private suspend fun create(op: PendingOp.CreatePage): Boolean {
         val note = findNote(_databases.value, op.pageId) ?: return true
         val sent = note.properties
-        val page = client.createPage(op.databaseId, PropertyCodec.toCreateRequest(sent), children = emptyList())
+        val page = client.createPage(resolveSource(op.databaseId), PropertyCodec.toCreateRequest(sent), children = emptyList())
         val newId = page.stringOrNull("id") ?: throw NotionException("Notion did not return a page ID", status = 500)
         val created = PropertyCodec.parsePage(page, op.databaseId) ?: note.copy(id = newId)
         val oldId = op.pageId
@@ -784,7 +863,7 @@ class NotesRepository(
             val cached = cache.pages(databaseId)
             if (!forceRefresh && cached != null && clock() - cached.fetchedMs < RELATED_TTL_MS) return@withContext cached.pages
             try {
-                val pages = client.queryDatabase(databaseId).mapNotNull { page ->
+                val pages = client.queryDataSource(resolveSource(databaseId)).mapNotNull { page ->
                     PropertyCodec.parsePage(page, databaseId)?.let { PageRef(it.id, InlineMarkdown.stripped(it.title)) }
                 }
                 cache.savePages(databaseId, PagesCache(pages, clock()))
@@ -844,7 +923,7 @@ class NotesRepository(
     suspend fun searchDatabases(): List<PageRef> = withContext(Dispatchers.IO) { client.searchDatabases() }
 
     suspend fun fetchSchema(databaseId: String): DatabaseSchema = withContext(Dispatchers.IO) {
-        PropertyCodec.parseSchema(client.getDatabase(databaseId)).also { schema ->
+        PropertyCodec.parseSchema(client.getDataSource(resolveSource(databaseId))).also { schema ->
             if (_databases.value.containsKey(databaseId)) setState(databaseId) { it.copy(schema = schema) }
         }
     }

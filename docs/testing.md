@@ -32,11 +32,12 @@ python3 -m unittest discover -s scripts/tests
 | `data/sync/OutboxTest` | The queue of unsent changes (merging, renaming new notes) |
 | `data/sync/SyncPolicyTest` | When to refresh, and merging refreshed notes |
 | `data/sync/SaveTimingTest` | How soon edits are saved while typing (within Notion's rate limit) |
-| `data/NotesRepositoryTest` | The repository against a fake Notion server (`FakeNotion`, the JDK's own HTTP server): new notes stay open while Notion creates them, nothing is sent for a note in the trash, table rows, expired image links, pages from Browse and linked pages, new to-dos added once (also after a lost answer), nested blocks downloaded and added to their parent |
+| `data/sync/SourceKeysTest` | Keys saved before data sources renamed to the data source (views, order, layouts, waiting new notes) |
+| `data/NotesRepositoryTest` | The repository against a fake Notion server (`FakeNotion`, the JDK's own HTTP server): a view saved before data sources moves to its data source, new notes stay open while Notion creates them, nothing is sent for a note in the trash, table rows, expired image links, pages from Browse and linked pages, new to-dos added once (also after a lost answer), nested blocks downloaded and added to their parent |
 | `data/SyncStressTest` | Random editing (typing, Enter, ticking, changing kinds, indenting, outdenting, deleting) while a slow fake Notion that keeps the blocks, nested ones too, answers: Notion ends with exactly the note on the phone, also when it can't insert at the start |
 | `data/store/CacheStoreTest` | On-phone copies survive a restart |
 | `logic/NoteOrderingTest`, `logic/ChipFilterTest` | Pins, custom order, filters |
-| `logic/DestinationsTest`, `data/notion/WorkspaceCodecTest` | Which views fit in the navigation bar, views and their filters; Browse's list from Notion's search |
+| `logic/DestinationsTest`, `data/notion/WorkspaceCodecTest` | Which views fit in the navigation bar, views and their filters; Browse's list from Notion's search, data sources and the data source a page belongs to |
 | `data/icons/IconCatalogTest` | Reading the icon file, icon search, old icon keys, and that the bundled file has every suggested icon |
 | `logic/NoteTargetsTest` | The databases "New note" offers on Pinned and Browse |
 | `logic/PropertyLayoutsTest` | Which properties are shown, collapsed and on the card, and in which order; header image and content on cards |

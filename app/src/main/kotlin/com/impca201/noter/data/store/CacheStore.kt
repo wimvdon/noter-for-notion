@@ -9,6 +9,8 @@ import com.impca201.noter.data.sync.PendingOp
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.io.File
 
@@ -90,6 +92,11 @@ class CacheStore(private val dir: File) {
     fun saveOutbox(queue: List<PendingOp>) = write(OUTBOX, ListSerializer(PendingOp.serializer()), queue)
 
     @Synchronized
+    /** Which data source each known key is (a data source's own ID, or a database's from before). */
+    fun sources(): Map<String, String> = read(SOURCES, MapSerializer(String.serializer(), String.serializer())).orEmpty()
+
+    fun saveSources(sources: Map<String, String>) = write(SOURCES, MapSerializer(String.serializer(), String.serializer()), sources)
+
     fun users(): UsersCache? = read(USERS, UsersCache.serializer())
 
     @Synchronized
@@ -111,5 +118,6 @@ class CacheStore(private val dir: File) {
     private companion object {
         const val OUTBOX = "outbox.json"
         const val USERS = "users.json"
+        const val SOURCES = "sources.json"
     }
 }

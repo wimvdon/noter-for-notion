@@ -31,7 +31,7 @@ object PropertyCodec {
                 name = prop.stringOrNull("name") ?: name,
                 type = type,
                 options = config?.arrayOrNull("options")?.mapNotNull { parseOption(it.asObjectOrNull()) }.orEmpty(),
-                relationDatabaseId = if (type == "relation") config?.stringOrNull("database_id") else null,
+                relationDatabaseId = if (type == "relation") config?.stringOrNull("data_source_id") ?: config?.stringOrNull("database_id") else null,
                 numberFormat = if (type == "number") config?.stringOrNull("format") else null,
             )
         }
