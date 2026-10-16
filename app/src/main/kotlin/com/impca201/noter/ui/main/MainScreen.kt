@@ -339,6 +339,7 @@ private class TabLabels(val pinned: String, val browse: String) {
     }
 }
 
+@Composable
 private fun Tab.iconVector(): ImageVector = when {
     isPinned -> Icons.Rounded.PushPin
     isBrowse -> Icons.Rounded.Explore

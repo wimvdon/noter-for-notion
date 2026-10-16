@@ -1,72 +1,36 @@
 package com.impca201.noter.ui.common
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Article
-import androidx.compose.material.icons.automirrored.rounded.ListAlt
-import androidx.compose.material.icons.automirrored.rounded.MenuBook
-import androidx.compose.material.icons.rounded.AttachMoney
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Bookmark
-import androidx.compose.material.icons.rounded.Build
-import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.Checklist
-import androidx.compose.material.icons.rounded.Code
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.Flag
-import androidx.compose.material.icons.rounded.Flight
-import androidx.compose.material.icons.rounded.Folder
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Inventory2
-import androidx.compose.material.icons.rounded.Lightbulb
-import androidx.compose.material.icons.rounded.LocalGroceryStore
-import androidx.compose.material.icons.rounded.Movie
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material.icons.rounded.People
-import androidx.compose.material.icons.rounded.Pets
-import androidx.compose.material.icons.rounded.Restaurant
-import androidx.compose.material.icons.rounded.School
-import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.automirrored.rounded.StickyNote2
-import androidx.compose.material.icons.rounded.Work
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import com.impca201.noter.NoterApp
+import com.impca201.noter.data.icons.IconCatalog
+import java.util.concurrent.ConcurrentHashMap
 
-/** The icons a database tab can have, by the key stored in the settings. */
+/** The icons of views: Material Symbols by name (see [IconCatalog]), drawn as vectors. */
 object DatabaseIcons {
-    val all: List<Pair<String, ImageVector>> = listOf(
-        "note" to Icons.AutoMirrored.Rounded.StickyNote2,
-        "checklist" to Icons.Rounded.Checklist,
-        "list" to Icons.AutoMirrored.Rounded.ListAlt,
-        "article" to Icons.AutoMirrored.Rounded.Article,
-        "book" to Icons.AutoMirrored.Rounded.MenuBook,
-        "idea" to Icons.Rounded.Lightbulb,
-        "work" to Icons.Rounded.Work,
-        "home" to Icons.Rounded.Home,
-        "groceries" to Icons.Rounded.LocalGroceryStore,
-        "food" to Icons.Rounded.Restaurant,
-        "calendar" to Icons.Rounded.CalendarMonth,
-        "people" to Icons.Rounded.People,
-        "school" to Icons.Rounded.School,
-        "code" to Icons.Rounded.Code,
-        "build" to Icons.Rounded.Build,
-        "money" to Icons.Rounded.AttachMoney,
-        "travel" to Icons.Rounded.Flight,
-        "health" to Icons.Rounded.FitnessCenter,
-        "heart" to Icons.Rounded.Favorite,
-        "star" to Icons.Rounded.Star,
-        "flag" to Icons.Rounded.Flag,
-        "bookmark" to Icons.Rounded.Bookmark,
-        "folder" to Icons.Rounded.Folder,
-        "box" to Icons.Rounded.Inventory2,
-        "music" to Icons.Rounded.MusicNote,
-        "movie" to Icons.Rounded.Movie,
-        "art" to Icons.Rounded.Palette,
-        "pets" to Icons.Rounded.Pets,
-        "sparkle" to Icons.Rounded.AutoAwesome,
-    )
+    private val cache = ConcurrentHashMap<String, ImageVector>()
 
-    private val byKey = all.toMap()
+    /** The icon stored for a view (also the keys from before the catalog), else the note icon. */
+    @Composable
+    fun icon(stored: String?): ImageVector {
+        val catalog = (LocalContext.current.applicationContext as NoterApp).iconCatalog
+        return remember(stored, catalog) { catalog.icon(IconCatalog.fromStored(stored))?.let(::vector) } ?: Icons.AutoMirrored.Rounded.StickyNote2
+    }
 
-    fun icon(key: String?): ImageVector = byKey[key] ?: Icons.AutoMirrored.Rounded.StickyNote2
+    /** Drawn icons are kept, so scrolling the icon picker doesn't parse the same paths again. */
+    fun vector(icon: IconCatalog.Icon): ImageVector =
+        cache.getOrPut(icon.name) {
+            ImageVector
+                .Builder(name = icon.name, defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
+                .apply { icon.paths.forEach { addPath(PathParser().parsePathString(it).toNodes(), fill = SolidColor(Color.Black)) } }
+                .build()
+        }
 }

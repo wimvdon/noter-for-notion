@@ -152,7 +152,10 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   white text lines, with a white gap between the notes. Gradient `#FFC94D` → `#F5A623` →
   `#E8710A` (amber) from top left to bottom right, on the white background; the folded corner
   shows the paler back of the paper. Themed layer: the same shapes with thin gaps, text lines
-  cut out.
+  cut out. Both layers are drawn at 75% of their first size, so the notes keep some padding inside
+  round and squircle launcher masks (owner's request).
+- View icons: the whole Material Symbols set (outlined, rounded), searchable by English name and
+  topic, the same catalog as RSS Reader's folder icons.
 - Seed `#F5A623` (amber): a full Material 3 tonal scheme from the icon's middle stop.
 - Signature element: the overview in the style of Google Keep. Notes are `OutlinedCard`s in a
   staggered grid (cells at least 160dp wide: two columns on a phone) with the title (Title
