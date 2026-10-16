@@ -2,22 +2,22 @@
 <!-- Two stacked notes, after Notion Calendar's logo: a note behind (only its top and left edges
      show) and a note in front with a folded bottom right corner and two white lines of text.
      Gradients run from top left to bottom right, #FFC94D → #F5A623 → #E8710A, on the white
-     background. Drawn on 22..90 and scaled to 75% (28.5..79.5), well inside the 66dp safe zone. See DESIGN.md. -->
+     background. Drawn on 22..86 and scaled to 78% around the middle (29..79), well inside the 66dp safe zone. See DESIGN.md. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Scaled to 75% around the middle (the drawing is centred on 56,56), so it keeps some
-         padding inside the launcher's circle or squircle mask. -->
+    <!-- Scaled to 78% around the middle, for padding inside the launcher's circle or squircle
+         mask. The visible drawing spans 22..86 (the white gap around the front note doesn't show
+         on the white background), so its middle is the canvas's middle, 54,54; the folded
+         corner (bottom right) and the note behind (top left) balance each other. -->
     <group
-        android:pivotX="56"
-        android:pivotY="56"
-        android:scaleX="0.75"
-        android:scaleY="0.75"
-        android:translateX="-2"
-        android:translateY="-2">
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.78"
+        android:scaleY="0.78">
         <!-- The note behind. -->
         <path android:pathData="M30,22h38a8,8 0,0 1,8 8v38a8,8 0,0 1,-8 8h-38a8,8 0,0 1,-8 -8v-38a8,8 0,0 1,8 -8z">
             <aapt:attr name="android:fillColor">
