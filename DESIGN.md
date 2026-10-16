@@ -156,8 +156,9 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
 - Seed `#F5A623` (amber): a full Material 3 tonal scheme from the icon's middle stop.
 - Signature element: the overview in the style of Google Keep. Notes are `OutlinedCard`s in a
   staggered grid (cells at least 160dp wide: two columns on a phone) with the title (Title
-  Medium), up to ten lines of content preview (Body Medium, `onSurfaceVariant`) and the chip
-  property's options in Notion's colours. "Pinned" and "Others" are Label Large headers spanning
+  Medium), up to ten lines of content preview (Body Medium, `onSurfaceVariant`) and the
+  properties chosen for cards (up to three; options in Notion's colours, other values in Label
+  Medium), or else the filter property's options. "Pinned" and "Others" are Label Large headers spanning
   the grid. A dragged card lifts (shadow, 3% larger, `surfaceContainerHigh`).
 - The note editor follows Notion's look: headings in SemiBold, quotes with a bar, callouts and
   code on `surfaceContainerHigh` (code in a monospace font), dividers as `outlineVariant` lines.

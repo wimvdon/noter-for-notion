@@ -2,6 +2,22 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-16: The user chooses which properties are shown, per database
+
+The owner asked for only three properties by default instead of collapsing the read-only ones,
+a way to choose the shown ones per database, drag and drop, and up to three on the cards.
+
+- **One layout per database** (`PropertyLayout` in the backed-up settings): order, shown
+  properties (null means the default, the first three) and up to three on the card. Properties
+  added in Notion later come last and start collapsed.
+- **Edited in a bottom sheet** from the note (tune button below the properties), because the
+  choice is made while looking at a note. Rows have a drag handle (and move up/down actions for
+  screen readers), an eye toggle and a card toggle. Rejected: a page in Settings (far from where
+  the result shows) and a drag-and-drop library (CLAUDE.md prefers no new dependencies; a list of
+  fixed-height rows needs little code).
+- **Cards** show the chosen properties' values; with none chosen they show the filter property's
+  options, as before.
+
 ## 2026-10-16: Images with Coil, and more of Notion's blocks shown
 
 The owner asked for header images and more block types, viewing before editing, without

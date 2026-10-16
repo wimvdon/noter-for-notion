@@ -55,6 +55,12 @@
     <string name="placeholder_start">Start writing… Type # for a heading, - for a list, [] for a checkbox.</string>
     <string name="include_time">Include time</string>
     <string name="no_options">Nothing to choose from.</string>
+    <string name="customize_properties">Customize properties</string>
+    <string name="hide_properties">Hide properties</string>
+    <string name="properties_title">Properties</string>
+    <string name="properties_help">Drag to change the order. Shown properties are above the note, the others are collapsed. Up to three can also appear on the note’s card. This applies to every note in the database.</string>
+    <string name="property_shown">Show %1$s</string>
+    <string name="property_on_card">Show %1$s on the card</string>
     <string name="unsupported_block">%1$s (edit in Notion)</string>
     <string name="block_image">Image</string>
     <string name="block_linked_page">Linked page</string>
@@ -125,9 +131,9 @@
         <item quantity="one">%d change waiting to be sent to Notion</item>
         <item quantity="other">%d changes waiting to be sent to Notion</item>
     </plurals>
-    <plurals name="read_only_properties">
-        <item quantity="one">%d read-only property</item>
-        <item quantity="other">%d read-only properties</item>
+    <plurals name="more_properties">
+        <item quantity="one">%d more property</item>
+        <item quantity="other">%d more properties</item>
     </plurals>
     <plurals name="linked_pages">
         <item quantity="one">%d linked page</item>
