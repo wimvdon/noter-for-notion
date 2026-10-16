@@ -47,6 +47,11 @@ data class NoteUiState(
     val relatedPages: Map<String, List<PageRef>?> = emptyMap(),
     /** How the note's database shows its properties (null: the default). */
     val layout: PropertyLayout? = null,
+    /** Changes waiting to be sent to Notion (all notes), for the sync button. */
+    val pendingCount: Int = 0,
+    val offline: Boolean = false,
+    /** True while the sync button's sync runs. */
+    val syncing: Boolean = false,
 )
 
 class NoteViewModel(
@@ -73,7 +78,9 @@ class NoteViewModel(
     private val pendingProperties = mutableMapOf<String, NoteProperty>()
     private var serial = 0L
 
+    private val syncing = MutableStateFlow(false)
     private val extras = combine(users, relatedPages, contentError) { u, r, e -> Triple(u, r, e) }
+    private val syncStatus = combine(repository.pendingCount, repository.offline, syncing) { p, o, s -> Triple(p, o, s) }
 
     val state: StateFlow<NoteUiState> = combine(
         repository.note(pageId),
@@ -92,6 +99,8 @@ class NoteViewModel(
         )
     }.combine(extras) { state, (u, r, e) ->
         state.copy(users = u, relatedPages = r, contentError = e)
+    }.combine(syncStatus) { state, (pending, offline, busy) ->
+        state.copy(pendingCount = pending, offline = offline, syncing = busy)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NoteUiState())
 
     init {
@@ -233,6 +242,33 @@ class NoteViewModel(
     }
 
     fun togglePin() = viewModelScope.launch { repository.togglePin(pageId) }
+
+    /**
+     * The sync button: hands over edits that are still waiting, sends everything and gets the
+     * note's latest version from Notion. The editor shows it unless the user typed meanwhile.
+     */
+    fun sync() {
+        if (syncing.value) return
+        syncing.value = true
+        viewModelScope.launch {
+            try {
+                if (saveJob?.isActive == true) {
+                    saveJob?.cancel()
+                    firstUnsavedMs = 0L
+                    repository.saveContent(pageId, savable())
+                }
+                pendingProperties.values.toList().forEach { repository.updateProperty(pageId, it) }
+                val before = blocks.value
+                val fresh = repository.syncNote(pageId)
+                if (fresh != null && blocks.value === before && saveJob?.isActive != true) {
+                    setLoaded(fresh.blocks)
+                    contentError.value = false
+                }
+            } finally {
+                syncing.value = false
+            }
+        }
+    }
 
     fun trash(onDone: () -> Unit) = viewModelScope.launch {
         // Nothing of a note in the trash is saved any more.

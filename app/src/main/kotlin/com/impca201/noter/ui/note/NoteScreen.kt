@@ -114,6 +114,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.impca201.noter.R
+import com.impca201.noter.ui.common.SyncButton
 import com.impca201.noter.data.model.Block
 import com.impca201.noter.data.model.BlockType
 import com.impca201.noter.data.model.NoteProperty
@@ -207,6 +208,7 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
                 },
                 actions = {
                     if (note != null) {
+                        SyncButton(state.pendingCount, state.offline, state.syncing, onSync = viewModel::sync)
                         IconButton(onClick = { viewModel.togglePin() }) {
                             Icon(
                                 if (state.pinned) Icons.Rounded.PushPin else Icons.Outlined.PushPin,

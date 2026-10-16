@@ -2,6 +2,8 @@ package com.impca201.noter.data
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.impca201.noter.data.api.NotionClient
+import com.impca201.noter.data.model.Block
+import com.impca201.noter.data.model.BlockType
 import com.impca201.noter.data.model.DatabaseConfig
 import com.impca201.noter.data.model.NoteProperty
 import com.impca201.noter.data.model.PropertyValue
@@ -183,5 +185,69 @@ class NotesRepositoryTest {
         repo.togglePin("linked")
         repo.updateProperty("linked", NoteProperty("title", "title", PropertyValue.Text("Renamed")))
         assertEquals("Renamed", repo.note("linked").first()?.title)
+    }
+
+    /** Notion with one page whose content is [blocks]; appended blocks get IDs new-1, new-2, … */
+    private fun notionWithContent(blocks: MutableList<String>, onAppend: (Sent) -> Pair<Int, String>? = { null }) {
+        var next = 0
+        notion.respond = { sent ->
+            when {
+                sent.path.startsWith("/databases/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "List"))
+                sent.path.startsWith("/databases/db") -> 200 to FakeNotion.database("db")
+                sent.path == "/pages/page-1" -> 200 to FakeNotion.page("page-1", "db", "List")
+                sent.method == "GET" && sent.path.startsWith("/blocks/page-1/children") -> 200 to FakeNotion.list(*blocks.toTypedArray())
+                sent.method == "PATCH" && sent.path == "/blocks/page-1/children" -> {
+                    val texts = Regex("\"content\":\"([^\"]*)\"").findAll(sent.body).map { it.groupValues[1] }.toList()
+                    val added = texts.map { FakeNotion.todo("new-${++next}", it) }
+                    blocks += added
+                    onAppend(sent) ?: (200 to FakeNotion.list(*added.toTypedArray()))
+                }
+                else -> 200 to "{}"
+            }
+        }
+    }
+
+    @Test
+    fun `new to-dos are added once, also when the editor saves again without their IDs`() = runBlocking {
+        val blocks = mutableListOf(FakeNotion.todo("t1", "Milk"))
+        notionWithContent(blocks)
+        val repo = repository()
+        repo.refresh("db", userAsked = true)
+        val loaded = checkNotNull(repo.fetchContent("page-1")).blocks
+        val eggs = Block("eggs", type = BlockType.TODO, text = "Eggs")
+
+        repo.saveContent("page-1", loaded + eggs)
+        repo.flush()
+        // The editor still has its own copy, without the ID Notion gave the new to-do.
+        repo.saveContent("page-1", loaded + eggs.copy(checked = true))
+        repo.flush()
+
+        val appends = notion.requests.filter { it.method == "PATCH" && it.path == "/blocks/page-1/children" }
+        assertEquals(1, appends.size)
+        assertTrue(notion.requests.none { it.method == "DELETE" })
+        assertTrue(notion.requests.any { it.method == "PATCH" && it.path == "/blocks/new-1" && it.body.contains("\"checked\":true") })
+        assertEquals(0, repo.pendingCount.first())
+    }
+
+    @Test
+    fun `a to-do Notion added without answering is not added again`() = runBlocking {
+        val blocks = mutableListOf(FakeNotion.todo("t1", "Milk"))
+        var fail = true
+        // Notion adds the block, but the answer is a server error (once).
+        notionWithContent(blocks) { if (fail) { fail = false; 502 to "{}" } else null }
+        val repo = repository()
+        repo.refresh("db", userAsked = true)
+        val loaded = checkNotNull(repo.fetchContent("page-1")).blocks
+
+        repo.saveContent("page-1", loaded + Block("eggs", type = BlockType.TODO, text = "Eggs"))
+        repo.flush()
+        assertEquals(1, repo.pendingCount.first())
+        repo.flush()
+
+        val appends = notion.requests.filter { it.method == "PATCH" && it.path == "/blocks/page-1/children" }
+        assertEquals(1, appends.size)
+        assertEquals(2, blocks.size)
+        assertEquals(0, repo.pendingCount.first())
+        assertEquals("new-1", repo.cachedContent("page-1")?.blocks?.last()?.notionId)
     }
 }

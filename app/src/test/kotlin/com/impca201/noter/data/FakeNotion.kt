@@ -48,6 +48,10 @@ class FakeNotion(var respond: (Sent) -> Pair<Int, String> = { 200 to "{}" }) : A
                "parent":{"type":"database_id","database_id":"$databaseId"},
                "properties":{"Name":{"id":"title","type":"title","title":[${if (title.isEmpty()) "" else """{"type":"text","plain_text":"$title","text":{"content":"$title"},"annotations":{}}"""}]}}}"""
 
+        fun todo(id: String, text: String, checked: Boolean = false) =
+            """{"object":"block","id":"$id","type":"to_do","has_children":false,
+               "to_do":{"checked":$checked,"rich_text":[{"type":"text","plain_text":"$text","text":{"content":"$text"},"annotations":{}}]}}"""
+
         fun list(vararg items: String) = """{"object":"list","results":[${items.joinToString(",")}],"has_more":false}"""
 
         const val ARCHIVED =

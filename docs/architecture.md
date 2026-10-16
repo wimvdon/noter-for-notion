@@ -63,6 +63,20 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
   their text literally.
 - **Editing rules** (`logic/DocumentEditor.kt`): Enter, Backspace at the start of a line and the
   Markdown shortcuts, following Notion's own editor.
+- **Never twice** (`data/sync/BlockMatch.kt`): the editor keeps its own copy of the blocks and
+  doesn't learn the IDs Notion gives new blocks, so the repository keeps them by the block's key
+  when the editor saves again (before, a new to-do was deleted and added again at each edit).
+  Requests that add something (new blocks, new pages) are only retried by `NotionClient` when
+  Notion says "too many requests". When adding blocks gets no clear answer (timeout, server
+  error), the note is marked `uncertain`: before it is sent again, its content is downloaded and
+  each block without an ID takes the ID of a matching block Notion added, so it isn't added
+  twice. Notion's answer to adding blocks may also list blocks that were already there; new
+  blocks are the ones whose IDs the phone doesn't know.
+- **Offline**: unsent changes are retried after 15 s, then waiting longer each time (at most a
+  minute without a connection, five minutes after server errors), and at once when the app comes
+  to the front or the sync button is tapped. The app doesn't sync while it is closed.
+- **Sync button** (`ui/common/SyncButton.kt`): in a note's app bar, and in the overview's while
+  changes wait or the phone is offline. It sends what is waiting and gets the latest version.
 - **Saving** (`data/sync/SaveTiming.kt`): an edit reaches the on-phone copy after a short pause in
   typing (at most 1 s later), and the queue goes to Notion after a pause (at most 1 s after the
   first unsent change). While typing, that is about one round of requests per second, one per
