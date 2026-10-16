@@ -183,6 +183,8 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
             onReorder = viewModel::reorderProperties,
             onToggleShown = viewModel::toggleShown,
             onToggleOnCard = viewModel::toggleOnCard,
+            onCoverOnCard = viewModel::setCoverOnCard,
+            onContentOnCard = viewModel::setContentOnCard,
             onDismiss = { customize = false },
         )
     }

@@ -69,7 +69,7 @@
     <string name="no_options">Nothing to choose from.</string>
     <string name="customize_properties">Customize properties</string>
     <string name="hide_properties">Hide properties</string>
-    <string name="properties_title">Properties</string>
+    <string name="properties_title">How notes are shown</string>
     <string name="properties_help">Drag to change the order. Shown properties are above the note, the others are collapsed. Up to three can also appear on the note’s card. This applies to every note in the database.</string>
     <string name="property_shown">Show %1$s</string>
     <string name="property_on_card">Show %1$s on the card</string>
@@ -167,4 +167,8 @@
     <string name="pin_to_bar_help">When there’s room. The view is always in the menu (☰).</string>
     <string name="icon_search">Search icons (in English)</string>
     <string name="icon_none_found">No icons found. Try another word, such as “list”, “food” or “work”.</string>
+    <string name="cards_title">Cards in the overview</string>
+    <string name="card_cover">Header image</string>
+    <string name="card_content">Start of the content</string>
+    <string name="properties_section">Properties</string>
 </resources>

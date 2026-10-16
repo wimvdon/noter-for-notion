@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -105,6 +107,7 @@ import com.impca201.noter.data.notion.PropertyCodec
 import com.impca201.noter.logic.NotionDates
 import com.impca201.noter.logic.PropertyLayouts
 import com.impca201.noter.ui.common.DatabaseIcons
+import com.impca201.noter.ui.common.NotionImage
 import com.impca201.noter.ui.common.OptionChip
 import com.impca201.noter.ui.common.SyncButton
 import com.impca201.noter.ui.views.rememberWindowWidthDp
@@ -365,7 +368,10 @@ internal fun NotesPane(
     onReordered: (List<String>) -> Unit,
 ) {
     var confirmTrash by remember { mutableStateOf<NoteSummary?>(null) }
-    LaunchedEffect(state.pinned, state.others) { onLoadPreviews(state.pinned + state.others) }
+    // Previews are only downloaded for cards that show the content.
+    LaunchedEffect(state.pinned, state.others, state.propertyLayouts) {
+        onLoadPreviews((state.pinned + state.others).filter { PropertyLayouts.showsContent(state.propertyLayouts[it.databaseId]) })
+    }
     Column(Modifier.fillMaxSize()) {
         if (state.chips.isNotEmpty()) {
             ChipRow(state, onToggle = onToggleChip, onClear = onClearChips)
@@ -616,6 +622,9 @@ internal fun NoteGrid(
     }
 }
 
+/** Height of a header image on a card. */
+private val CARD_COVER_HEIGHT = 96.dp
+
 /** Movement (px) below which a long press counts as a press, not a drag. */
 private const val DRAG_SLOP_PX = 24f
 
@@ -677,38 +686,50 @@ private fun NoteCard(
         ),
     ) {
         Box {
-            Column(
-                Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (title.isNotBlank() || note.icon != null) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        note.icon?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
-                        if (title.isNotBlank()) {
-                            Text(
-                                title,
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
-                                maxLines = 3,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+            Column {
+                if (PropertyLayouts.showsCover(layout, note.cover)) {
+                    NotionImage(
+                        url = note.cover!!,
+                        expiry = note.coverExpiry,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxWidth().height(CARD_COVER_HEIGHT),
+                    )
+                }
+                Column(
+                    Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (title.isNotBlank() || note.icon != null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            note.icon?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
+                            if (title.isNotBlank()) {
+                                Text(
+                                    title,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                         }
                     }
+                    val showContent = PropertyLayouts.showsContent(layout)
+                    when {
+                        showContent && preview != null -> Text(
+                            preview,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 10,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        title.isBlank() -> Text(
+                            stringResource(R.string.untitled),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    NoteLabels(note, chipProperty, layout, showDatabaseIcon, databaseIcon)
                 }
-                when {
-                    preview != null -> Text(
-                        preview,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 10,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    title.isBlank() -> Text(
-                        stringResource(R.string.untitled),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                NoteLabels(note, chipProperty, layout, showDatabaseIcon, databaseIcon)
             }
             menu()
         }
