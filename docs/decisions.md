@@ -2,6 +2,15 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-16: An × on to-do items, "Pinned" and "filters"
+
+- **To-do items get an ×** to delete them with one tap, because the owner asked for it after
+  using the app (it was removed earlier only because Notion's editor has none).
+- **"Home" is called "Pinned"**, because that is all it shows, and **chips are called
+  "filters"** in the app's text (Material's component is still the filter chip).
+- **Moving a note to the trash from the editor asks first**, as the design rules require for
+  destructive actions.
+
 ## 2026-10-16: Keep-style overview, Notion's block types, saving about once a second
 
 After trying v0.0.1 the owner asked for the overview to look and work like Google Keep, for the
