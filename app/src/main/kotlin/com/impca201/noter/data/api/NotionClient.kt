@@ -112,6 +112,29 @@ class NotionClient(
             PageRef(id, InlineMarkdown.plainText(db.arrayOrNull("title")).trim())
         }
 
+    /**
+     * Pages and databases shared with the integration whose title matches [query] (everything when
+     * blank), most recently edited first; at most [limit] results.
+     */
+    suspend fun search(query: String, limit: Int): List<JsonObject> {
+        val results = mutableListOf<JsonObject>()
+        var cursor: String? = null
+        do {
+            val data = call(
+                "POST", "/search",
+                buildMap {
+                    if (query.isNotBlank()) put("query", query)
+                    put("sort", mapOf("direction" to "descending", "timestamp" to "last_edited_time"))
+                    put("page_size", 100)
+                    if (cursor != null) put("start_cursor", cursor)
+                },
+            )
+            data.arrayOrNull("results")?.forEach { el -> el.asObjectOrNull()?.let(results::add) }
+            cursor = if (data.boolOrNull("has_more") == true) data.stringOrNull("next_cursor") else null
+        } while (cursor != null && results.size < limit)
+        return results.take(limit)
+    }
+
     suspend fun getDatabase(databaseId: String): JsonObject = call("GET", "/databases/$databaseId")
 
     /** All pages of a database matching [filter] (Notion's filter object), most recently edited first. */

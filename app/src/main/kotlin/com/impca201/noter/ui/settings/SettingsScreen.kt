@@ -30,6 +30,7 @@ import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -96,7 +97,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             }
         }
         item(key = "databases") {
-            SettingsSection(title = stringResource(R.string.section_databases)) {
+            SettingsSection(title = stringResource(R.string.section_views)) {
                 SettingsBlock {
                     Text(
                         stringResource(R.string.databases_help),
@@ -157,7 +158,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     if (addingDatabase) {
         AddDatabaseSheet(
             state = state,
-            configured = state.settings.databases.map { it.id.replace("-", "") }.toSet(),
+            configured = state.settings.databases.map { it.sourceId.replace("-", "") }.toSet(),
             onRetry = viewModel::loadAvailable,
             onDismiss = { addingDatabase = false },
             onPick = {
@@ -269,7 +270,17 @@ private fun DatabaseRow(
     ListItem(
             leadingContent = { Icon(DatabaseIcons.icon(config.icon), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
             headlineContent = { Text(config.name) },
-            supportingContent = config.chipProperty?.let { { Text(stringResource(R.string.chips_from, it)) } },
+            supportingContent = config.chipProperty?.let { property ->
+                {
+                    Text(
+                        if (config.filters.isEmpty()) {
+                            stringResource(R.string.chips_from, property)
+                        } else {
+                            stringResource(R.string.view_filtered, property, config.filters.joinToString(", "))
+                        },
+                    )
+                }
+            },
             trailingContent = {
                 Row {
                     IconButton(onClick = { onMove(true) }, enabled = canMoveUp) {
@@ -317,11 +328,12 @@ private fun AddDatabaseSheet(
                 else -> Column(Modifier.verticalScroll(rememberScrollState())) {
                     list.forEach { db ->
                         val added = db.id.replace("-", "") in configured
+                        // A database can have more than one view (with different filters).
                         ListItem(
                             headlineContent = { Text(db.title.ifBlank { stringResource(R.string.untitled) }) },
                             supportingContent = if (added) ({ Text(stringResource(R.string.already_added)) }) else null,
                             leadingContent = { Icon(painterResource(R.drawable.ic_database), contentDescription = null) },
-                            modifier = Modifier.clickable(enabled = !added) { onPick(db) },
+                            modifier = Modifier.clickable { onPick(db) },
                         )
                     }
                 }
@@ -407,11 +419,33 @@ private fun DatabaseEditorSheet(
                     }
                     candidates.forEach { prop ->
                         ChipChoice(prop, prop.name, draft.config.chipProperty == prop.name) {
-                            onChange { it.copy(chipProperty = prop.name) }
+                            onChange { if (it.chipProperty == prop.name) it else it.copy(chipProperty = prop.name, filters = emptyList()) }
                         }
                     }
                     if (candidates.isEmpty()) {
                         Text(stringResource(R.string.chip_property_none_available), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    // The filters selected when the view opens (status and select options; people vary).
+                    val options = draft.config.chipProperty?.let { schema.property(it) }?.options.orEmpty()
+                    if (options.isNotEmpty()) {
+                        Text(stringResource(R.string.view_filters), style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            stringResource(R.string.view_filters_help),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            options.forEach { option ->
+                                val selected = option.name in draft.config.filters
+                                FilterChip(
+                                    selected = selected,
+                                    onClick = {
+                                        onChange { c -> c.copy(filters = if (selected) c.filters - option.name else c.filters + option.name) }
+                                    },
+                                    label = { Text(option.name) },
+                                )
+                            }
+                        }
                     }
                 }
             }

@@ -8,6 +8,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -44,6 +47,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -110,30 +114,28 @@ import com.impca201.noter.ui.common.OptionChip
 import com.impca201.noter.ui.theme.SkeletonBlock
 import kotlinx.coroutines.launch
 
-/** More destinations than a navigation bar holds: they go in a navigation drawer instead. */
-private const val MAX_BAR_ITEMS = 5
-
 /**
- * The overview, in the style of Google Keep: notes as cards in a staggered grid with a preview
- * of their content, pinned notes in their own section on top, and long-press-and-drag to move a
- * note. Pinned and each database are top-level destinations in Material's navigation bar.
+ * The overview, in the style of Google Keep. Top-level destinations (Material's navigation bar,
+ * or a drawer with more than five): Pinned (the pinned notes of everything), Browse (the pages and
+ * databases shared with the integration) and the user's views (a database with its filters).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     viewModel: MainViewModel,
     onOpenNote: (String) -> Unit,
+    onOpenDatabase: (String) -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val browse by viewModel.browse.collectAsStateWithLifecycle()
     val previews by viewModel.previews.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val resources = androidx.compose.ui.platform.LocalResources.current
     var choosingDatabase by remember { mutableStateOf(false) }
-    var confirmTrash by remember { mutableStateOf<NoteSummary?>(null) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val useDrawer = state.tabs.size > MAX_BAR_ITEMS
+    val useDrawer = state.useDrawer
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -148,10 +150,9 @@ fun MainScreen(
             snackbar.showSnackbar(text)
         }
     }
-    LaunchedEffect(state.pinned, state.others) { viewModel.loadPreviews(state.pinned + state.others) }
 
-    val homeLabel = stringResource(R.string.tab_home)
-    val title = state.tabs.firstOrNull { it.key == state.currentTab }?.name?.ifEmpty { null } ?: homeLabel
+    val labels = TabLabels(stringResource(R.string.tab_home), stringResource(R.string.tab_browse))
+    val title = state.tabs.firstOrNull { it.key == state.currentTab }?.let { labels.of(it) } ?: labels.pinned
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     val screen: @Composable () -> Unit = {
@@ -178,27 +179,28 @@ fun MainScreen(
                 )
             },
             bottomBar = {
-                if (state.tabs.size > 1 && !useDrawer) {
+                if (!useDrawer) {
                     NavigationBar {
                         state.tabs.forEach { tab ->
                             NavigationBarItem(
                                 selected = tab.key == state.currentTab,
                                 onClick = { viewModel.selectTab(tab.key) },
                                 icon = { Icon(tab.iconVector(), contentDescription = null) },
-                                label = { Text(tab.label(homeLabel), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                label = { Text(labels.of(tab), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             )
                         }
                     }
                 }
             },
             floatingActionButton = {
-                if (state.hasKey && state.hasDatabases) {
+                val canCreate = state.hasKey && !state.isBrowse && (!state.isHome || state.viewDatabases.isNotEmpty())
+                if (canCreate) {
                     FloatingActionButton(
                         onClick = {
-                            val dbs = viewModel.databases()
+                            val dbs = state.viewDatabases
                             when {
                                 !state.isHome -> viewModel.createNote(onCreated = onOpenNote)
-                                dbs.size == 1 -> viewModel.createNote(dbs.first().id, onOpenNote)
+                                dbs.size == 1 -> viewModel.createNote(dbs.first().sourceId, onOpenNote)
                                 else -> choosingDatabase = true
                             }
                         },
@@ -208,51 +210,33 @@ fun MainScreen(
                 }
             },
         ) { padding ->
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-            ) {
-                if (state.chips.isNotEmpty()) {
-                    ChipRow(state, onToggle = viewModel::toggleChip, onClear = viewModel::clearChips)
-                }
-                PullToRefreshBox(
-                    isRefreshing = state.refreshing && !state.loading,
-                    onRefresh = viewModel::refresh,
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    when {
-                        !state.ready -> Unit
-                        !state.hasKey -> EmptyState(
-                            stringResource(R.string.empty_no_key),
-                            stringResource(R.string.empty_no_key_action),
-                            onOpenSettings,
-                        )
-                        !state.hasDatabases -> EmptyState(
-                            stringResource(R.string.empty_no_databases),
-                            stringResource(R.string.empty_no_databases_action),
-                            onOpenSettings,
-                        )
-                        state.loading && state.pinned.isEmpty() && state.others.isEmpty() -> LoadingGrid()
-                        state.pinned.isEmpty() && state.others.isEmpty() -> EmptyState(
-                            when {
-                                state.selectedChips.isNotEmpty() -> stringResource(R.string.empty_filtered)
-                                state.isHome -> stringResource(R.string.empty_home)
-                                state.error != null -> stringResource(R.string.empty_error, state.error ?: "")
-                                else -> stringResource(R.string.empty_database)
-                            },
-                            null,
-                            null,
-                        )
-                        else -> NoteGrid(
-                            state = state,
-                            previews = previews,
-                            onOpen = onOpenNote,
-                            onTogglePin = viewModel::togglePin,
-                            onTrash = { confirmTrash = it },
-                            onReordered = viewModel::saveOrder,
-                        )
-                    }
+            Box(Modifier.fillMaxSize().padding(padding)) {
+                when {
+                    !state.ready -> Unit
+                    !state.hasKey -> EmptyState(
+                        stringResource(R.string.empty_no_key),
+                        stringResource(R.string.empty_no_key_action),
+                        onOpenSettings,
+                    )
+                    state.isBrowse -> BrowsePane(
+                        state = browse,
+                        onSearch = viewModel::search,
+                        onRefresh = viewModel::refresh,
+                        onOpenPage = { viewModel.openItem(it, onOpenNote) },
+                        onOpenDatabase = onOpenDatabase,
+                    )
+                    else -> NotesPane(
+                        state = state,
+                        previews = previews,
+                        onLoadPreviews = viewModel::loadPreviews,
+                        onToggleChip = viewModel::toggleChip,
+                        onClearChips = viewModel::clearChips,
+                        onRefresh = viewModel::refresh,
+                        onOpen = onOpenNote,
+                        onTogglePin = viewModel::togglePin,
+                        onTrash = viewModel::trash,
+                        onReordered = viewModel::saveOrder,
+                    )
                 }
             }
         }
@@ -263,18 +247,28 @@ fun MainScreen(
             drawerState = drawerState,
             drawerContent = {
                 ModalDrawerSheet {
-                    Spacer(Modifier.padding(top = 12.dp))
-                    state.tabs.forEach { tab ->
-                        NavigationDrawerItem(
-                            label = { Text(tab.label(homeLabel), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            icon = { Icon(tab.iconVector(), contentDescription = null) },
-                            selected = tab.key == state.currentTab,
-                            onClick = {
-                                viewModel.selectTab(tab.key)
-                                scope.launch { drawerState.close() }
-                            },
-                            modifier = Modifier.padding(horizontal = 12.dp),
-                        )
+                    Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 12.dp)) {
+                        state.tabs.forEachIndexed { index, tab ->
+                            if (index == 2) {
+                                // Pinned and Browse, then the views under their own header.
+                                HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                                Text(
+                                    stringResource(R.string.section_views),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                )
+                            }
+                            NavigationDrawerItem(
+                                label = { Text(labels.of(tab), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                icon = { Icon(tab.iconVector(), contentDescription = null) },
+                                selected = tab.key == state.currentTab,
+                                onClick = {
+                                    viewModel.selectTab(tab.key)
+                                    scope.launch { drawerState.close() }
+                                },
+                            )
+                        }
                     }
                 }
             },
@@ -291,20 +285,88 @@ fun MainScreen(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
             )
-            viewModel.databases().forEach { db ->
+            state.viewDatabases.forEach { db ->
                 ListItem(
                     headlineContent = { Text(db.name) },
                     leadingContent = { Icon(DatabaseIcons.icon(db.icon), contentDescription = null) },
                     modifier = Modifier.clickable {
                         choosingDatabase = false
-                        viewModel.createNote(db.id, onOpenNote)
+                        viewModel.createNote(db.sourceId, onOpenNote)
                     },
                 )
             }
             Spacer(Modifier.padding(bottom = 24.dp))
         }
     }
+}
 
+/** The names of the fixed destinations (views have their own). */
+private class TabLabels(val pinned: String, val browse: String) {
+    fun of(tab: Tab): String = when {
+        tab.isPinned -> pinned
+        tab.isBrowse -> browse
+        else -> tab.name
+    }
+}
+
+private fun Tab.iconVector(): ImageVector = when {
+    isPinned -> Icons.Rounded.PushPin
+    isBrowse -> Icons.Rounded.Explore
+    else -> DatabaseIcons.icon(icon)
+}
+
+/**
+ * The notes of Pinned, a view or a database: filters on top, then the notes as cards, with
+ * pull-to-refresh, loading placeholders and empty states. Moving a note to the trash asks first.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun NotesPane(
+    state: MainUiState,
+    previews: Map<String, String>,
+    onLoadPreviews: (List<NoteSummary>) -> Unit,
+    onToggleChip: (String) -> Unit,
+    onClearChips: () -> Unit,
+    onRefresh: () -> Unit,
+    onOpen: (String) -> Unit,
+    onTogglePin: (String) -> Unit,
+    onTrash: (String) -> Unit,
+    onReordered: (List<String>) -> Unit,
+) {
+    var confirmTrash by remember { mutableStateOf<NoteSummary?>(null) }
+    LaunchedEffect(state.pinned, state.others) { onLoadPreviews(state.pinned + state.others) }
+    Column(Modifier.fillMaxSize()) {
+        if (state.chips.isNotEmpty()) {
+            ChipRow(state, onToggle = onToggleChip, onClear = onClearChips)
+        }
+        PullToRefreshBox(
+            isRefreshing = state.refreshing && !state.loading,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            when {
+                state.loading && state.pinned.isEmpty() && state.others.isEmpty() -> LoadingGrid()
+                state.pinned.isEmpty() && state.others.isEmpty() -> EmptyState(
+                    when {
+                        state.selectedChips.isNotEmpty() -> stringResource(R.string.empty_filtered)
+                        state.isHome -> stringResource(R.string.empty_home)
+                        state.error != null -> stringResource(R.string.empty_error, state.error)
+                        else -> stringResource(R.string.empty_database)
+                    },
+                    null,
+                    null,
+                )
+                else -> NoteGrid(
+                    state = state,
+                    previews = previews,
+                    onOpen = onOpen,
+                    onTogglePin = onTogglePin,
+                    onTrash = { confirmTrash = it },
+                    onReordered = onReordered,
+                )
+            }
+        }
+    }
     confirmTrash?.let { note ->
         AlertDialog(
             onDismissRequest = { confirmTrash = null },
@@ -312,7 +374,7 @@ fun MainScreen(
             text = { Text(stringResource(R.string.trash_body, InlineMarkdown.stripped(note.title).ifBlank { stringResource(R.string.untitled) })) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.trash(note.id)
+                    onTrash(note.id)
                     confirmTrash = null
                 }) { Text(stringResource(R.string.trash_confirm)) }
             },
@@ -320,12 +382,6 @@ fun MainScreen(
         )
     }
 }
-
-private fun Tab.isHome(): Boolean = name.isEmpty() && icon == null
-
-private fun Tab.label(homeLabel: String): String = if (isHome()) homeLabel else name
-
-private fun Tab.iconVector(): ImageVector = if (isHome()) Icons.Rounded.PushPin else DatabaseIcons.icon(icon)
 
 @Composable
 private fun SyncStatusIcon(pending: Int, offline: Boolean) {
@@ -361,10 +417,11 @@ private fun ChipRow(state: MainUiState, onToggle: (String) -> Unit, onClear: () 
         items(state.chips, key = { it.key }) { chip ->
             val selected = chip.key in state.selectedChips
             val icon = if (state.isHome) state.databaseIcons[chip.key] else null
+            val label = chip.label.ifEmpty { stringResource(R.string.source_pages) }
             FilterChip(
                 selected = selected,
                 onClick = { onToggle(chip.key) },
-                label = { Text(if (chip.count > 0) "${chip.label}  ${chip.count}" else chip.label) },
+                label = { Text(if (chip.count > 0) "$label  ${chip.count}" else label) },
                 leadingIcon = if (state.isHome) {
                     { Icon(DatabaseIcons.icon(icon), contentDescription = null, Modifier.size(FilterChipDefaults.IconSize)) }
                 } else {
@@ -398,7 +455,7 @@ private sealed interface GridItem {
  * note's menu. The order is kept on this phone.
  */
 @Composable
-private fun NoteGrid(
+internal fun NoteGrid(
     state: MainUiState,
     previews: Map<String, String>,
     onOpen: (String) -> Unit,
@@ -732,7 +789,7 @@ private fun LoadingGrid() {
 private val SKELETON_HEIGHTS = listOf(120, 88, 96, 140, 72, 110, 88, 120)
 
 @Composable
-private fun EmptyState(text: String, action: String?, onAction: (() -> Unit)?) {
+internal fun EmptyState(text: String, action: String?, onAction: (() -> Unit)?) {
     Column(
         Modifier
             .fillMaxSize()

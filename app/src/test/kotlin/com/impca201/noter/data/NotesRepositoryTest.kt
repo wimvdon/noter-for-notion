@@ -153,4 +153,35 @@ class NotesRepositoryTest {
         // Blocks keep their keys, so the editor doesn't redraw everything.
         assertEquals(first.blocks.map { it.key }, second.blocks.map { it.key })
     }
+
+    @Test
+    fun `pages from Browse and linked pages open in the editor and can be pinned`() = runBlocking {
+        notion.respond = { sent ->
+            when {
+                sent.path.startsWith("/databases/db/query") -> 200 to FakeNotion.list()
+                sent.path.startsWith("/databases/db") -> 200 to FakeNotion.database("db")
+                sent.path == "/search" -> 200 to FakeNotion.list(
+                    """{"object":"page","id":"top","parent":{"type":"workspace","workspace":true},
+                        "properties":{"title":{"id":"title","type":"title","title":[]}}}""",
+                    FakeNotion.page("row", "db", "A note"),
+                )
+                sent.path == "/pages/linked" ->
+                    200 to """{"object":"page","id":"linked","parent":{"type":"page_id","page_id":"top"},"properties":{"title":{"id":"title","type":"title","title":[]}}}"""
+                else -> 200 to "{}"
+            }
+        }
+        val repo = repository()
+        val items = repo.browse("")
+        // Without a search, a database's notes are left out.
+        assertEquals(listOf("top"), items.map { it.id })
+
+        val id = repo.openNote(items.single().note!!)
+        assertEquals("top", repo.note(id).first()?.id)
+        assertEquals("linked", repo.openPage("linked"))
+        assertEquals(NotesRepository.PAGES, repo.note("linked").first()?.databaseId)
+
+        repo.togglePin("linked")
+        repo.updateProperty("linked", NoteProperty("title", "title", PropertyValue.Text("Renamed")))
+        assertEquals("Renamed", repo.note("linked").first()?.title)
+    }
 }

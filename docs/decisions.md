@@ -2,6 +2,27 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-16: Browse, pages on their own, and views instead of added databases
+
+The owner asked for pages outside databases, one list of all pages and databases, and for "added
+databases" to become views: a database pinned to the navigation, optionally with filters on.
+
+- **Destinations:** Pinned, Browse, then the views. Material's navigation bar holds three to five
+  destinations, so up to three views fit; with more, all destinations move to a navigation
+  drawer (views under their own header), as Material prescribes. Rejected: a scrolling bar
+  (Material's bar never scrolls) and an always-on drawer (the bar is quicker with few views).
+- **Browse** uses Notion's search (one or two requests of 100, newest first). A database's own
+  pages are left out unless searching, so a big database doesn't bury the rest. Rejected: a page
+  tree (one request per level).
+- **Views** reuse `DatabaseConfig` with a `databaseId` and `filters`, so views saved before keep
+  working without a migration (their ID is their database's). A database can have several views.
+  Pins and the note order stay per database.
+- **Pages on their own** are kept like a database's notes under `NotesRepository.PAGES`, so
+  editing, saving, pinning and the trash need no second code path. New pages can't be created
+  outside a database yet (Notion needs a parent page; not asked for).
+- **Databases opened from Browse** get the filter property of one of their views, else their
+  first status or select property.
+
 ## 2026-10-16: The user chooses which properties are shown, per database
 
 The owner asked for only three properties by default instead of collapsing the read-only ones,

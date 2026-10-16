@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 /** The result of the last key test, for the Connection section. */
 sealed interface KeyStatus {
@@ -35,7 +36,7 @@ sealed interface KeyStatus {
     data object Removed : KeyStatus
 }
 
-/** The database being added or edited in the sheet. */
+/** The view being added or edited in the sheet. */
 data class DatabaseDraft(
     val config: DatabaseConfig,
     val isNew: Boolean,
@@ -116,14 +117,14 @@ class SettingsViewModel(
     }
 
     fun startAdd(database: PageRef) {
-        val config = DatabaseConfig(id = database.id, name = database.title)
+        val config = DatabaseConfig(id = "view-" + UUID.randomUUID(), name = database.title, databaseId = database.id)
         draft.value = DatabaseDraft(config, isNew = true)
         loadSchema(database.id)
     }
 
     fun startEdit(config: DatabaseConfig) {
         draft.value = DatabaseDraft(config, isNew = false)
-        loadSchema(config.id)
+        loadSchema(config.sourceId)
     }
 
     private fun loadSchema(id: String) {
@@ -131,7 +132,7 @@ class SettingsViewModel(
             try {
                 val schema = repository.fetchSchema(id)
                 draft.update { d ->
-                    if (d?.config?.id != id) return@update d
+                    if (d?.config?.sourceId != id) return@update d
                     // Suggest a status or select property for the chips when there is none yet.
                     val chip = d.config.chipProperty ?: if (d.isNew) {
                         schema.properties.firstOrNull { it.type == "status" }?.name
@@ -142,7 +143,7 @@ class SettingsViewModel(
                     d.copy(schema = schema, config = d.config.copy(chipProperty = chip))
                 }
             } catch (e: NotionException) {
-                draft.update { d -> if (d?.config?.id == id) d.copy(schemaError = e.message) else d }
+                draft.update { d -> if (d?.config?.sourceId == id) d.copy(schemaError = e.message) else d }
             }
         }
     }

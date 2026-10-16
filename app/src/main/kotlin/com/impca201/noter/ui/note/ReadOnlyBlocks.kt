@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.AudioFile
 import androidx.compose.material.icons.rounded.Description
@@ -55,10 +56,10 @@ import com.impca201.noter.ui.theme.AppShapes
 /**
  * Blocks the editor shows but can't change (see [BlockType.UNSUPPORTED]): images, files, links,
  * tables, equations, linked pages and a table of contents. Tapping one opens it (in Notion, or
- * the file or link in the browser).
+ * the file or link in the browser; linked pages and databases in the app).
  */
 @Composable
-fun ReadOnlyBlock(block: Block, headings: List<Block>) {
+fun ReadOnlyBlock(block: Block, headings: List<Block>, onOpenPage: (String) -> Unit, onOpenDatabase: (String) -> Unit) {
     val context = LocalContext.current
     val open: (String) -> Unit = { link -> runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, link.toUri())) } }
     val url = block.url
@@ -93,10 +94,11 @@ fun ReadOnlyBlock(block: Block, headings: List<Block>) {
         }
         "child_page", "child_database", "link_to_page" -> if (url != null) {
             LinkRow(
-                icon = if (block.rawType == "child_database") Icons.Rounded.TableChart else Icons.Rounded.Description,
+                icon = if (block.linksDatabase) Icons.Rounded.TableChart else Icons.Rounded.Description,
                 title = block.text.ifBlank { stringResource(if (block.rawType == "link_to_page") R.string.block_linked_page else R.string.untitled) },
                 subtitle = null,
-                onClick = { open(ReadOnlyBlocks.notionUrl(url)) },
+                trailing = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                onClick = { if (block.linksDatabase) onOpenDatabase(url) else onOpenPage(url) },
             )
         } else {
             Fallback(block)
@@ -141,7 +143,13 @@ private fun Caption(text: String) {
 }
 
 @Composable
-private fun LinkRow(icon: ImageVector, title: String, subtitle: String?, onClick: () -> Unit) {
+private fun LinkRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String?,
+    onClick: () -> Unit,
+    trailing: ImageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+) {
     Surface(
         onClick = onClick,
         shape = AppShapes.Item,
@@ -157,7 +165,7 @@ private fun LinkRow(icon: ImageVector, title: String, subtitle: String?, onClick
                 }
             }
             Icon(
-                Icons.AutoMirrored.Rounded.OpenInNew,
+                trailing,
                 contentDescription = stringResource(R.string.action_open_link),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )

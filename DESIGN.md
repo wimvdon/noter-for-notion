@@ -160,6 +160,11 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   properties chosen for cards (up to three; options in Notion's colours, other values in Label
   Medium), or else the filter property's options. "Pinned" and "Others" are Label Large headers spanning
   the grid. A dragged card lifts (shadow, 3% larger, `surfaceContainerHigh`).
+- Navigation: Pinned, Browse and the user's views are the top-level destinations, in that order
+  (bar up to five, else a drawer with the views under a "Views" header). Browse is one list with
+  a pill-shaped search field and "Databases" and "Pages" headers (Title Small, primary). A
+  database opened from Browse is a child page with "Add to navigation" (bookmark icon) in its
+  app bar.
 - The note editor follows Notion's look: headings in SemiBold, quotes with a bar, callouts and
   code on `surfaceContainerHigh` (code in a monospace font), dividers as `outlineVariant` lines.
   Read-only blocks sit in a `surfaceContainer` box with "(edit in Notion)".

@@ -1,6 +1,5 @@
 package com.impca201.noter.logic
 
-import com.impca201.noter.data.model.DatabaseConfig
 import com.impca201.noter.data.model.NoteProperty
 import com.impca201.noter.data.model.NoteSummary
 import com.impca201.noter.data.model.NotionUser
@@ -57,7 +56,7 @@ class ChipFilterTest {
 
     @Test
     fun `home shows pinned notes of all databases, newest pin first`() {
-        val dbs = listOf(DatabaseConfig("db", "One"), DatabaseConfig("db2", "Two"))
+        val dbs = listOf(NoteSource("db", "One"), NoteSource("db2", "Two"))
         val byDb = mapOf("db" to notes, "db2" to listOf(note("x", null, "db2")))
         val content = NoteLists.home(dbs, byDb, pinned = listOf("x", "a"), order = emptyList(), selectedDatabases = emptySet())
         assertEquals(listOf("x", "a"), content.pinned.map { it.id })

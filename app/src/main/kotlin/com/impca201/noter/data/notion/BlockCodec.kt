@@ -72,8 +72,10 @@ object BlockCodec {
             }
             "bookmark", "embed", "link_preview" -> base.copy(text = caption, url = body?.stringOrNull("url"))
             "equation" -> base.copy(text = body?.stringOrNull("expression").orEmpty())
-            "child_page", "child_database" -> base.copy(text = body?.stringOrNull("title").orEmpty(), url = id)
-            "link_to_page" -> base.copy(url = body?.stringOrNull("page_id") ?: body?.stringOrNull("database_id"))
+            "child_page" -> base.copy(text = body?.stringOrNull("title").orEmpty(), url = id)
+            "child_database" -> base.copy(text = body?.stringOrNull("title").orEmpty(), url = id, linksDatabase = true)
+            "link_to_page" -> body?.stringOrNull("database_id")?.let { base.copy(url = it, linksDatabase = true) }
+                ?: base.copy(url = body?.stringOrNull("page_id"))
             "table" -> base.copy(headerRow = body?.boolOrNull("has_column_header") == true)
             else -> base.copy(
                 text = body?.arrayOrNull("rich_text")?.let { InlineMarkdown.plainText(it) } ?: caption.ifEmpty { body?.stringOrNull("url").orEmpty() },
