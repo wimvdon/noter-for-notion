@@ -22,18 +22,18 @@ python3 -m unittest discover -s scripts/tests
 ### What the unit tests cover
 | Test | Covers |
 |---|---|
-| `logic/DocumentEditorTest` | Enter, Backspace, Markdown shortcuts (Notion's), dividers, code blocks, numbering |
+| `logic/DocumentEditorTest` | Enter, Backspace, Markdown shortcuts (Notion's), dividers, code blocks, numbering; nesting (indent, outdent, Enter and Backspace in nested blocks, what may move) |
 | `data/notion/BlockCodecTest` | Reading and writing every editable block type; images, files, links, tables and linked pages read-only |
 | `data/model/NotionFilesTest`, `logic/ReadOnlyBlocksTest` | Expiring links to files Notion hosts; file names and links of read-only blocks |
 | `data/notion/InlineMarkdownTest` | Bold, italic, strikethrough, code and links ⇄ Notion rich text |
 | `data/notion/PropertyCodecTest` | Reading and writing page properties |
-| `data/sync/ContentDiffTest` | The block changes sent to Notion for an edit |
+| `data/sync/ContentDiffTest` | The block changes sent to Notion for an edit, also for nested blocks (new blocks in their parent, moved blocks added again) |
 | `data/sync/BlockMatchTest` | New blocks keep the IDs Notion gave them, and blocks Notion added without answering are recognised, so nothing is added twice |
 | `data/sync/OutboxTest` | The queue of unsent changes (merging, renaming new notes) |
 | `data/sync/SyncPolicyTest` | When to refresh, and merging refreshed notes |
 | `data/sync/SaveTimingTest` | How soon edits are saved while typing (within Notion's rate limit) |
-| `data/NotesRepositoryTest` | The repository against a fake Notion server (`FakeNotion`, the JDK's own HTTP server): new notes stay open while Notion creates them, nothing is sent for a note in the trash, table rows, expired image links, pages from Browse and linked pages, new to-dos added once (also after a lost answer) |
-| `data/SyncStressTest` | Random editing (typing, Enter, ticking, changing kinds, deleting) while a slow fake Notion that keeps the blocks answers: Notion ends with exactly the note on the phone, also when it can't insert at the start |
+| `data/NotesRepositoryTest` | The repository against a fake Notion server (`FakeNotion`, the JDK's own HTTP server): new notes stay open while Notion creates them, nothing is sent for a note in the trash, table rows, expired image links, pages from Browse and linked pages, new to-dos added once (also after a lost answer), nested blocks downloaded and added to their parent |
+| `data/SyncStressTest` | Random editing (typing, Enter, ticking, changing kinds, indenting, outdenting, deleting) while a slow fake Notion that keeps the blocks, nested ones too, answers: Notion ends with exactly the note on the phone, also when it can't insert at the start |
 | `data/store/CacheStoreTest` | On-phone copies survive a restart |
 | `logic/NoteOrderingTest`, `logic/ChipFilterTest` | Pins, custom order, filters |
 | `logic/DestinationsTest`, `data/notion/WorkspaceCodecTest` | Which views fit in the navigation bar, views and their filters; Browse's list from Notion's search |

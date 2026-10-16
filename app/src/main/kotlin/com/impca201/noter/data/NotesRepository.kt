@@ -24,6 +24,7 @@ import com.impca201.noter.data.store.PagesCache
 import com.impca201.noter.data.store.SettingsStore
 import com.impca201.noter.data.store.UsersCache
 import com.impca201.noter.data.sync.BlockMatch
+import com.impca201.noter.data.sync.BlockRef
 import com.impca201.noter.data.sync.ContentDiff
 import com.impca201.noter.data.sync.ContentOp
 import com.impca201.noter.data.sync.Outbox
@@ -375,7 +376,7 @@ class NotesRepository(
             }
             val edited = page.stringOrNull("last_edited_time")
             val cached = cache.content(id)
-            val current = cached != null && cached.remoteEditedTime == edited && !cached.hasExpiredFiles(clock())
+            val current = cached != null && cached.remoteEditedTime == edited && cached.nestedLoaded && !cached.hasExpiredFiles(clock())
             if (cached != null && current && !cached.dirty) return@withContext cached
             if (cached?.dirty == true) return@withContext null
             val fresh = downloadContent(id, cached?.blocks.orEmpty(), edited)
@@ -392,17 +393,37 @@ class NotesRepository(
         }
     }
 
-    private suspend fun downloadContent(id: String, previous: List<Block>, edited: String?): PageContent {
-        val parsed = client.blockChildren(id).mapNotNull { json ->
-            val notionId = json.stringOrNull("id") ?: return@mapNotNull null
-            val block = BlockCodec.parse(json, notionId) ?: return@mapNotNull null
-            // A table's cells are its rows (nested blocks): one more request per table.
-            if (block.rawType == "table" && block.hasChildren) block.copy(rows = BlockCodec.tableRows(client.blockChildren(notionId))) else block
-        }
+    /**
+     * Downloads a note's content. With [nested] the blocks inside blocks come too, as deep as
+     * [MAX_DEPTH] (one more request per block with nested content); the overview's previews only
+     * need the top level.
+     */
+    private suspend fun downloadContent(id: String, previous: List<Block>, edited: String?, nested: Boolean = true): PageContent {
+        val parsed = downloadBlocks(id, parentId = null, depth = 0, nested = nested)
         // Blocks keep their keys on this phone, also blocks sent from here whose ID wasn't known yet.
         val keys = BlockMatch.keysFor(previous, parsed)
         val blocks = parsed.map { it.copy(key = keys[it.notionId] ?: UUID.randomUUID().toString()) }
-        return PageContent(id, blocks = blocks, base = blocks, dirty = false, remoteEditedTime = edited)
+        return PageContent(id, blocks = blocks, base = blocks, dirty = false, remoteEditedTime = edited, nestedLoaded = nested)
+    }
+
+    /** The blocks in [blockId] (a page or a block), each followed by what is nested in it. */
+    private suspend fun downloadBlocks(blockId: String, parentId: String?, depth: Int, nested: Boolean): List<Block> {
+        val result = mutableListOf<Block>()
+        for (json in client.blockChildren(blockId)) {
+            val notionId = json.stringOrNull("id") ?: continue
+            val block = BlockCodec.parse(json, notionId)?.copy(depth = depth, parentId = parentId) ?: continue
+            when {
+                // A table's cells are its rows (nested blocks): one more request per table.
+                block.rawType == "table" && block.hasChildren -> result += block.copy(rows = BlockCodec.tableRows(client.blockChildren(notionId)))
+                // Nested text blocks are shown and edited; images, columns, … keep theirs in Notion.
+                nested && block.hasChildren && block.type != BlockType.UNSUPPORTED && depth < MAX_DEPTH -> {
+                    result += block.copy(hasChildren = false)
+                    result += downloadBlocks(notionId, notionId, depth + 1, nested = true)
+                }
+                else -> result += block
+            }
+        }
+        return result
     }
 
     private suspend fun replaceNote(databaseId: String, fresh: NoteSummary) = lock.withLock {
@@ -594,7 +615,8 @@ class NotesRepository(
                         if (!e.isNotFound && e.status != 400) throw e
                         reload = true
                     }
-                    base.replaceAll { if (it.notionId == op.notionId) op.block else it }
+                    // Notion's copy now has the new text; where the block is (its parent) stays as Notion has it.
+                    base.replaceAll { if (it.notionId == op.notionId) op.block.copy(parentId = it.parentId) else it }
                 }
                 is ContentOp.Delete -> {
                     try {
@@ -605,15 +627,24 @@ class NotesRepository(
                     base.removeAll { it.notionId == op.notionId }
                 }
                 is ContentOp.Insert -> {
+                    fun resolve(ref: BlockRef?): String? = ref?.let { it.notionId ?: idsByKey[it.key] }
+                    val parentId = resolve(op.parent)
+                    val afterId = resolve(op.after)
+                    if ((op.parent != null && parentId == null) || (op.after != null && afterId == null)) {
+                        // Its parent or the block before it couldn't be added: reload, then try again.
+                        reload = true
+                        continue
+                    }
+                    val target = parentId ?: pageId
                     val bodies = op.blocks.map(BlockCodec::toCreateRequest)
                     val known = base.mapNotNull { it.notionId }.toSet()
                     val ids = try {
                         try {
-                            client.appendChildren(pageId, bodies, op.afterNotionId, op.atStart, known)
+                            client.appendChildren(target, bodies, afterId, op.atStart, known)
                         } catch (e: NotionException) {
                             if (e.status != 400 || !op.atStart) throw e
                             // This API version can't insert at the start: add at the end and reload.
-                            client.appendChildren(pageId, bodies, after = null, atStart = false, knownIds = known)
+                            client.appendChildren(target, bodies, after = null, atStart = false, knownIds = known)
                             reload = true
                             emptyList()
                         }
@@ -625,7 +656,7 @@ class NotesRepository(
                     if (ids.size == op.blocks.size) {
                         op.blocks.zip(ids).forEach { (block, id) ->
                             idsByKey[block.key] = id
-                            base += block.copy(notionId = id)
+                            base += block.copy(notionId = id, parentId = parentId)
                         }
                     } else {
                         reload = true
@@ -638,20 +669,16 @@ class NotesRepository(
         if (reload) {
             val fresh = downloadContent(pageId, cache.content(pageId)?.blocks.orEmpty(), null)
             return lock.withLock {
-                val now = cache.content(pageId)
-                val unchanged = now == null || now.blocks.map { it.copy(notionId = null) } == snapshot.map { it.copy(notionId = null) }
-                if (unchanged) {
-                    cache.saveContent(fresh)
-                    true
-                } else {
-                    // Edited meanwhile: keep the edits, but compare against what Notion has now.
-                    val freshIds = fresh.blocks.mapNotNull { it.notionId }.toSet()
-                    val blocks = BlockMatch.keepIds(now.blocks, fresh.blocks).map { b ->
-                        if (b.notionId != null && b.notionId !in freshIds) b.copy(notionId = null) else b
-                    }
-                    cache.saveContent(now.copy(blocks = blocks, base = fresh.blocks, dirty = true))
-                    false
+                val now = cache.content(pageId) ?: return@withLock true
+                // Compare what is on the phone (edited meanwhile or not) with what Notion has now:
+                // blocks that couldn't be sent yet (inside a block whose ID is unknown) still go.
+                val freshIds = fresh.blocks.mapNotNull { it.notionId }.toSet()
+                val blocks = BlockMatch.keepIds(now.blocks, fresh.blocks).map { b ->
+                    if (b.notionId != null && b.notionId !in freshIds) b.copy(notionId = null) else b
                 }
+                val dirty = ContentDiff.plan(fresh.blocks, blocks).isNotEmpty()
+                cache.saveContent(now.copy(blocks = blocks, base = fresh.blocks, dirty = dirty, nestedLoaded = true, remoteEditedTime = null))
+                !dirty
             }
         }
         return lock.withLock {
@@ -712,7 +739,9 @@ class NotesRepository(
                 for (note in stale.take(NotePreviews.MAX_DOWNLOADS)) {
                     try {
                         val previous = cache.content(note.id)
-                        val fresh = downloadContent(note.id, previous?.blocks.orEmpty(), note.lastEditedTime)
+                        // Only the top level, unless the copy already had the nested blocks (an opened note).
+                        val nested = previous?.nestedLoaded == true
+                        val fresh = downloadContent(note.id, previous?.blocks.orEmpty(), note.lastEditedTime, nested)
                         lock.withLock {
                             // Never replace edits made meanwhile.
                             if (cache.content(note.id)?.dirty != true) {
@@ -894,6 +923,9 @@ class NotesRepository(
         private const val RETRY_OFFLINE_MAX_MS = 60_000L
         private const val LOOKUP_TTL_MS = 24 * 60 * 60_000L
         private const val RELATED_TTL_MS = 10 * 60_000L
+
+        /** How deep nested blocks are downloaded (deeper ones stay in Notion, as nested content). */
+        const val MAX_DEPTH = 5
     }
 }
 

@@ -49,34 +49,50 @@ class SyncStressTest {
 
     /** A page in Notion: its blocks in order, deleted ones kept (Notion archives them). */
     private class Page {
-        data class B(val id: String, var type: String, var text: String, var checked: Boolean, var archived: Boolean = false)
+        data class B(
+            val id: String,
+            var type: String,
+            var text: String,
+            var checked: Boolean,
+            var archived: Boolean = false,
+            /** The parent block (null: the page). */
+            val parent: String? = null,
+        )
 
+        /** All blocks of the page, each parent's children in their order. */
         val blocks = mutableListOf<B>()
         private var next = 0
 
-        fun live() = blocks.filter { !it.archived }
+        private fun gone(b: B): Boolean = b.archived || (b.parent != null && blocks.first { it.id == b.parent }.let(::gone))
+
+        fun children(parent: String?) = blocks.filter { it.parent == parent && !gone(it) }
+
+        /** The page as the editor shows it: each block followed by its children, with their depth. */
+        fun live(parent: String? = null, depth: Int = 0): List<Pair<B, Int>> =
+            children(parent).flatMap { listOf(it to depth) + live(it.id, depth + 1) }
 
         fun json(b: B) =
-            """{"object":"block","id":"${b.id}","type":"${b.type}","has_children":false,
+            """{"object":"block","id":"${b.id}","type":"${b.type}","has_children":${children(b.id).isNotEmpty()},
                "${b.type}":{"checked":${b.checked},"rich_text":[{"type":"text","plain_text":${Json.encodeToString(b.text)},"text":{"content":${Json.encodeToString(b.text)}},"annotations":{}}]}}"""
 
-        fun append(body: JsonObject): String {
+        fun append(parent: String?, body: JsonObject): String {
             val children = body["children"]!!.jsonArray.map { it.jsonObject }
             val after = body["after"]?.jsonPrimitive?.content
             val atStart = body["position"]?.jsonObject?.get("type")?.jsonPrimitive?.content == "start"
             val added = children.map { child ->
                 val type = child["type"]!!.jsonPrimitive.content
                 val content = child[type]?.jsonObject
-                B("b${++next}", type, richText(content?.get("rich_text") as? JsonArray), content?.get("checked")?.jsonPrimitive?.boolean ?: false)
+                B("b${++next}", type, richText(content?.get("rich_text") as? JsonArray), content?.get("checked")?.jsonPrimitive?.boolean ?: false, parent = parent)
             }
+            val siblings = blocks.filter { it.parent == parent }
             val index = when {
                 after != null -> blocks.indexOfFirst { it.id == after } + 1
-                atStart -> 0
+                atStart -> siblings.firstOrNull()?.let { blocks.indexOf(it) } ?: blocks.size
                 else -> blocks.size
             }
             blocks.addAll(index, added)
             // Like Notion with an anchor: the new blocks, then the ones after them.
-            val answer = if (after == null && !atStart) added else blocks.drop(index).filter { !it.archived }
+            val answer = if (after == null && !atStart) added else blocks.drop(index).filter { it.parent == parent && !it.archived }
             return FakeNotion.list(*answer.map(::json).toTypedArray())
         }
 
@@ -107,21 +123,25 @@ class SyncStressTest {
     private fun serve(page: Page, random: Random) {
         notion.respond = { sent ->
             // Notion is slow, so edits keep coming while a request is under way.
-            Thread.sleep(random.nextLong(5, 60))
+            Thread.sleep(random.nextLong(LATENCY_MIN, LATENCY_MAX))
             synchronized(page) {
                 val body = if (sent.body.isBlank()) JsonObject(emptyMap()) else Json.parseToJsonElement(sent.body).jsonObject
                 when {
                     sent.path.startsWith("/databases/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "List"))
                     sent.path.startsWith("/databases/db") -> 200 to FakeNotion.database("db")
                     sent.path == "/pages/page-1" -> 200 to FakeNotion.page("page-1", "db", "List")
-                    sent.path.startsWith("/blocks/page-1/children") && sent.method == "GET" ->
-                        200 to FakeNotion.list(*page.live().map(page::json).toTypedArray())
-                    sent.path == "/blocks/page-1/children" && sent.method == "PATCH" ->
+                    sent.path.contains("/children") && sent.method == "GET" -> {
+                        val id = sent.path.removePrefix("/blocks/").substringBefore("/children")
+                        200 to FakeNotion.list(*page.children(id.takeIf { it != "page-1" }).map(page::json).toTypedArray())
+                    }
+                    sent.path.endsWith("/children") && sent.method == "PATCH" -> {
+                        val id = sent.path.removePrefix("/blocks/").removeSuffix("/children")
                         if (body.containsKey("position") && !startSupported) {
                             400 to """{"object":"error","status":400,"message":"position is not supported"}"""
                         } else {
-                            200 to page.append(body)
+                            200 to page.append(id.takeIf { it != "page-1" }, body)
                         }
+                    }
                     sent.path.startsWith("/blocks/") && sent.method == "PATCH" -> page.update(sent.path.removePrefix("/blocks/"), body)
                     sent.path.startsWith("/blocks/") && sent.method == "DELETE" -> page.delete(sent.path.removePrefix("/blocks/"))
                     else -> 200 to "{}"
@@ -148,26 +168,28 @@ class SyncStressTest {
     private fun edit(editor: DocumentEditor, blocks: List<Block>, random: Random): List<Block> {
         val texts = blocks.filter { it.type.hasText }
         val block = texts.randomOrNull(random) ?: return editor.insertAfter(blocks, null, BlockType.TODO).blocks
-        return when (random.nextInt(10)) {
+        return when (random.nextInt(13)) {
             0, 1, 2 -> editor.changeText(blocks, block.key, block.text + ('a' + random.nextInt(26))).blocks
             3, 4 -> editor.changeText(blocks, block.key, block.text + "\n").blocks
             5 -> editor.toggleChecked(blocks, block.key)
             6 -> editor.setType(blocks, block.key, listOf(BlockType.TODO, BlockType.PARAGRAPH, BlockType.HEADING_2).random(random)).blocks
             7 -> editor.backspaceAtStart(blocks, block.key).blocks
             8 -> if (blocks.size > 1) editor.delete(blocks, block.key).blocks else blocks
-            else -> editor.insertAfter(blocks, block.key, BlockType.TODO).blocks
+            9 -> editor.insertAfter(blocks, block.key, BlockType.TODO).blocks
+            10, 11 -> editor.indent(blocks, block.key).blocks
+            else -> editor.outdent(blocks, block.key).blocks
         }
     }
 
-    private fun shape(blocks: List<Block>) = blocks.map { Triple(it.type, it.text, it.type == BlockType.TODO && it.checked) }
+    private fun shape(blocks: List<Block>) = blocks.map { "${it.depth}:${it.type}:${it.text}:${it.type == BlockType.TODO && it.checked}" }
 
-    private fun shapeOf(page: Page) = page.live().map { b ->
+    private fun shapeOf(page: Page) = page.live().map { (b, depth) ->
         val type = when (b.type) {
             "to_do" -> BlockType.TODO
             "heading_2" -> BlockType.HEADING_2
             else -> BlockType.PARAGRAPH
         }
-        Triple(type, b.text, type == BlockType.TODO && b.checked)
+        "$depth:$type:${b.text}:${type == BlockType.TODO && b.checked}"
     }
 
     private fun run(seed: Int) = runBlocking {
@@ -203,13 +225,39 @@ class SyncStressTest {
             assertEquals("seed $seed", expected, actual)
         } else {
             // Lines added above the first line may end up at the end, but never twice or lost.
-            assertEquals("seed $seed", expected.sortedBy { it.toString() }, actual.sortedBy { it.toString() })
+            assertEquals("seed $seed", expected.sorted(), actual.sorted())
         }
     }
 
     @Test
     fun `random editing while Notion is slow never duplicates or loses blocks`() {
-        (1..SEEDS).forEach { run(it) }
+        val failures = (1..SEEDS).mapNotNull { seed -> runCatching { run(seed) }.exceptionOrNull()?.message }
+        assertEquals(failures.joinToString("\n"), 0, failures.size)
+    }
+
+    @Test
+    fun `ticking a nested item only ticks it, and taking it out moves it out`() = runBlocking {
+        val page = Page().apply { blocks += Page.B("milk", "to_do", "Milk", false) }
+        serve(page, Random(0))
+        val repo = repository(0)
+        repo.refresh("db", userAsked = true)
+        val editor = DocumentEditor()
+        var blocks = checkNotNull(repo.fetchContent("page-1")).blocks
+
+        suspend fun step(next: List<Block>) {
+            blocks = next
+            repo.saveContent("page-1", blocks)
+            repo.flush()
+        }
+        step(editor.insertAfter(blocks, "milk", BlockType.TODO).blocks)
+        step(editor.indent(blocks, blocks.last().key).blocks)
+        val before = notion.requests.size
+        step(editor.toggleChecked(blocks, blocks.last().key))
+        // Ticking only ticks: the item stays where it is (it isn't deleted and added again).
+        assertEquals(listOf("PATCH"), notion.requests.drop(before).map { it.method })
+        step(editor.outdent(blocks, blocks.last().key).blocks)
+
+        assertEquals(shape(blocks), synchronized(page) { shapeOf(page) })
     }
 
     @Test
@@ -219,7 +267,10 @@ class SyncStressTest {
     }
 
     private companion object {
-        const val SEEDS = 4
+        const val SEEDS = 5
         const val EDITS = 40
+        /** How long Notion takes to answer (ms): wide, so sends and edits interleave in many ways. */
+        const val LATENCY_MIN = 1L
+        const val LATENCY_MAX = 250L
     }
 }

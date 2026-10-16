@@ -35,8 +35,11 @@ object BlockMatch {
      * its Notion ID, else by [adopt]), so the editor keeps its place and later edits find it.
      */
     fun keysFor(previous: List<Block>, remote: List<Block>): Map<String, String> {
-        val byId = previous.mapNotNull { b -> b.notionId?.let { it to b.key } }.toMap().toMutableMap()
-        adopt(previous, remote, emptySet()).zip(previous).forEach { (adopted, old) ->
+        val remoteIds = remote.mapNotNull { it.notionId }.toSet()
+        // A block whose ID Notion doesn't have (it was added again with a new kind) counts as new.
+        val unknown = previous.map { if (it.notionId != null && it.notionId !in remoteIds) it.copy(notionId = null) else it }
+        val byId = unknown.mapNotNull { b -> b.notionId?.let { it to b.key } }.toMap().toMutableMap()
+        adopt(unknown, remote, emptySet()).zip(unknown).forEach { (adopted, old) ->
             if (old.notionId == null && adopted.notionId != null) byId[adopted.notionId] = old.key
         }
         return byId

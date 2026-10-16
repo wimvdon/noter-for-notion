@@ -171,4 +171,83 @@ class DocumentEditorTest {
         val added = editor.addLineAtEnd(listOf(b("a", "x", BlockType.TODO)))
         assertEquals(listOf(BlockType.TODO, BlockType.PARAGRAPH), added.blocks.map { it.type })
     }
+
+    // ---- Nesting ----
+
+    private fun n(key: String, depth: Int, type: BlockType = BlockType.BULLETED, text: String = key) =
+        Block(key, type = type, text = text, depth = depth)
+
+    @Test
+    fun `indent puts a block and what is in it in the block above`() {
+        val blocks = listOf(n("a", 0), n("b", 0), n("c", 1), n("d", 0))
+        val result = editor.indent(blocks, "b")
+        assertEquals(listOf(0, 1, 2, 0), result.blocks.map { it.depth })
+        // The first block has nothing above it to go into.
+        assertFalse(editor.canIndent(blocks, "a"))
+    }
+
+    @Test
+    fun `outdent takes a block out, and the blocks after it go into it`() {
+        val blocks = listOf(n("a", 0), n("b", 1), n("c", 1), n("d", 0))
+        val result = editor.outdent(blocks, "b")
+        assertEquals(listOf(0, 0, 1, 0), result.blocks.map { it.depth })
+        assertFalse(editor.canOutdent(blocks, "a"))
+    }
+
+    @Test
+    fun `blocks that can't be added again are never moved`() {
+        val image = Block("img", "9", BlockType.UNSUPPORTED, depth = 1, rawType = "image")
+        val blocks = listOf(n("a", 0), n("b", 0), image)
+        assertFalse(editor.canIndent(blocks, "b"))
+        assertFalse(editor.canChangeType(blocks, "b"))
+        // Code blocks and dividers can't hold nested blocks.
+        assertFalse(editor.canIndent(listOf(n("a", 0, BlockType.CODE), n("b", 0)), "b"))
+    }
+
+    @Test
+    fun `enter on a block with nested blocks adds its first nested block`() {
+        val blocks = listOf(n("a", 0, BlockType.TOGGLE, "Toggle"), n("b", 1, BlockType.PARAGRAPH))
+        val result = editor.changeText(blocks, "a", "Toggle\n")
+        assertEquals(listOf("a", "n1", "b"), result.blocks.map { it.key })
+        assertEquals(1, result.blocks[1].depth)
+        assertEquals(BlockType.PARAGRAPH, result.blocks[1].type)
+    }
+
+    @Test
+    fun `enter on an empty nested list item takes it out one level`() {
+        val blocks = listOf(n("a", 0), n("b", 1, text = ""))
+        val result = editor.changeText(blocks, "b", "\n")
+        assertEquals(listOf(0, 0), result.blocks.map { it.depth })
+        assertEquals(BlockType.BULLETED, result.blocks[1].type)
+    }
+
+    @Test
+    fun `backspace at the start of nested text takes it out first`() {
+        val blocks = listOf(n("a", 0), n("b", 1, BlockType.PARAGRAPH))
+        val result = editor.backspaceAtStart(blocks, "b")
+        assertEquals(listOf(0, 0), result.blocks.map { it.depth })
+        assertEquals(2, result.blocks.size)
+    }
+
+    @Test
+    fun `deleting a block deletes what is nested in it`() {
+        val blocks = listOf(n("a", 0), n("b", 1), n("c", 2), n("d", 0))
+        assertEquals(listOf("d"), editor.delete(blocks, "a").blocks.map { it.key })
+    }
+
+    @Test
+    fun `a block with nested blocks only becomes a kind that can hold them`() {
+        val blocks = listOf(n("a", 0, BlockType.TODO), n("b", 1))
+        assertEquals(BlockType.TOGGLE, editor.setType(blocks, "a", BlockType.TOGGLE).blocks[0].type)
+        assertEquals(BlockType.TODO, editor.setType(blocks, "a", BlockType.CODE).blocks[0].type)
+    }
+
+    @Test
+    fun `numbers count per level`() {
+        val blocks = listOf(
+            n("a", 0, BlockType.NUMBERED), n("b", 1, BlockType.NUMBERED), n("c", 1, BlockType.NUMBERED),
+            n("d", 0, BlockType.NUMBERED), n("e", 1, BlockType.NUMBERED),
+        )
+        assertEquals(mapOf("a" to 1, "b" to 1, "c" to 2, "d" to 2, "e" to 1), DocumentEditor.numbers(blocks))
+    }
 }

@@ -290,6 +290,13 @@ data class Block(
     val rows: List<List<String>>? = null,
     /** The table's first row is its header. */
     val headerRow: Boolean = false,
+    /**
+     * How far the block is nested: 0 on the page, 1 inside the block above it with depth 0, … The
+     * content is one flat list; a block's parent is the nearest block above it one level less deep.
+     */
+    val depth: Int = 0,
+    /** The Notion ID of the block's parent (null: the page), as Notion had it. Set in the synced copy. */
+    val parentId: String? = null,
 ) {
     /** Same content as [other], ignoring identity. */
     fun sameContentAs(other: Block): Boolean =
@@ -309,6 +316,12 @@ data class PageContent(
     val remoteEditedTime: String? = null,
     /** True when Notion had more content than the editor shows (nested blocks are kept as is). */
     val complete: Boolean = true,
+    /**
+     * True when the nested blocks were downloaded too. Copies made for the overview's previews
+     * (and copies from before nested blocks were shown) have only the top level; opening the note
+     * downloads the rest.
+     */
+    val nestedLoaded: Boolean = false,
     /**
      * True when sending new blocks failed in a way that leaves open whether Notion added them
      * (a timeout, a server error). The content is checked against Notion before it is sent again,
