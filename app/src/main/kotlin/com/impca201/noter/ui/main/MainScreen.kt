@@ -1,8 +1,5 @@
 package com.impca201.noter.ui.main
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -32,7 +29,6 @@ import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.PushPin
@@ -111,6 +107,7 @@ import com.impca201.noter.logic.NotionDates
 import com.impca201.noter.logic.PropertyLayouts
 import com.impca201.noter.ui.common.DatabaseIcons
 import com.impca201.noter.ui.common.OptionChip
+import com.impca201.noter.ui.common.SyncButton
 import com.impca201.noter.ui.theme.SkeletonBlock
 import kotlinx.coroutines.launch
 
@@ -170,7 +167,7 @@ fun MainScreen(
                         }
                     },
                     actions = {
-                        SyncStatusIcon(state.pendingCount, state.offline)
+                        SyncButton(state.pendingCount, state.offline, syncing = false, onSync = viewModel::refresh, alwaysShown = false)
                         IconButton(onClick = onOpenSettings) {
                             Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings_title))
                         }
@@ -380,24 +377,6 @@ internal fun NotesPane(
             },
             dismissButton = { TextButton(onClick = { confirmTrash = null }) { Text(stringResource(R.string.cancel)) } },
         )
-    }
-}
-
-@Composable
-private fun SyncStatusIcon(pending: Int, offline: Boolean) {
-    AnimatedVisibility(visible = pending > 0 || offline, enter = fadeIn(), exit = fadeOut()) {
-        val description = if (offline) {
-            stringResource(R.string.status_offline)
-        } else {
-            pluralStringResource(R.plurals.status_pending, pending, pending)
-        }
-        Box(Modifier.size(48.dp).semantics { this.contentDescription = description }, contentAlignment = Alignment.Center) {
-            Icon(
-                if (offline) Icons.Rounded.CloudOff else Icons.Rounded.CloudSync,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 

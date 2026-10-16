@@ -23,6 +23,7 @@ import com.impca201.noter.data.store.DatabaseCache
 import com.impca201.noter.data.store.PagesCache
 import com.impca201.noter.data.store.SettingsStore
 import com.impca201.noter.data.store.UsersCache
+import com.impca201.noter.data.sync.BlockMatch
 import com.impca201.noter.data.sync.ContentDiff
 import com.impca201.noter.data.sync.ContentOp
 import com.impca201.noter.data.sync.Outbox
@@ -337,13 +338,24 @@ class NotesRepository(
         lock.withLock {
             if (id in trashed) return@withLock
             val existing = cache.content(id) ?: PageContent(id, blocks = emptyList(), base = emptyList())
-            val dirty = ContentDiff.plan(existing.base, blocks).isNotEmpty()
-            val saved = existing.copy(blocks = blocks, dirty = dirty)
+            // The editor doesn't know the IDs Notion gave its new blocks: keep them.
+            val withIds = BlockMatch.keepIds(blocks, existing.blocks)
+            val dirty = ContentDiff.plan(existing.base, withIds).isNotEmpty()
+            val saved = existing.copy(blocks = withIds, dirty = dirty)
             cache.saveContent(saved)
             updatePreview(id, saved)
             if (dirty) enqueue(PendingOp.SaveContent(id))
         }
         scheduleFlush()
+    }
+
+    /**
+     * The sync button of a note: sends what is waiting, then gets the note's latest version from
+     * Notion. Returns the content when nothing on this phone is waiting to be sent.
+     */
+    suspend fun syncNote(pageId: String): PageContent? {
+        flush()
+        return fetchContent(pageId)
     }
 
     /**
@@ -379,13 +391,15 @@ class NotesRepository(
     }
 
     private suspend fun downloadContent(id: String, previous: List<Block>, edited: String?): PageContent {
-        val keyById = previous.mapNotNull { b -> b.notionId?.let { it to b.key } }.toMap()
-        val blocks = client.blockChildren(id).mapNotNull { json ->
+        val parsed = client.blockChildren(id).mapNotNull { json ->
             val notionId = json.stringOrNull("id") ?: return@mapNotNull null
-            val block = BlockCodec.parse(json, keyById[notionId] ?: UUID.randomUUID().toString()) ?: return@mapNotNull null
+            val block = BlockCodec.parse(json, notionId) ?: return@mapNotNull null
             // A table's cells are its rows (nested blocks): one more request per table.
             if (block.rawType == "table" && block.hasChildren) block.copy(rows = BlockCodec.tableRows(client.blockChildren(notionId))) else block
         }
+        // Blocks keep their keys on this phone, also blocks sent from here whose ID wasn't known yet.
+        val keys = BlockMatch.keysFor(previous, parsed)
+        val blocks = parsed.map { it.copy(key = keys[it.notionId] ?: UUID.randomUUID().toString()) }
         return PageContent(id, blocks = blocks, base = blocks, dirty = false, remoteEditedTime = edited)
     }
 
@@ -429,7 +443,7 @@ class NotesRepository(
                     when {
                         e.isTemporary -> {
                             if (e.isOffline) _offline.value = true
-                            scheduleRetry()
+                            scheduleRetry(e.isOffline)
                             return
                         }
                         e.status == 401 -> {
@@ -462,9 +476,14 @@ class NotesRepository(
         }
     }
 
-    private fun scheduleRetry() {
+    /**
+     * Tries again later, waiting longer each time. Without a connection the wait stays short
+     * (at most a minute): a try costs nothing then, and changes go out soon after the phone is
+     * back online. Opening the app also sends at once ([onForeground]).
+     */
+    private fun scheduleRetry(offline: Boolean) {
         if (retryJob?.isActive == true) return
-        val wait = retryDelayMs
+        val wait = if (offline) retryDelayMs.coerceAtMost(RETRY_OFFLINE_MAX_MS) else retryDelayMs
         retryDelayMs = (retryDelayMs * 2).coerceAtMost(RETRY_MAX_MS)
         retryJob = scope.launch {
             delay(wait)
@@ -543,8 +562,9 @@ class NotesRepository(
     }
 
     private suspend fun sendContent(pageId: String): Boolean {
-        val content = cache.content(pageId) ?: return true
+        var content = cache.content(pageId) ?: return true
         if (!content.dirty) return true
+        if (content.uncertain) content = reconcile(pageId) ?: return true
         val snapshot = content.blocks
         val base = content.base.toMutableList()
         val idsByKey = mutableMapOf<String, String>()
@@ -577,14 +597,21 @@ class NotesRepository(
                 }
                 is ContentOp.Insert -> {
                     val bodies = op.blocks.map(BlockCodec::toCreateRequest)
+                    val known = base.mapNotNull { it.notionId }.toSet()
                     val ids = try {
-                        client.appendChildren(pageId, bodies, op.afterNotionId, op.atStart)
+                        try {
+                            client.appendChildren(pageId, bodies, op.afterNotionId, op.atStart, known)
+                        } catch (e: NotionException) {
+                            if (e.status != 400 || !op.atStart) throw e
+                            // This API version can't insert at the start: add at the end and reload.
+                            client.appendChildren(pageId, bodies, after = null, atStart = false, knownIds = known)
+                            reload = true
+                            emptyList()
+                        }
                     } catch (e: NotionException) {
-                        if (e.status != 400 || !op.atStart) throw e
-                        // This API version can't insert at the start: add at the end and reload.
-                        client.appendChildren(pageId, bodies, after = null, atStart = false)
-                        reload = true
-                        emptyList()
+                        // No answer, or a server error: Notion may have added the blocks anyway.
+                        if (e.status == null || e.status >= 500) markUncertain(pageId)
+                        throw e
                     }
                     if (ids.size == op.blocks.size) {
                         op.blocks.zip(ids).forEach { (block, id) ->
@@ -609,8 +636,9 @@ class NotesRepository(
                     true
                 } else {
                     // Edited meanwhile: keep the edits, but compare against what Notion has now.
-                    val blocks = now.blocks.map { b ->
-                        if (b.notionId != null && fresh.blocks.none { it.notionId == b.notionId }) b.copy(notionId = null) else b
+                    val freshIds = fresh.blocks.mapNotNull { it.notionId }.toSet()
+                    val blocks = BlockMatch.keepIds(now.blocks, fresh.blocks).map { b ->
+                        if (b.notionId != null && b.notionId !in freshIds) b.copy(notionId = null) else b
                     }
                     cache.saveContent(now.copy(blocks = blocks, base = fresh.blocks, dirty = true))
                     false
@@ -622,6 +650,32 @@ class NotesRepository(
             val dirty = ContentDiff.plan(now.base, now.blocks).isNotEmpty()
             cache.saveContent(now.copy(dirty = dirty, remoteEditedTime = null))
             !dirty
+        }
+    }
+
+    private suspend fun markUncertain(pageId: String) = lock.withLock {
+        cache.content(pageId)?.let { cache.saveContent(it.copy(uncertain = true)) }
+    }
+
+    /**
+     * After a send whose outcome is unknown: downloads what Notion has and gives the blocks sent
+     * from here the IDs of the blocks Notion added for them (see [BlockMatch]), so they aren't
+     * added again. Blocks Notion doesn't have any more are added again.
+     */
+    private suspend fun reconcile(pageId: String): PageContent? {
+        val before = cache.content(pageId) ?: return null
+        val remote = downloadContent(pageId, before.blocks, null)
+        return lock.withLock {
+            val now = cache.content(pageId) ?: return@withLock null
+            val known = now.base.mapNotNull { it.notionId }.toSet()
+            val remoteIds = remote.blocks.mapNotNull { it.notionId }.toSet()
+            val blocks = BlockMatch.adopt(BlockMatch.keepIds(now.blocks, remote.blocks), remote.blocks, known).map { b ->
+                if (b.notionId != null && b.notionId !in remoteIds) b.copy(notionId = null) else b
+            }
+            val ids = blocks.mapNotNull { it.notionId }.toSet()
+            // Blocks added in Notion by someone else stay out of the comparison, so they are kept.
+            val base = remote.blocks.filter { it.notionId in known || it.notionId in ids }
+            now.copy(blocks = blocks, base = base, uncertain = false).also { cache.saveContent(it) }
         }
     }
 
@@ -828,6 +882,7 @@ class NotesRepository(
         private const val BROWSE_LIMIT = 200
         private const val RETRY_MIN_MS = 15_000L
         private const val RETRY_MAX_MS = 5 * 60_000L
+        private const val RETRY_OFFLINE_MAX_MS = 60_000L
         private const val LOOKUP_TTL_MS = 24 * 60 * 60_000L
         private const val RELATED_TTL_MS = 10 * 60_000L
     }

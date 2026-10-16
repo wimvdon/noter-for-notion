@@ -51,9 +51,17 @@ class NotionClient(
 
     /**
      * Notion allows about three requests per second per integration and answers 429 above that.
-     * Throttled and server-side failures are retried here, honouring Retry-After.
+     * Throttled and server-side failures are retried here, honouring Retry-After. Requests that
+     * add something ([adds]) are only retried when throttled: after a server error Notion may have
+     * added it anyway, and a second try would add it twice.
      */
-    private suspend fun call(method: String, endpoint: String, body: Any? = null, key: String = apiKey()): JsonObject =
+    private suspend fun call(
+        method: String,
+        endpoint: String,
+        body: Any? = null,
+        key: String = apiKey(),
+        adds: Boolean = false,
+    ): JsonObject =
         withContext(Dispatchers.IO) {
             if (key.isBlank()) throw NotionException("No Notion API key", status = 401, code = "no_key")
             val requestBody = when {
@@ -84,7 +92,8 @@ class NotionClient(
                     status = response.code,
                     code = data.stringOrNull("code"),
                 )
-                if (!lastError.isTemporary || attempt == MAX_ATTEMPTS - 1) throw lastError
+                val retry = if (adds) response.code == 429 else lastError.isTemporary
+                if (!retry || attempt == MAX_ATTEMPTS - 1) throw lastError
                 val retryAfterMs = response.header("Retry-After")?.toDoubleOrNull()?.times(1000)?.toLong()
                 delay((retryAfterMs ?: (500L shl attempt)).coerceIn(300L, 10_000L))
             }
@@ -161,6 +170,7 @@ class NotionClient(
                 put("properties", properties)
                 if (children.isNotEmpty()) put("children", children.take(MAX_CHILDREN))
             },
+            adds = true,
         )
 
     suspend fun updatePageProperties(pageId: String, properties: Map<String, Any?>): JsonObject =
@@ -178,13 +188,19 @@ class NotionClient(
 
     /**
      * Adds [children] after block [after], at the start ([atStart]) or at the end of [parentId].
-     * Returns the new blocks' IDs in order.
+     * Returns the new blocks' IDs in order, or an empty list when the answer doesn't tell which
+     * blocks are new (the caller then downloads the content again).
+     *
+     * Notion's answer may also list blocks that were already there (the ones after the new
+     * blocks, or all of the parent's), so the new blocks are the ones whose IDs aren't in
+     * [knownIds], the blocks the caller knows the parent has.
      */
     suspend fun appendChildren(
         parentId: String,
         children: List<Map<String, Any?>>,
         after: String?,
         atStart: Boolean,
+        knownIds: Set<String> = emptySet(),
     ): List<String> {
         val ids = mutableListOf<String>()
         var anchor = after
@@ -197,18 +213,12 @@ class NotionClient(
                     start -> put("position", mapOf("type" to "start"))
                 }
             }
-            val result = call("PATCH", "/blocks/$parentId/children", body)
-            val created = result.arrayOrNull("results").orEmpty().mapNotNull { it.asObjectOrNull()?.stringOrNull("id") }
-            // Older API versions answer with all children of the parent; the new ones are then at the
-            // anchor's position, which the caller can't tell. Take the last ones as a best guess only
-            // when appending at the end, otherwise report nothing so the caller reloads the content.
-            val newIds = when {
-                created.size == chunk.size -> created
-                anchor == null && !start && created.size > chunk.size -> created.takeLast(chunk.size)
-                else -> return emptyList()
-            }
+            val result = call("PATCH", "/blocks/$parentId/children", body, adds = true)
+            val returned = result.arrayOrNull("results").orEmpty().mapNotNull { it.asObjectOrNull()?.stringOrNull("id") }
+            val newIds = returned.filter { it !in knownIds && it !in ids }
+            if (newIds.size != chunk.size) return emptyList()
             ids += newIds
-            anchor = newIds.lastOrNull()
+            anchor = newIds.last()
             start = false
         }
         return ids

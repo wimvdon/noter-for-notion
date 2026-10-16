@@ -300,6 +300,12 @@ data class PageContent(
     val remoteEditedTime: String? = null,
     /** True when Notion had more content than the editor shows (nested blocks are kept as is). */
     val complete: Boolean = true,
+    /**
+     * True when sending new blocks failed in a way that leaves open whether Notion added them
+     * (a timeout, a server error). The content is checked against Notion before it is sent again,
+     * so the blocks aren't added twice (see BlockMatch).
+     */
+    val uncertain: Boolean = false,
 ) {
     /** True when a file of the content that Notion hosts has expired (see [NotionFiles]). */
     fun hasExpiredFiles(nowMs: Long): Boolean = blocks.any { NotionFiles.isExpired(it.urlExpiry, nowMs) }
