@@ -6,15 +6,16 @@ Noter shows the pages of Notion databases as notes, in the style of Google Keep,
 title, properties and content.
 
 ### Screens
-- **Overview** (`ui/main/`): Material's navigation bar with Home and one destination per added
+- **Overview** (`ui/main/`): Material's navigation bar with Pinned and one destination per added
   database (a navigation drawer instead when there are more than five). Notes are cards in a
   staggered grid with a preview of their content; pinned notes come first under "Pinned".
   Long-press and drag moves a note within its section; a long press without moving opens its menu
-  (pin, move to trash). Filter chips come from one select, status, multi-select or person property
-  per database. Home shows the pinned notes of every database.
+  (pin, move to trash). Filters (Material filter chips) come from one select, status, multi-select
+  or person property per database. Pinned shows the pinned notes of every database.
 - **Note** (`ui/note/`): title, editable properties (`PropertyEditors.kt`), then the content as a
-  list of blocks, each its own text field. A toolbar above the keyboard changes the block's kind,
-  adds a divider or deletes the block. Tapping below the content continues at the end.
+  list of blocks, each its own text field. To-do items have an × to delete them. A toolbar above the keyboard changes the block's kind,
+  adds a divider or deletes the block. Tapping below the content continues at the end. Moving a
+  note to the trash asks first.
 - **Settings** (`ui/settings/`): Connection (API key, sync status), Databases (add, edit, order),
   Appearance; built from the shared `SettingsKit.kt`.
 - `ui/AppNavigation.kt`: a small back stack of three screens (no navigation library).

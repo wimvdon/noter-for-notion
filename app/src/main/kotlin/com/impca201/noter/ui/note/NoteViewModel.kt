@@ -197,7 +197,10 @@ class NoteViewModel(
     fun togglePin() = viewModelScope.launch { repository.togglePin(pageId) }
 
     fun trash(onDone: () -> Unit) = viewModelScope.launch {
+        // Nothing of a note in the trash is saved any more.
         saveJob?.cancel()
+        propertyJobs.values.forEach { it.cancel() }
+        pendingProperties.clear()
         repository.trashNote(pageId)
         onDone()
     }

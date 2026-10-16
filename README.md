@@ -1,7 +1,7 @@
 # Noter for Notion
 
 A note app for Android in the style of Google Keep, with your notes kept in **Notion databases**.
-Each database you add gets its own section; Home shows the notes you pinned from all of them.
+Each database you add gets its own section; Pinned shows the notes you pinned from all of them.
 
 - Notes as cards with a preview of their content, pinned notes on top, drag and drop to reorder.
 - A note's content is edited like in Notion: text, three heading sizes, bulleted, numbered and

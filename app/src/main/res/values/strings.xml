@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Noter</string>
-    <string name="tab_home">Home</string>
+    <string name="tab_home">Pinned</string>
     <string name="open_navigation">Open navigation</string>
     <string name="settings_title">Settings</string>
     <string name="back">Back</string>
@@ -35,7 +35,7 @@
     <string name="empty_no_databases_action">Add a database</string>
     <string name="empty_home">Pin notes to see them here. Tap the pin on a note.</string>
     <string name="empty_database">No notes yet. Tap + to add one.</string>
-    <string name="empty_filtered">No notes match the selected chips.</string>
+    <string name="empty_filtered">No notes match the selected filters.</string>
     <string name="empty_error">Couldn’t load the notes: %1$s</string>
     <string name="status_offline">Offline. Changes are saved on this phone and sent later.</string>
     <string name="status_not_synced">Not in Notion yet</string>
@@ -48,6 +48,7 @@
     <string name="action_open_link">Open</string>
     <string name="action_open_in_notion">Open in Notion</string>
     <string name="action_delete_line">Delete line</string>
+    <string name="action_delete_item">Delete item</string>
     <string name="action_hide_keyboard">Hide keyboard</string>
     <string name="placeholder_item">Item</string>
     <string name="placeholder_heading">Heading</string>
@@ -95,11 +96,11 @@
     <string name="database_name">Name</string>
     <string name="database_icon">Icon</string>
     <string name="icon_option">Icon %1$d</string>
-    <string name="chip_property">Filter chips</string>
-    <string name="chip_property_help">The options of this property are shown as chips above the notes.</string>
+    <string name="chip_property">Filters</string>
+    <string name="chip_property_help">The options of this property are shown as filters above the notes.</string>
     <string name="chip_property_none_available">This database has no select, status, multi-select or person property.</string>
-    <string name="chip_none">No chips</string>
-    <string name="chips_from">Chips: %1$s</string>
+    <string name="chip_none">No filters</string>
+    <string name="chips_from">Filters: %1$s</string>
     <string name="type_status">Status</string>
     <string name="type_select">Select</string>
     <string name="type_multi_select">Multi-select</string>

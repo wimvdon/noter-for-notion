@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -120,6 +121,9 @@ class NotesRepository(
     private var retryJob: Job? = null
     private var retryDelayMs = RETRY_MIN_MS
 
+    /** Notes moved to the trash on this phone: later edits to them are dropped, not sent. */
+    private val trashed = mutableSetOf<String>()
+
     fun resolve(id: String): String = renamed.value[id] ?: id
 
     // ---- Start-up -------------------------------------------------------------------------
@@ -146,19 +150,27 @@ class NotesRepository(
         }
     }
 
+    /** Databases whose on-phone copy was read (once per app start). */
+    private val cacheRead = mutableSetOf<String>()
+
     private suspend fun loadDatabase(id: String) = withContext(Dispatchers.IO) {
-        if (_databases.value[id]?.loaded == true) return@withContext
-        val cached = cache.database(id)
         lock.withLock {
+            if (id in cacheRead) return@withLock
+            cacheRead += id
+            val cached = cache.database(id)
             val queue = _outbox.value
+            val cachedNotes = cached?.notes.orEmpty().map { Outbox.applyPending(it, queue) }
             _databases.update { map ->
+                // Something may already be here (a note created right at start-up): keep it.
+                val existing = map[id]
+                val notes = existing?.notes.orEmpty().let { now -> now + cachedNotes.filter { c -> now.none { it.id == c.id } } }
                 map + (
-                    id to DatabaseState(
-                        schema = cached?.schema,
-                        notes = cached?.notes.orEmpty().map { Outbox.applyPending(it, queue) },
+                    id to (existing ?: DatabaseState()).copy(
+                        schema = existing?.schema ?: cached?.schema,
+                        notes = notes,
                         lastSyncMs = cached?.lastSyncMs ?: 0,
                         lastFullSyncMs = cached?.lastFullSyncMs ?: 0,
-                        loaded = cached != null,
+                        loaded = existing?.loaded == true || cached != null,
                     )
                     )
             }
@@ -167,8 +179,14 @@ class NotesRepository(
 
     // ---- Reading --------------------------------------------------------------------------
 
+    /**
+     * The note [pageId] as it changes. Also follows a note created on this phone when it gets its
+     * Notion ID (under either ID while the change happens), so an open editor keeps showing it.
+     */
     fun note(pageId: String): Flow<NoteSummary?> =
-        _databases.map { map -> findNote(map, resolve(pageId)) }.distinctUntilChanged()
+        combine(_databases, renamed) { map, ids ->
+            ids[pageId]?.let { findNote(map, it) } ?: findNote(map, pageId)
+        }.distinctUntilChanged()
 
     private fun findNote(map: Map<String, DatabaseState>, id: String): NoteSummary? =
         map.values.firstNotNullOfOrNull { db -> db.notes.firstOrNull { it.id == id } }
@@ -271,6 +289,7 @@ class NotesRepository(
     suspend fun updateProperty(pageId: String, property: NoteProperty) = withContext(Dispatchers.IO) {
         val id = resolve(pageId)
         lock.withLock {
+            if (id in trashed) return@withLock
             val databaseId = findNote(_databases.value, id)?.databaseId ?: return@withLock
             val now = Instant.ofEpochMilli(clock()).toString()
             setState(databaseId) { db ->
@@ -286,6 +305,7 @@ class NotesRepository(
     suspend fun trashNote(pageId: String) = withContext(Dispatchers.IO) {
         val id = resolve(pageId)
         lock.withLock {
+            trashed += id
             val databaseId = findNote(_databases.value, id)?.databaseId
             if (databaseId != null) {
                 setState(databaseId) { db -> db.copy(notes = db.notes.filterNot { it.id == id }) }
@@ -299,6 +319,7 @@ class NotesRepository(
     }
 
     private fun enqueue(op: PendingOp) {
+        if (op !is PendingOp.TrashPage && op.pageId in trashed) return
         _outbox.value = Outbox.add(_outbox.value, op)
         cache.saveOutbox(_outbox.value)
     }
@@ -311,6 +332,7 @@ class NotesRepository(
     suspend fun saveContent(pageId: String, blocks: List<Block>) = withContext(Dispatchers.IO) {
         val id = resolve(pageId)
         lock.withLock {
+            if (id in trashed) return@withLock
             val existing = cache.content(id) ?: PageContent(id, blocks = emptyList(), base = emptyList())
             val dirty = ContentDiff.plan(existing.base, blocks).isNotEmpty()
             val saved = existing.copy(blocks = blocks, dirty = dirty)
@@ -408,7 +430,8 @@ class NotesRepository(
                             _events.tryEmit(RepoEvent.KeyRejected)
                             return
                         }
-                        e.isNotFound -> true
+                        // Gone from Notion or moved to its trash (here or elsewhere): nothing left to save.
+                        e.isNotFound || e.isArchived -> true
                         else -> {
                             val title = findNote(_databases.value, op.pageId)?.title.orEmpty()
                             _events.tryEmit(RepoEvent.SaveFailed(InlineMarkdown.stripped(title), e.message.orEmpty()))
@@ -472,6 +495,15 @@ class NotesRepository(
         val created = PropertyCodec.parsePage(page, op.databaseId) ?: note.copy(id = newId)
         val oldId = op.pageId
         lock.withLock {
+            // The note went to the trash while Notion was creating it: trash the new page too.
+            if (oldId in trashed) {
+                trashed += newId
+                renamed.update { it + (oldId to newId) }
+                _outbox.value = Outbox.add(Outbox.rename(_outbox.value, oldId, newId), PendingOp.TrashPage(newId))
+                cache.saveOutbox(_outbox.value)
+                return@withLock
+            }
+            renamed.update { it + (oldId to newId) }
             val current = findNote(_databases.value, oldId) ?: note
             // Values changed while the note was being created are sent as normal edits.
             var merged = created
@@ -493,8 +525,8 @@ class NotesRepository(
             }
             _outbox.value = Outbox.rename(_outbox.value, oldId, newId)
             cache.saveOutbox(_outbox.value)
-            renamed.update { it + (oldId to newId) }
         }
+        if (newId in trashed) return true
         settings.update { s ->
             s.copy(
                 pinned = NoteOrdering.rename(s.pinned, oldId, newId),
@@ -689,6 +721,7 @@ class NotesRepository(
         settings.update { s -> s.copy(databases = s.databases.filterNot { it.id == id }, order = s.order - id) }
         withContext(Dispatchers.IO) {
             lock.withLock {
+                cacheRead -= id
                 _databases.update { it - id }
                 cache.deleteDatabase(id)
                 _outbox.value = _outbox.value.filterNot { it is PendingOp.CreatePage && it.databaseId == id }

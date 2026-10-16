@@ -32,11 +32,18 @@ class NotionException(
 ) : Exception(message) {
     val isOffline: Boolean get() = status == null
     val isNotFound: Boolean get() = status == 404
+
+    /** The page or block is in Notion's trash, so it can't be edited. */
+    val isArchived: Boolean get() = status == 400 && message.orEmpty().contains("archived", ignoreCase = true)
     val isTemporary: Boolean get() = status == null || status == 429 || status >= 500
 }
 
 /** Notion's REST API (api.notion.com), with the integration's API key. */
-class NotionClient(private val apiKey: () -> String) {
+class NotionClient(
+    private val apiKey: () -> String,
+    /** Only tests change this (to a server on the test machine). */
+    private val baseUrl: String = BASE_URL,
+) {
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
@@ -55,7 +62,7 @@ class NotionClient(private val apiKey: () -> String) {
                 else -> null
             }
             val request = Request.Builder()
-                .url("$BASE_URL$endpoint")
+                .url("$baseUrl$endpoint")
                 .header("Authorization", "Bearer $key")
                 .header("Notion-Version", NOTION_VERSION)
                 .method(method, requestBody)

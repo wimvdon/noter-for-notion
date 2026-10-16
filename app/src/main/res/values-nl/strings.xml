@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Noter</string>
-    <string name="tab_home">Home</string>
+    <string name="tab_home">Vastgezet</string>
     <string name="open_navigation">Navigatie openen</string>
     <string name="settings_title">Instellingen</string>
     <string name="back">Terug</string>
@@ -48,6 +48,7 @@
     <string name="action_open_link">Openen</string>
     <string name="action_open_in_notion">Openen in Notion</string>
     <string name="action_delete_line">Regel verwijderen</string>
+    <string name="action_delete_item">Item verwijderen</string>
     <string name="action_hide_keyboard">Toetsenbord verbergen</string>
     <string name="placeholder_item">Item</string>
     <string name="placeholder_heading">Kop</string>
@@ -95,11 +96,11 @@
     <string name="database_name">Naam</string>
     <string name="database_icon">Pictogram</string>
     <string name="icon_option">Pictogram %1$d</string>
-    <string name="chip_property">Filterchips</string>
-    <string name="chip_property_help">De opties van deze eigenschap staan als chips boven de notities.</string>
+    <string name="chip_property">Filters</string>
+    <string name="chip_property_help">De opties van deze eigenschap staan als filters boven de notities.</string>
     <string name="chip_property_none_available">Deze database heeft geen selectie-, status-, meervoudige selectie- of persoonseigenschap.</string>
-    <string name="chip_none">Geen chips</string>
-    <string name="chips_from">Chips: %1$s</string>
+    <string name="chip_none">Geen filters</string>
+    <string name="chips_from">Filters: %1$s</string>
     <string name="type_status">Status</string>
     <string name="type_select">Selectie</string>
     <string name="type_multi_select">Meervoudige selectie</string>

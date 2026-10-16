@@ -33,7 +33,9 @@ data class AppSettings(
     }
 }
 
-class SettingsStore(private val context: Context) {
+class SettingsStore(private val dataStore: DataStore<Preferences>) {
+    constructor(context: Context) : this(context.settingsDataStore)
+
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -44,7 +46,7 @@ class SettingsStore(private val context: Context) {
     private val darkKey = stringPreferencesKey("theme_mode")
     private val dynamicKey = booleanPreferencesKey("dynamic_color")
 
-    val settings: Flow<AppSettings> = context.settingsDataStore.data.map { decode(it) }
+    val settings: Flow<AppSettings> = dataStore.data.map { decode(it) }
 
     private fun decode(prefs: Preferences): AppSettings {
         val stored = prefs[key]?.let { runCatching { json.decodeFromString(AppSettings.serializer(), it) }.getOrNull() }
@@ -57,7 +59,7 @@ class SettingsStore(private val context: Context) {
 
     /** Changes the settings in one atomic step. */
     suspend fun update(transform: (AppSettings) -> AppSettings) {
-        context.settingsDataStore.edit { prefs ->
+        dataStore.edit { prefs ->
             val updated = transform(decode(prefs))
             prefs[key] = json.encodeToString(AppSettings.serializer(), updated)
             prefs[darkKey] = updated.themeMode.name
