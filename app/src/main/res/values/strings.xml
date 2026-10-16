@@ -171,4 +171,6 @@
     <string name="card_cover">Header image</string>
     <string name="card_content">Start of the content</string>
     <string name="properties_section">Properties</string>
+    <string name="action_indent">Indent (put in the block above)</string>
+    <string name="action_outdent">Outdent (take out of the block it is in)</string>
 </resources>

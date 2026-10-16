@@ -71,10 +71,18 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
   are shown read-only and left untouched (`ui/note/ReadOnlyBlocks.kt`): images, tables (their rows
   cost one more request per table), equations, files, videos, PDFs, audio, bookmarks, embeds,
   linked pages and the table of contents; tapping one opens it in the browser or in Notion.
-  Anything else is a box with its kind and "(edit in Notion)". Nested blocks
-  (inside a toggle, a list item, …) are not shown; a toggle, callout or quote with nested content
-  says so. A block with nested content can't change its kind, because Notion can't change a
-  block's kind and recreating it would lose what is nested.
+  Anything else is a box with its kind and "(edit in Notion)".
+- **Nested blocks** (inside a toggle, a list item, a quote, …): downloaded with the note (one
+  request per block with nested content, up to 5 levels deep) and kept in the same flat list,
+  each block with its `depth` and its Notion parent (`parentId`); the editor indents them 24dp per
+  level. The toolbar's indent and outdent buttons, Enter and Backspace nest and un-nest blocks as
+  Notion does (`logic/DocumentEditor.kt`). Notion can't move a block or change its kind, so a
+  block that moves to another parent or changes kind is deleted and added again with what is in
+  it (`data/sync/ContentDiff.kt`); the editor only allows that when everything in it can be added
+  again (text and dividers; not images, tables or content nested deeper than the app shows).
+  What is nested in images, columns, synced blocks and the like stays in Notion; such a block
+  says it has nested content. Previews in the overview download only the top level
+  (`PageContent.nestedLoaded`), and opening the note gets the rest.
 - **Inline styles** (`data/notion/InlineMarkdown.kt`): bold, italic, strikethrough, inline code and
   links are kept as Markdown in the editor and turned back into Notion rich text. Code blocks keep
   their text literally.

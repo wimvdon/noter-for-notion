@@ -171,4 +171,6 @@
     <string name="card_cover">Omslagafbeelding</string>
     <string name="card_content">Begin van de inhoud</string>
     <string name="properties_section">Eigenschappen</string>
+    <string name="action_indent">Inspringen (in het blok erboven zetten)</string>
+    <string name="action_outdent">Uitspringen (uit het blok halen waar het in staat)</string>
 </resources>

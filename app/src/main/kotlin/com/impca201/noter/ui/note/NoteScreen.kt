@@ -33,6 +33,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.FormatIndentDecrease
+import androidx.compose.material.icons.automirrored.rounded.FormatIndentIncrease
 import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.automirrored.rounded.Notes
@@ -251,7 +253,11 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
                     FormatToolbar(
                         block = block,
                         canChangeType = viewModel.canChangeType(block),
+                        canIndent = viewModel.canIndent(block),
+                        canOutdent = viewModel.canOutdent(block),
                         onType = { viewModel.setType(block.key, it) },
+                        onIndent = { viewModel.indent(block.key) },
+                        onOutdent = { viewModel.outdent(block.key) },
                         onAddDivider = { viewModel.insertAfter(block.key, BlockType.DIVIDER) },
                         onDelete = { viewModel.delete(block.key) },
                         onDone = { keyboard?.hide(); focusManager.clearFocus() },
@@ -330,7 +336,8 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
                     }
                 }
                 items(state.blocks, key = { it.key }) { block ->
-                    Column(Modifier.animateItem()) {
+                    // Nested blocks are indented, as in Notion.
+                    Column(Modifier.animateItem().padding(start = NEST_INDENT * block.depth)) {
                         BlockRow(
                             block = block,
                             number = numbers[block.key],
@@ -386,6 +393,9 @@ private fun TrashDialog(title: String, onConfirm: () -> Unit, onDismiss: () -> U
 private fun blocksOffset(note: NoteSummary?): Int = 3 + (if (note?.cover != null) 1 else 0) + (if (note?.icon != null) 1 else 0)
 
 private val COVER_HEIGHT = 180.dp
+
+/** How far each level of nested blocks is indented. */
+private val NEST_INDENT = 24.dp
 
 /** Lets an item of a padded list reach the screen's edges. */
 private fun Modifier.fullBleed(start: Dp, end: Dp): Modifier = layout { measurable, constraints ->
@@ -667,7 +677,11 @@ private fun BlockRow(
 private fun FormatToolbar(
     block: Block,
     canChangeType: Boolean,
+    canIndent: Boolean,
+    canOutdent: Boolean,
     onType: (BlockType) -> Unit,
+    onIndent: () -> Unit,
+    onOutdent: () -> Unit,
     onAddDivider: () -> Unit,
     onDelete: () -> Unit,
     onDone: () -> Unit,
@@ -709,6 +723,12 @@ private fun FormatToolbar(
             typeButton(BlockType.CALLOUT, R.string.type_callout) { Icon(Icons.Rounded.Lightbulb, null) }
             typeButton(BlockType.CODE, R.string.type_code) { Icon(Icons.Rounded.Code, null) }
             VerticalDivider(Modifier.height(24.dp).padding(horizontal = 4.dp))
+            IconButton(onClick = onOutdent, enabled = canOutdent) {
+                Icon(Icons.AutoMirrored.Rounded.FormatIndentDecrease, contentDescription = stringResource(R.string.action_outdent))
+            }
+            IconButton(onClick = onIndent, enabled = canIndent) {
+                Icon(Icons.AutoMirrored.Rounded.FormatIndentIncrease, contentDescription = stringResource(R.string.action_indent))
+            }
             IconButton(onClick = onAddDivider) { Icon(Icons.Rounded.HorizontalRule, contentDescription = stringResource(R.string.insert_divider)) }
             IconButton(onClick = onDelete) { Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.action_delete_line)) }
             IconButton(onClick = onDone) { Icon(Icons.Rounded.KeyboardHide, contentDescription = stringResource(R.string.action_hide_keyboard)) }

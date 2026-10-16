@@ -250,4 +250,39 @@ class NotesRepositoryTest {
         assertEquals(0, repo.pendingCount.first())
         assertEquals("new-1", repo.cachedContent("page-1")?.blocks?.last()?.notionId)
     }
+
+    @Test
+    fun `nested blocks are downloaded, and new ones go into their parent`() = runBlocking {
+        val inside = mutableListOf(FakeNotion.todo("c1", "Inside"))
+        var next = 0
+        notion.respond = { sent ->
+            when {
+                sent.path.startsWith("/databases/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "List"))
+                sent.path.startsWith("/databases/db") -> 200 to FakeNotion.database("db")
+                sent.path == "/pages/page-1" -> 200 to FakeNotion.page("page-1", "db", "List")
+                sent.method == "GET" && sent.path.startsWith("/blocks/page-1/children") -> 200 to FakeNotion.list(
+                    """{"object":"block","id":"t","type":"toggle","has_children":true,"toggle":{"rich_text":[{"plain_text":"Toggle","text":{"content":"Toggle"}}]}}""",
+                )
+                sent.method == "GET" && sent.path.startsWith("/blocks/t/children") -> 200 to FakeNotion.list(*inside.toTypedArray())
+                sent.method == "PATCH" && sent.path == "/blocks/t/children" -> {
+                    val added = FakeNotion.todo("new-${++next}", "Added")
+                    inside += added
+                    200 to FakeNotion.list(added)
+                }
+                else -> 200 to "{}"
+            }
+        }
+        val repo = repository()
+        repo.refresh("db", userAsked = true)
+        val loaded = checkNotNull(repo.fetchContent("page-1")).blocks
+        assertEquals(listOf("t", "c1"), loaded.map { it.notionId })
+        assertEquals(listOf(0, 1), loaded.map { it.depth })
+
+        repo.saveContent("page-1", loaded + Block("x", type = BlockType.TODO, text = "Added", depth = 1))
+        repo.flush()
+
+        val append = notion.requests.single { it.method == "PATCH" && it.path == "/blocks/t/children" }
+        assertTrue(append.body, append.body.contains("\"after\":\"c1\""))
+        assertEquals(0, repo.pendingCount.first())
+    }
 }

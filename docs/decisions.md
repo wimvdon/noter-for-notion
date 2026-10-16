@@ -2,6 +2,17 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-16: Nested blocks as one flat list with a depth
+
+The owner asked for nested blocks. They are kept in the editor's flat list of blocks, each with
+its nesting depth, instead of a tree: the editor's rules (Enter, Backspace, the toolbar, focus,
+the list on screen) stay simple, and a block's parent follows from the depth. Notion's API can't
+move a block or change its kind, so indent, outdent and a kind change delete the block and add
+it again with what is in it; this is only allowed when all of that can be added again. Nested
+content is downloaded up to 5 levels deep (one request per block with nested content).
+Rejected: a tree of blocks (every editor rule and the screen would need rewriting) and showing
+nested blocks read-only (the owner wants to edit them).
+
 ## 2026-10-16: View icons from the whole Material Symbols set, with search
 
 The owner asked for many more view icons, searchable like RSS Reader's folder icons. The app now

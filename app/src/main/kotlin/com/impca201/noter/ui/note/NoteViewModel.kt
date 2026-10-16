@@ -167,7 +167,15 @@ class NoteViewModel(
 
     fun insertAfter(key: String, type: BlockType) = apply(editor.insertAfter(blocks.value, key, type))
 
-    fun canChangeType(block: Block) = editor.canChangeType(block)
+    fun canChangeType(block: Block) = editor.canChangeType(blocks.value, block.key)
+
+    fun canIndent(block: Block) = editor.canIndent(blocks.value, block.key)
+
+    fun canOutdent(block: Block) = editor.canOutdent(blocks.value, block.key)
+
+    fun indent(key: String) = apply(editor.indent(blocks.value, key))
+
+    fun outdent(key: String) = apply(editor.outdent(blocks.value, key))
 
     /** Moves the cursor to block [key] (Enter in the title goes to the first line). */
     fun focusBlock(key: String, cursor: Int) {
