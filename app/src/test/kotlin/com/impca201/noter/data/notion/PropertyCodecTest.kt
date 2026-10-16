@@ -137,4 +137,17 @@ class PropertyCodecTest {
         assertTrue(PropertyCodec.isTrashed(obj("""{"in_trash":true}""")))
         assertFalse(PropertyCodec.isTrashed(obj("""{"archived":false}""")))
     }
+
+    @Test
+    fun `reads the page's header image`() {
+        val note = PropertyCodec.parsePage(
+            obj("""{"id":"p","cover":{"type":"file","file":{"url":"https://s3/c.jpg?sig","expiry_time":"2026-10-16T11:00:00.000Z"}},"properties":{}}"""),
+            "db",
+        )!!
+        assertEquals("https://s3/c.jpg?sig", note.cover)
+        assertEquals("2026-10-16T11:00:00.000Z", note.coverExpiry)
+        val external = PropertyCodec.parsePage(obj("""{"id":"p","cover":{"type":"external","external":{"url":"https://x/c.jpg"}},"properties":{}}"""), "db")!!
+        assertEquals("https://x/c.jpg", external.cover)
+        assertNull(PropertyCodec.parsePage(obj("""{"id":"p","cover":null,"properties":{}}"""), "db")!!.cover)
+    }
 }

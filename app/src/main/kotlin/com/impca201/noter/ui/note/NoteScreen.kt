@@ -48,7 +48,6 @@ import androidx.compose.material.icons.rounded.KeyboardHide
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.automirrored.rounded.Sort
-import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -102,7 +101,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
+import com.impca201.noter.ui.common.NotionImage
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -152,7 +155,7 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
         val target = focus ?: return@LaunchedEffect
         val index = state.blocks.indexOfFirst { it.key == target.key }
         if (index < 0) return@LaunchedEffect
-        val itemIndex = index + BLOCKS_OFFSET
+        val itemIndex = index + blocksOffset(note)
         val visible = listState.layoutInfo.visibleItemsInfo.map { it.index }
         if (itemIndex !in visible || itemIndex >= (visible.maxOrNull() ?: 0)) listState.animateScrollToItem(itemIndex)
     }
@@ -234,6 +237,7 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
             return@Scaffold
         }
         val numbers = remember(state.blocks) { DocumentEditor.numbers(state.blocks) }
+        val headings = remember(state.blocks) { state.blocks.filter { it.type.isHeading && it.text.isNotBlank() } }
         val styling = MarkdownStyling(MaterialTheme.colorScheme.outline, MaterialTheme.colorScheme.primary)
         val titleProperty = note.properties.firstOrNull { it.type == "title" }
         val lookups = PropertyLookups(state.users, state.relatedPages, viewModel::loadUsers, viewModel::loadRelated)
@@ -243,6 +247,25 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(start = 20.dp, end = 12.dp, bottom = 32.dp),
         ) {
+            note.cover?.let { cover ->
+                item(key = "__cover") {
+                    // Notion's header image, from edge to edge.
+                    NotionImage(
+                        url = cover,
+                        expiry = note.coverExpiry,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fullBleed(start = 20.dp, end = 12.dp)
+                            .height(COVER_HEIGHT),
+                    )
+                }
+            }
+            note.icon?.let { icon ->
+                item(key = "__icon") {
+                    Text(icon, style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(top = 12.dp))
+                }
+            }
             item(key = "__title") {
                 TitleField(
                     note = note,
@@ -288,6 +311,7 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
                             onFocusChange = { focused ->
                                 if (focused) focusedKey = block.key else if (focusedKey == block.key) focusedKey = null
                             },
+                            headings = headings,
                         )
                     }
                 }
@@ -323,8 +347,17 @@ private fun TrashDialog(title: String, onConfirm: () -> Unit, onDismiss: () -> U
     )
 }
 
-/** Index of the first block in the list (after title, properties and divider). */
-private const val BLOCKS_OFFSET = 3
+/** Index of the first block in the list (after cover, icon, title, properties and divider). */
+private fun blocksOffset(note: NoteSummary?): Int = 3 + (if (note?.cover != null) 1 else 0) + (if (note?.icon != null) 1 else 0)
+
+private val COVER_HEIGHT = 180.dp
+
+/** Lets an item of a padded list reach the screen's edges. */
+private fun Modifier.fullBleed(start: Dp, end: Dp): Modifier = layout { measurable, constraints ->
+    val extra = (start + end).roundToPx()
+    val placeable = measurable.measure(constraints.copy(minWidth = constraints.maxWidth + extra, maxWidth = constraints.maxWidth + extra))
+    layout(constraints.maxWidth, placeable.height) { placeable.place(-start.roundToPx(), 0) }
+}
 
 @Composable
 private fun TitleField(note: NoteSummary, onChange: (String) -> Unit, onEnter: () -> Unit) {
@@ -423,10 +456,11 @@ private fun BlockRow(
     onToggle: () -> Unit,
     onDelete: () -> Unit,
     onFocusChange: (Boolean) -> Unit,
+    headings: List<Block>,
 ) {
     when (block.type) {
         BlockType.UNSUPPORTED -> {
-            UnsupportedBlock(block)
+            ReadOnlyBlock(block, headings)
             return
         }
         BlockType.DIVIDER -> {
@@ -569,29 +603,6 @@ private fun BlockRow(
                     tint = colors.onSurfaceVariant,
                     modifier = Modifier.size(20.dp),
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun UnsupportedBlock(block: Block) {
-    Surface(
-        shape = AppShapes.Item,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 0.dp),
-    ) {
-        Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Widgets, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Column(Modifier.weight(1f)) {
-                Text(
-                    stringResource(R.string.unsupported_block, block.rawType.orEmpty().replace('_', ' ')),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (block.text.isNotBlank()) {
-                    Text(block.text, style = MaterialTheme.typography.bodyMedium, maxLines = 3)
-                }
             }
         }
     }

@@ -2,6 +2,25 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-16: Images with Coil, and more of Notion's blocks shown
+
+The owner asked for header images and more block types, viewing before editing, without
+making the app slow.
+
+- **Network:** the app now also downloads images from Notion's file storage and from the
+  websites that image blocks and covers link to. The owner agreed to this (it was asked before
+  adding it), and `PRIVACY.md` says so. Other files are only opened in the browser on a tap.
+- **Coil 3** (`io.coil-kt.coil3`) loads the images: the mainstream image library for Compose,
+  with memory and disk caching and downscaling. The owner agreed to the new library. It uses
+  OkHttp, which the app already has. Rejected: an own loader on OkHttp (more code, worse caching).
+- **Expiring links:** files Notion hosts come with links that work for about an hour. Content with
+  an expired link is downloaded again when the note opens, and Coil caches images under the link
+  without its signature. Rejected: refreshing links in the background (more requests).
+- **Shown read-only:** images, tables, equations, files, videos, PDFs, audio, bookmarks, embeds,
+  linked pages and the table of contents. Tables cost one extra request each (their rows are
+  nested blocks). Still not shown: other nested content (inside toggles, list items, columns,
+  synced blocks), because every level is another request per block.
+
 ## 2026-10-16: An × on to-do items, "Pinned" and "filters"
 
 - **To-do items get an ×** to delete them with one tap, because the owner asked for it after

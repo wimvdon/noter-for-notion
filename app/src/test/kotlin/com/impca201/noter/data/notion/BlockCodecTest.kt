@@ -67,4 +67,41 @@ class BlockCodecTest {
         val body = request["to_do"] as Map<String, Any?>
         assertEquals(true, body["checked"])
     }
+
+    @Test
+    fun `reads images, files and links with their link`() {
+        val uploaded = parse(
+            """{"id":"b","type":"image","image":{"type":"file","caption":[{"plain_text":"A cat"}],
+               "file":{"url":"https://files.example/cat.png?sig=1","expiry_time":"2026-10-16T11:00:00.000Z"}}}""",
+        )!!
+        assertEquals("https://files.example/cat.png?sig=1", uploaded.url)
+        assertEquals("2026-10-16T11:00:00.000Z", uploaded.urlExpiry)
+        assertEquals("A cat", uploaded.text)
+        val external = parse("""{"id":"b","type":"image","image":{"type":"external","external":{"url":"https://x/y.png"}}}""")!!
+        assertEquals("https://x/y.png", external.url)
+        assertEquals(null, external.urlExpiry)
+        val bookmark = parse("""{"id":"b","type":"bookmark","bookmark":{"url":"https://example.com","caption":[]}}""")!!
+        assertEquals("https://example.com", bookmark.url)
+        val file = parse("""{"id":"b","type":"file","file":{"type":"external","name":"report.pdf","external":{"url":"https://x/r.pdf"},"caption":[]}}""")!!
+        assertEquals("report.pdf", file.text)
+    }
+
+    @Test
+    fun `reads linked pages, equations and tables`() {
+        val child = parse("""{"id":"page-2","type":"child_page","child_page":{"title":"Sub page"}}""")!!
+        assertEquals("Sub page", child.text)
+        assertEquals("page-2", child.url)
+        val link = parse("""{"id":"b","type":"link_to_page","link_to_page":{"type":"page_id","page_id":"page-3"}}""")!!
+        assertEquals("page-3", link.url)
+        assertEquals("E = mc^2", parse("""{"id":"b","type":"equation","equation":{"expression":"E = mc^2"}}""")!!.text)
+        val table = parse("""{"id":"b","type":"table","has_children":true,"table":{"table_width":2,"has_column_header":true}}""")!!
+        assertEquals(true, table.headerRow)
+        val rows = BlockCodec.tableRows(
+            listOf(
+                Json.parseToJsonElement("""{"type":"table_row","table_row":{"cells":[[{"plain_text":"Name"}],[{"plain_text":"Age"}]]}}""").jsonObject,
+                Json.parseToJsonElement("""{"type":"table_row","table_row":{"cells":[[{"plain_text":"Ann"}],[]]}}""").jsonObject,
+            ),
+        )
+        assertEquals(listOf(listOf("Name", "Age"), listOf("Ann", "")), rows)
+    }
 }

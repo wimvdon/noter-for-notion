@@ -358,7 +358,8 @@ class NotesRepository(
             }
             val edited = page.stringOrNull("last_edited_time")
             val cached = cache.content(id)
-            if (cached != null && cached.remoteEditedTime == edited && !cached.dirty) return@withContext cached
+            val current = cached != null && cached.remoteEditedTime == edited && !cached.hasExpiredFiles(clock())
+            if (cached != null && current && !cached.dirty) return@withContext cached
             if (cached?.dirty == true) return@withContext null
             val fresh = downloadContent(id, cached?.blocks.orEmpty(), edited)
             lock.withLock {
@@ -378,7 +379,9 @@ class NotesRepository(
         val keyById = previous.mapNotNull { b -> b.notionId?.let { it to b.key } }.toMap()
         val blocks = client.blockChildren(id).mapNotNull { json ->
             val notionId = json.stringOrNull("id") ?: return@mapNotNull null
-            BlockCodec.parse(json, keyById[notionId] ?: UUID.randomUUID().toString())
+            val block = BlockCodec.parse(json, keyById[notionId] ?: UUID.randomUUID().toString()) ?: return@mapNotNull null
+            // A table's cells are its rows (nested blocks): one more request per table.
+            if (block.rawType == "table" && block.hasChildren) block.copy(rows = BlockCodec.tableRows(client.blockChildren(notionId))) else block
         }
         return PageContent(id, blocks = blocks, base = blocks, dirty = false, remoteEditedTime = edited)
     }

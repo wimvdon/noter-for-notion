@@ -60,6 +60,7 @@ object PropertyCodec {
         }.sortedWith(compareBy<NoteProperty> { if (it.type == "title") 0 else 1 }.thenBy { it.name.lowercase() })
         val title = properties.firstOrNull { it.type == "title" }?.value as? PropertyValue.Text
         val icon = page.objOrNull("icon")?.takeIf { it.stringOrNull("type") == "emoji" }?.stringOrNull("emoji")
+        val cover = BlockCodec.fileLink(page.objOrNull("cover"))
         return NoteSummary(
             id = id,
             databaseId = databaseId,
@@ -69,6 +70,8 @@ object PropertyCodec {
             createdTime = page.stringOrNull("created_time").orEmpty(),
             lastEditedTime = page.stringOrNull("last_edited_time").orEmpty(),
             properties = properties,
+            cover = cover?.first,
+            coverExpiry = cover?.second,
         )
     }
 

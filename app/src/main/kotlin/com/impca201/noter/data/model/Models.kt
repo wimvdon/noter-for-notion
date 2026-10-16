@@ -177,6 +177,10 @@ data class NoteSummary(
     val createdTime: String = "",
     val lastEditedTime: String = "",
     val properties: List<NoteProperty> = emptyList(),
+    /** The page's header image (Notion's "cover"). */
+    val cover: String? = null,
+    /** When [cover] stops working, for a file Notion hosts. */
+    val coverExpiry: String? = null,
 ) {
     val isLocal: Boolean get() = id.startsWith(LOCAL_PREFIX)
 
@@ -195,7 +199,10 @@ enum class BlockType {
     /** A horizontal line; it has no text. */
     DIVIDER,
 
-    /** A block the editor can't change (image, table, embed, …). Shown, kept, never written. */
+    /**
+     * A block the editor can't change (image, table, bookmark, …), told apart by [Block.rawType].
+     * Shown read-only, kept, never written.
+     */
     UNSUPPORTED,
     ;
 
@@ -226,6 +233,17 @@ data class Block(
     val language: String? = null,
     /** A callout's emoji. */
     val icon: String? = null,
+    /**
+     * Read-only blocks: the file, image or link (image, video, file, pdf, audio, bookmark, embed,
+     * link preview), or the linked page's ID (child page or database, link to page).
+     */
+    val url: String? = null,
+    /** When a file Notion hosts stops working ([url] is then signed for about an hour). */
+    val urlExpiry: String? = null,
+    /** A table's cells, row by row, as plain text. */
+    val rows: List<List<String>>? = null,
+    /** The table's first row is its header. */
+    val headerRow: Boolean = false,
 ) {
     /** Same content as [other], ignoring identity. */
     fun sameContentAs(other: Block): Boolean =
@@ -245,7 +263,10 @@ data class PageContent(
     val remoteEditedTime: String? = null,
     /** True when Notion had more content than the editor shows (nested blocks are kept as is). */
     val complete: Boolean = true,
-)
+) {
+    /** True when a file of the content that Notion hosts has expired (see [NotionFiles]). */
+    fun hasExpiredFiles(nowMs: Long): Boolean = blocks.any { NotionFiles.isExpired(it.urlExpiry, nowMs) }
+}
 
 @Serializable
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
