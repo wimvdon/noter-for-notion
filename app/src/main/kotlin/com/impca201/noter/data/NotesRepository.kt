@@ -150,19 +150,27 @@ class NotesRepository(
         }
     }
 
+    /** Databases whose on-phone copy was read (once per app start). */
+    private val cacheRead = mutableSetOf<String>()
+
     private suspend fun loadDatabase(id: String) = withContext(Dispatchers.IO) {
-        if (_databases.value[id]?.loaded == true) return@withContext
-        val cached = cache.database(id)
         lock.withLock {
+            if (id in cacheRead) return@withLock
+            cacheRead += id
+            val cached = cache.database(id)
             val queue = _outbox.value
+            val cachedNotes = cached?.notes.orEmpty().map { Outbox.applyPending(it, queue) }
             _databases.update { map ->
+                // Something may already be here (a note created right at start-up): keep it.
+                val existing = map[id]
+                val notes = existing?.notes.orEmpty().let { now -> now + cachedNotes.filter { c -> now.none { it.id == c.id } } }
                 map + (
-                    id to DatabaseState(
-                        schema = cached?.schema,
-                        notes = cached?.notes.orEmpty().map { Outbox.applyPending(it, queue) },
+                    id to (existing ?: DatabaseState()).copy(
+                        schema = existing?.schema ?: cached?.schema,
+                        notes = notes,
                         lastSyncMs = cached?.lastSyncMs ?: 0,
                         lastFullSyncMs = cached?.lastFullSyncMs ?: 0,
-                        loaded = cached != null,
+                        loaded = existing?.loaded == true || cached != null,
                     )
                     )
             }
@@ -713,6 +721,7 @@ class NotesRepository(
         settings.update { s -> s.copy(databases = s.databases.filterNot { it.id == id }, order = s.order - id) }
         withContext(Dispatchers.IO) {
             lock.withLock {
+                cacheRead -= id
                 _databases.update { it - id }
                 cache.deleteDatabase(id)
                 _outbox.value = _outbox.value.filterNot { it is PendingOp.CreatePage && it.databaseId == id }
