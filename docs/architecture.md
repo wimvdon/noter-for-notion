@@ -2,16 +2,25 @@
 
 ## This app
 
-Noter shows the pages of Notion databases as notes, in the style of Google Keep, and edits their
-title, properties and content.
+Noter shows Notion pages as notes, in the style of Google Keep, and edits their title,
+properties and content: the pages of databases and pages on their own.
 
 ### Screens
-- **Overview** (`ui/main/`): Material's navigation bar with Pinned and one destination per added
-  database (a navigation drawer instead when there are more than five). Notes are cards in a
-  staggered grid with a preview of their content; pinned notes come first under "Pinned".
-  Long-press and drag moves a note within its section; a long press without moving opens its menu
-  (pin, move to trash). Filters (Material filter chips) come from one select, status, multi-select
-  or person property per database. Pinned shows the pinned notes of every database.
+- **Overview** (`ui/main/`): top-level destinations (`logic/Destinations.kt`) in Material's
+  navigation bar, or all of them in a navigation drawer when there are more than five:
+  - **Pinned**: the pinned notes of everything (databases and pages), filtered by source.
+  - **Browse** (`BrowsePane.kt`): the databases and pages shared with the integration, from
+    Notion's search, most recently edited first, with a search field. Without a search a
+    database's own pages are left out (they are one tap further); a search finds them too.
+  - **Views**: a database in the navigation with its filter property and the filters that are on
+    when it opens (`DatabaseConfig`, kept under `AppSettings.databases`; views saved before views
+    existed have the database's ID as their own).
+  Notes are cards in a staggered grid with a preview of their content; pinned notes come first
+  under "Pinned". Long-press and drag moves a note within its section; a long press without
+  moving opens its menu (pin, move to trash). Filters (Material filter chips) come from one
+  select, status, multi-select or person property.
+- **Database** (`DatabaseScreen.kt`): a database opened from Browse or a link in a note, as a
+  child page with its notes and filters; "Add to navigation" makes it a view.
 - **Note** (`ui/note/`): header image, icon, title, properties (`PropertyEditors.kt`), then the content as a
   list of blocks, each its own text field. To-do items have an × to delete them. A toolbar above the keyboard changes the block's kind,
   adds a divider or deletes the block. Tapping below the content continues at the end. Moving a
@@ -21,9 +30,12 @@ title, properties and content.
   otherwise with the tune button: drag to reorder, the eye to show or collapse, the card icon to
   show up to three on the note's card in the overview (else the card shows the filter property).
   Kept per database in `AppSettings.propertyLayouts` (backed up).
-- **Settings** (`ui/settings/`): Connection (API key, sync status), Databases (add, edit, order),
+- **Settings** (`ui/settings/`): Connection (API key, sync status), Views (add, edit, order),
   Appearance; built from the shared `SettingsKit.kt`.
-- `ui/AppNavigation.kt`: a small back stack of three screens (no navigation library).
+- `ui/AppNavigation.kt`: a small back stack of four screens (no navigation library).
+- **Pages on their own** (not in a database) are kept like a database's notes under the key
+  `NotesRepository.PAGES`, so editing, pinning and the trash work the same. Linked pages and
+  databases in a note (child pages, links to pages) open in the app.
 
 ### Data flow
 ```
@@ -70,7 +82,7 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
 ### Where data lives
 | What | Where | Backed up |
 |---|---|---|
-| Databases, pins, order, property layouts, theme | DataStore `backed_up_settings` | Yes |
+| Views, pins, order, property layouts, theme | DataStore `backed_up_settings` | Yes |
 | API key | `EncryptedSharedPreferences` `notion_key_encrypted_prefs` | No |
 | Copies of notes, schemas, users; unsent changes | JSON files in `noBackupFilesDir/notion_cache` | No |
 | Images | Coil's cache in `cacheDir/images` | No |
@@ -99,7 +111,7 @@ scripts/                         Release helpers (Python/Java) with their own te
 - **UI state**: small screens use `rememberSaveable`. When a screen gets real logic or data,
   add a `ViewModel` (`androidx.lifecycle:lifecycle-viewmodel-compose`) that exposes a
   `StateFlow<UiState>` and calls into the plain-Kotlin logic. Record it in `decisions.md`.
-- **Navigation**: three screens on a small back stack in `ui/AppNavigation.kt` (see `decisions.md`).
+- **Navigation**: four screens on a small back stack in `ui/AppNavigation.kt` (see `decisions.md`).
 - **Persistence**: Jetpack DataStore (version already in the catalog). Wrap it behind a small
   repository interface so logic tests can use a fake. Decide per value whether it is backed up
   (see "Backup" below).

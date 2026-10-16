@@ -3,15 +3,25 @@ package com.impca201.noter.data.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/** A database the user added in Settings. Its notes get their own tab. */
+/**
+ * A view: a database pinned to the navigation, optionally with filters selected when it opens.
+ * Views saved before views existed have the database's ID as [id] and no [databaseId].
+ */
 @Serializable
 data class DatabaseConfig(
     val id: String,
     val name: String,
     val icon: String = DEFAULT_ICON,
-    /** Property whose options become the filter chips (select, status, multi-select or person). */
+    /** Property whose options become the filters (select, status, multi-select or person). */
     val chipProperty: String? = null,
+    /** The database shown; null for views saved before views existed ([id] is then the database). */
+    val databaseId: String? = null,
+    /** Filters (options of [chipProperty]) selected when the view opens. */
+    val filters: List<String> = emptyList(),
 ) {
+    /** The database this view shows. */
+    val sourceId: String get() = databaseId ?: id
+
     companion object {
         const val DEFAULT_ICON = "note"
     }
@@ -44,6 +54,17 @@ data class SelectOption(
 data class NotionUser(
     val id: String,
     val name: String,
+)
+
+/** Something shared with the integration, for the Browse list. */
+data class WorkspaceItem(
+    val id: String,
+    val isDatabase: Boolean,
+    val title: String,
+    val icon: String? = null,
+    val lastEditedTime: String = "",
+    /** A page: the note as the editor needs it (in its database, or among the pages). */
+    val note: NoteSummary? = null,
 )
 
 /** A linked page of a relation property, or a page of the related database. */
@@ -254,6 +275,8 @@ data class Block(
     val url: String? = null,
     /** When a file Notion hosts stops working ([url] is then signed for about an hour). */
     val urlExpiry: String? = null,
+    /** A link to a page ([url]) that is a database, not a page. */
+    val linksDatabase: Boolean = false,
     /** A table's cells, row by row, as plain text. */
     val rows: List<List<String>>? = null,
     /** The table's first row is its header. */

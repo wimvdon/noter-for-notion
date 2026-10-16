@@ -62,6 +62,8 @@ import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -138,7 +140,7 @@ import com.impca201.noter.data.notion.InlineMarkdown
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NoteScreen(pageId: String, onBack: () -> Unit) {
+fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit, onOpenDatabase: (String) -> Unit) {
     val viewModel: NoteViewModel = viewModel(key = "note-$pageId", factory = NoteViewModel.factory(pageId))
     val state by viewModel.state.collectAsStateWithLifecycle()
     val focus by viewModel.focus.collectAsStateWithLifecycle()
@@ -146,6 +148,15 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     var confirmTrash by remember { mutableStateOf(false) }
     var customize by rememberSaveable { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    val openFailed by viewModel.openFailed.collectAsStateWithLifecycle()
+    val openFailedText = stringResource(R.string.page_open_failed)
+    LaunchedEffect(openFailed) {
+        if (openFailed) {
+            viewModel.openFailedShown()
+            snackbar.showSnackbar(openFailedText)
+        }
+    }
     val context = LocalContext.current
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -185,6 +196,7 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
 
     Scaffold(
         contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 title = {},
@@ -329,6 +341,8 @@ fun NoteScreen(pageId: String, onBack: () -> Unit) {
                                 if (focused) focusedKey = block.key else if (focusedKey == block.key) focusedKey = null
                             },
                             headings = headings,
+                            onOpenPage = { id -> viewModel.openLinkedPage(id, onOpenNote) },
+                            onOpenDatabase = onOpenDatabase,
                         )
                     }
                 }
@@ -488,10 +502,12 @@ private fun BlockRow(
     onDelete: () -> Unit,
     onFocusChange: (Boolean) -> Unit,
     headings: List<Block>,
+    onOpenPage: (String) -> Unit,
+    onOpenDatabase: (String) -> Unit,
 ) {
     when (block.type) {
         BlockType.UNSUPPORTED -> {
-            ReadOnlyBlock(block, headings)
+            ReadOnlyBlock(block, headings, onOpenPage, onOpenDatabase)
             return
         }
         BlockType.DIVIDER -> {

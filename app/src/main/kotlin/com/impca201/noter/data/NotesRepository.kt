@@ -12,9 +12,11 @@ import com.impca201.noter.data.model.NoteSummary
 import com.impca201.noter.data.model.NotionUser
 import com.impca201.noter.data.model.PageContent
 import com.impca201.noter.data.model.PageRef
+import com.impca201.noter.data.model.WorkspaceItem
 import com.impca201.noter.data.notion.BlockCodec
 import com.impca201.noter.data.notion.InlineMarkdown
 import com.impca201.noter.data.notion.PropertyCodec
+import com.impca201.noter.data.notion.WorkspaceCodec
 import com.impca201.noter.data.store.AppSettings
 import com.impca201.noter.data.store.CacheStore
 import com.impca201.noter.data.store.DatabaseCache
@@ -134,9 +136,10 @@ class NotesRepository(
         scope.launch(Dispatchers.IO) {
             lock.withLock { _outbox.value = cache.outbox() }
             outboxLoaded.complete(Unit)
-            settings.settings.map { s -> s.databases.map { it.id } }.distinctUntilChanged().collect { ids ->
+            loadDatabase(PAGES)
+            // Databases opened from Browse stay loaded too; they are only a copy.
+            settings.settings.map { s -> s.databases.map { it.sourceId }.distinct() }.distinctUntilChanged().collect { ids ->
                 ids.forEach { loadDatabase(it) }
-                _databases.update { map -> map.filterKeys { it in ids } }
             }
         }
     }
@@ -146,7 +149,7 @@ class NotesRepository(
         scope.launch {
             outboxLoaded.await()
             flush()
-            settings.current().databases.forEach { refresh(it.id, userAsked = false) }
+            settings.current().databases.map { it.sourceId }.distinct().forEach { refresh(it, userAsked = false) }
         }
     }
 
@@ -193,7 +196,7 @@ class NotesRepository(
 
     /** Refreshes one database from Notion when [SyncPolicy] says it is due (always when [userAsked]). */
     suspend fun refresh(databaseId: String, userAsked: Boolean) {
-        if (!hasKey()) return
+        if (!hasKey() || databaseId == PAGES) return
         loadDatabase(databaseId)
         val current = _databases.value[databaseId] ?: return
         if (current.refreshing) return
@@ -699,6 +702,51 @@ class NotesRepository(
             }
         }
 
+    // ---- Browse -------------------------------------------------------------------------
+
+    /**
+     * Pages and databases shared with the integration, most recently edited first. Without a
+     * [query] a database's own pages (the notes) are left out; with one they are found too.
+     */
+    suspend fun browse(query: String): List<WorkspaceItem> = withContext(Dispatchers.IO) {
+        client.search(query.trim(), BROWSE_LIMIT).mapNotNull { WorkspaceCodec.parse(it, includeNotes = query.isNotBlank(), pagesKey = PAGES) }
+    }
+
+    /** Makes [note] (from Browse) known here so the editor can open it. Returns its ID. */
+    suspend fun openNote(note: NoteSummary): String {
+        loadDatabase(note.databaseId)
+        withContext(Dispatchers.IO) {
+            lock.withLock {
+                // Already here: keep the copy here, it may have changes that aren't sent yet.
+                if (findNote(_databases.value, note.id) != null) return@withLock
+                setState(note.databaseId) { db -> db.copy(notes = listOf(Outbox.applyPending(note, _outbox.value)) + db.notes, loaded = true) }
+                _databases.value[note.databaseId]?.let { saveDatabaseCache(note.databaseId, it) }
+            }
+        }
+        if (note.databaseId != PAGES) scope.launch { refresh(note.databaseId, userAsked = false) }
+        return note.id
+    }
+
+    /** Opens a linked page by its ID (downloading it when it isn't here). Null when Notion can't be reached. */
+    suspend fun openPage(pageId: String): String? {
+        val id = resolve(pageId)
+        if (findNote(_databases.value, id) != null) return id
+        return try {
+            val page = withContext(Dispatchers.IO) { client.getPage(id) }
+            val note = PropertyCodec.parsePage(page, WorkspaceCodec.parentDatabase(page) ?: PAGES) ?: return null
+            openNote(note)
+        } catch (e: NotionException) {
+            if (e.isOffline) _offline.value = true
+            null
+        }
+    }
+
+    /** Starts showing a database (opened from Browse or a link): its copy, then a refresh. */
+    suspend fun openDatabase(databaseId: String) {
+        loadDatabase(databaseId)
+        refresh(databaseId, userAsked = false)
+    }
+
     // ---- Set-up ---------------------------------------------------------------------------
 
     suspend fun searchDatabases(): List<PageRef> = withContext(Dispatchers.IO) { client.searchDatabases() }
@@ -711,26 +759,19 @@ class NotesRepository(
 
     suspend fun testKey(key: String): String = withContext(Dispatchers.IO) { client.testKey(key) }
 
+    /** Adds or changes a view (a database in the navigation). */
     suspend fun saveDatabase(config: DatabaseConfig) {
         settings.update { s ->
             val exists = s.databases.any { it.id == config.id }
             s.copy(databases = if (exists) s.databases.map { if (it.id == config.id) config else it } else s.databases + config)
         }
-        loadDatabase(config.id)
-        scope.launch { refresh(config.id, userAsked = _databases.value[config.id]?.lastFullSyncMs == 0L) }
+        loadDatabase(config.sourceId)
+        scope.launch { refresh(config.sourceId, userAsked = _databases.value[config.sourceId]?.lastFullSyncMs == 0L) }
     }
 
+    /** Removes a view from the navigation. The notes stay (as a copy, for Pinned and Browse). */
     suspend fun removeDatabase(id: String) {
-        settings.update { s -> s.copy(databases = s.databases.filterNot { it.id == id }, order = s.order - id) }
-        withContext(Dispatchers.IO) {
-            lock.withLock {
-                cacheRead -= id
-                _databases.update { it - id }
-                cache.deleteDatabase(id)
-                _outbox.value = _outbox.value.filterNot { it is PendingOp.CreatePage && it.databaseId == id }
-                cache.saveOutbox(_outbox.value)
-            }
-        }
+        settings.update { s -> s.copy(databases = s.databases.filterNot { it.id == id }) }
     }
 
     suspend fun moveDatabase(id: String, up: Boolean) {
@@ -779,11 +820,16 @@ class NotesRepository(
 
     suspend fun updateSettings(transform: (AppSettings) -> AppSettings) = settings.update(transform)
 
-    private companion object {
-        const val RETRY_MIN_MS = 15_000L
-        const val RETRY_MAX_MS = 5 * 60_000L
-        const val LOOKUP_TTL_MS = 24 * 60 * 60_000L
-        const val RELATED_TTL_MS = 10 * 60_000L
+    companion object {
+        /** The key under which pages that are not in a database are kept, like a database's notes. */
+        const val PAGES = "pages"
+
+        /** Results of one Browse search (one or two requests). */
+        private const val BROWSE_LIMIT = 200
+        private const val RETRY_MIN_MS = 15_000L
+        private const val RETRY_MAX_MS = 5 * 60_000L
+        private const val LOOKUP_TTL_MS = 24 * 60 * 60_000L
+        private const val RELATED_TTL_MS = 10 * 60_000L
     }
 }
 

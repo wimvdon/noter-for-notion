@@ -1,6 +1,5 @@
 package com.impca201.noter.logic
 
-import com.impca201.noter.data.model.DatabaseConfig
 import com.impca201.noter.data.model.NoteSummary
 import com.impca201.noter.data.model.PropertySchema
 
@@ -11,24 +10,25 @@ data class NoteListContent(
     val others: List<NoteSummary>,
 )
 
-/** Builds the Home tab and the database tabs from the notes on this phone. */
+/** Where notes come from on Pinned: a database or the pages on their own, with its name. */
+data class NoteSource(val id: String, val label: String)
+
+/** Builds Pinned and the database views from the notes on this phone. */
 object NoteLists {
-    /** Home: the pinned notes of all databases; the chips filter by database. */
+    /** Pinned: the pinned notes of every source; the filters filter by source. */
     fun home(
-        databases: List<DatabaseConfig>,
+        sources: List<NoteSource>,
         notesByDatabase: Map<String, List<NoteSummary>>,
         pinned: List<String>,
         order: List<String>,
         selectedDatabases: Set<String>,
     ): NoteListContent {
         val pinnedSet = pinned.toSet()
-        val all = databases.flatMap { db -> notesByDatabase[db.id].orEmpty().filter { it.id in pinnedSet } }
-        val chips = if (databases.size < 2) {
-            emptyList()
-        } else {
-            databases.map { db -> FilterChip(db.id, db.name, count = all.count { it.databaseId == db.id }) }
-                .filter { it.count > 0 }
-        }
+        val all = sources.flatMap { db -> notesByDatabase[db.id].orEmpty().filter { it.id in pinnedSet } }
+        val chips = sources.map { db -> FilterChip(db.id, db.label, count = all.count { it.databaseId == db.id }) }
+            .filter { it.count > 0 }
+            .takeIf { it.size >= 2 }
+            .orEmpty()
         val visible = if (selectedDatabases.isEmpty()) all else all.filter { it.databaseId in selectedDatabases }
         // Pinned in the order they were pinned (newest first) unless placed by hand.
         val byPinOrder = visible.sortedBy { pinned.indexOf(it.id) }

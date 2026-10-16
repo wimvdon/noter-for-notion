@@ -217,6 +217,21 @@ class NoteViewModel(
         }
     }
 
+    private val _openFailed = MutableStateFlow(false)
+
+    /** True after a linked page couldn't be opened (offline); the screen says so once. */
+    val openFailed: StateFlow<Boolean> = _openFailed.asStateFlow()
+
+    fun openFailedShown() {
+        _openFailed.value = false
+    }
+
+    /** Opens a page linked in the note (downloading it when it isn't on this phone yet). */
+    fun openLinkedPage(id: String, onOpened: (String) -> Unit) = viewModelScope.launch {
+        val opened = repository.openPage(id)
+        if (opened != null) onOpened(opened) else _openFailed.value = true
+    }
+
     fun togglePin() = viewModelScope.launch { repository.togglePin(pageId) }
 
     fun trash(onDone: () -> Unit) = viewModelScope.launch {

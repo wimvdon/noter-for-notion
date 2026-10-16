@@ -26,6 +26,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.impca201.noter.ui.main.DatabaseScreen
 import com.impca201.noter.ui.main.MainScreen
 import com.impca201.noter.ui.main.MainViewModel
 import com.impca201.noter.ui.note.NoteScreen
@@ -64,12 +65,12 @@ private class ScreenOwner(
 }
 
 /**
- * The app's screens as a small back stack: the main screen at the bottom, a note or the settings
- * on top. Three screens don't need a navigation library.
+ * The app's screens as a small back stack: the main screen at the bottom, notes, databases and
+ * the settings on top. Four screens don't need a navigation library.
  */
 @Composable
 fun AppNavigation() {
-    // Entries: "main", "settings" or "note:<page id>".
+    // Entries: "main", "settings", "note:<page id>" or "database:<database id>".
     var stack by rememberSaveable { mutableStateOf(listOf(MAIN)) }
     val mainViewModel: MainViewModel = viewModel(factory = MainViewModel.Factory)
     val stores: ScreenStores = viewModel()
@@ -112,6 +113,7 @@ fun AppNavigation() {
             MainScreen(
                 viewModel = mainViewModel,
                 onOpenNote = { push(NOTE + it) },
+                onOpenDatabase = { push(DATABASE + it) },
                 onOpenSettings = { push(SETTINGS) },
             )
         } else {
@@ -121,7 +123,17 @@ fun AppNavigation() {
                         viewModel = viewModel(factory = SettingsViewModel.Factory),
                         onBack = ::pop,
                     )
-                    top.startsWith(NOTE) -> NoteScreen(pageId = top.removePrefix(NOTE), onBack = ::pop)
+                    top.startsWith(NOTE) -> NoteScreen(
+                        pageId = top.removePrefix(NOTE),
+                        onBack = ::pop,
+                        onOpenNote = { push(NOTE + it) },
+                        onOpenDatabase = { push(DATABASE + it) },
+                    )
+                    top.startsWith(DATABASE) -> DatabaseScreen(
+                        databaseId = top.removePrefix(DATABASE),
+                        onBack = ::pop,
+                        onOpenNote = { push(NOTE + it) },
+                    )
                 }
             }
         }
@@ -132,3 +144,4 @@ private const val CLEAR_DELAY_MS = 1_000L
 private const val MAIN = "main"
 private const val SETTINGS = "settings"
 private const val NOTE = "note:"
+private const val DATABASE = "database:"
