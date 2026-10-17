@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: Package name be.wimvandonck.noter
+
+The app's package name (`applicationId` and the Kotlin package) was `com.impca201.noter`, after the owner's old GitHub name. Before the first Play Store release it becomes `be.wimvandonck.noter`, the owner's own domain written backwards: a domain stays the owner's, a username can change, and a package name can never change once the app is on the Play Store. Android treats the new name as a different app, so the old one doesn't update to it: the owner installs the new app next to the old one, sets it up again (key, views) and removes the old one. Notes are in Notion, so nothing is lost; settings on the phone (views, pins, order) are set up again. Rejected: `com.wimvdon.noter` (tied to a username again) and keeping the old name (the Play Store would freeze it).
+
 ## 2026-10-17: Less help text
 
 The owner found the app over-explanatory; the shared rule is in `DESIGN.md` ("Wording"): help text only says what the screen can't. Shortened: the help above the views list (only "stays on this phone, Notion isn't changed"), the bottom-bar room line, the card-options note and the property-order sheet (no "drag to change the order", no pointer to another screen). Kept: consequences, privacy notes and setup steps. Rejected: removing every hint (the remaining ones say something the screen doesn't).
