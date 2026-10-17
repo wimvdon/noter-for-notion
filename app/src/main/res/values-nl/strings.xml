@@ -200,4 +200,6 @@
     <string name="section_navigation_bar">Navigatiebalk</string>
     <string name="navigation_start">Hier opent de app</string>
     <string name="navigation_search_last">Altijd als laatste</string>
+    <string name="search_or_add">Zoeken of toevoegen</string>
+    <string name="add_option">“%1$s” toevoegen</string>
 </resources>

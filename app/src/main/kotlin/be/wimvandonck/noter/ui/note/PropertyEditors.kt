@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AssistChip
@@ -67,6 +68,7 @@ import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.model.SelectOption
 import be.wimvandonck.noter.data.notion.PropertyCodec
+import be.wimvandonck.noter.logic.NewOptions
 import be.wimvandonck.noter.logic.NotionDates
 import be.wimvandonck.noter.ui.common.OptionChip
 import java.time.LocalTime
@@ -165,12 +167,15 @@ private fun PropertyEditor(
             options = schema?.options.orEmpty(),
             multiple = false,
             title = property.name,
+            // Notion makes a new select option when a note is saved with it; not a status option.
+            canAdd = property.type == "select",
         ) { set(PropertyValue.Select(it.firstOrNull())) }
         is PropertyValue.MultiSelect -> SelectEditor(
             selected = value.options,
             options = schema?.options.orEmpty(),
             multiple = true,
             title = property.name,
+            canAdd = true,
         ) { set(PropertyValue.MultiSelect(it)) }
         is PropertyValue.Date -> DateEditor(value) { set(it) }
         is PropertyValue.People -> PeopleEditor(value.users, lookups, property.name) { set(PropertyValue.People(it)) }
@@ -256,11 +261,20 @@ private fun SelectEditor(
     options: List<SelectOption>,
     multiple: Boolean,
     title: String,
+    canAdd: Boolean,
     onChange: (List<SelectOption>) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     ValueChips(empty = selected.isEmpty(), onClick = { open = true }) {
         selected.forEach { OptionChip(it) }
+    }
+    fun toggle(item: SelectOption) {
+        if (multiple) {
+            onChange(if (selected.any { it.name == item.name }) selected.filterNot { it.name == item.name } else selected + item)
+        } else {
+            onChange(if (selected.any { it.name == item.name }) emptyList() else listOf(item))
+            open = false
+        }
     }
     if (open) {
         val all = options + selected.filter { s -> options.none { it.name == s.name } }
@@ -273,13 +287,11 @@ private fun SelectEditor(
             label = { OptionChip(it) },
             searchText = { it.name },
             onDismiss = { open = false },
-            onToggle = { item ->
-                if (multiple) {
-                    onChange(if (selected.any { it.name == item.name }) selected.filterNot { it.name == item.name } else selected + item)
-                } else {
-                    onChange(if (selected.any { it.name == item.name }) emptyList() else listOf(item))
-                    open = false
-                }
+            onToggle = ::toggle,
+            onAdd = if (canAdd) {
+                { name -> toggle(SelectOption(name)) }
+            } else {
+                null
             },
         )
     }
@@ -377,17 +389,20 @@ private fun <T> ChoiceSheet(
     onDismiss: () -> Unit,
     onToggle: (T) -> Unit,
     loading: Boolean = false,
+    /** Adds what was typed as a new option (the search field is then always there). */
+    onAdd: ((String) -> Unit)? = null,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
+    val newOption = onAdd?.let { NewOptions.offer(query, items.map(searchText)) }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.navigationBarsPadding()) {
             Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
-            if (items.size > 8) {
+            if (items.size > 8 || onAdd != null) {
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
                     leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                    placeholder = { Text(stringResource(R.string.search)) },
+                    placeholder = { Text(stringResource(if (onAdd != null) R.string.search_or_add else R.string.search)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                 )
@@ -398,7 +413,7 @@ private fun <T> ChoiceSheet(
                     modifier = Modifier.padding(24.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            } else if (items.isEmpty()) {
+            } else if (items.isEmpty() && onAdd == null) {
                 Text(
                     stringResource(R.string.no_options),
                     modifier = Modifier.padding(24.dp),
@@ -407,6 +422,18 @@ private fun <T> ChoiceSheet(
             }
             val filtered = if (query.isBlank()) items else items.filter { searchText(it).contains(query.trim(), ignoreCase = true) }
             LazyColumn(Modifier.heightIn(max = 480.dp)) {
+                if (newOption != null && onAdd != null) {
+                    item(key = "\u0000add") {
+                        ListItem(
+                            headlineContent = { Text(stringResource(R.string.add_option, newOption)) },
+                            leadingContent = { Icon(Icons.Rounded.Add, contentDescription = null) },
+                            modifier = Modifier.clickable {
+                                onAdd(newOption)
+                                query = ""
+                            },
+                        )
+                    }
+                }
                 items(filtered, key = key) { item ->
                     val selected = isSelected(item)
                     ListItem(

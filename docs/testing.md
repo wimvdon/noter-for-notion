@@ -38,6 +38,7 @@ python3 -m unittest discover -s scripts/tests
 | `data/store/CacheStoreTest` | On-phone copies survive a restart |
 | `logic/NoteOrderingTest`, `logic/ChipFilterTest` | Pins, custom order, filters (checkbox, date ranges, relations, created by, formulas, numbers in order of their value) |
 | `data/api/NotionErrorsTest` | Which errors the screens say in the user's language |
+| `logic/NewOptionsTest` | When the picker of a select or multi-select offers to add what was typed (not for an existing name in any case, nor with a comma) |
 | `logic/NotebooksTest` | Sub-notebooks (leaves, changing one in place, names on Pinned); a notebook's notes: filters per property, sorts, a new notebook's first chip row, the order of the chip rows, old notebooks that followed a Notion view |
 | `logic/ColumnsTest` | Columns: how far their blocks are indented, and that blocks stay in their column |
 | `ui/main/PresetForTest` | The value a new note gets from the selected filter |
