@@ -202,4 +202,8 @@
     <string name="navigation_search_last">Altijd als laatste</string>
     <string name="search_or_add">Zoeken of toevoegen</string>
     <string name="add_option">“%1$s” toevoegen</string>
+    <string name="source_missing_title">Notion vindt deze gegevensbron niet</string>
+    <string name="source_missing_body">Misschien is ze verwijderd of naar de prullenbak verplaatst, of heeft de koppeling er geen toegang meer toe.</string>
+    <string name="source_missing_remove">Notebook verwijderen</string>
+    <string name="source_missing_remove_sub">Uit dit notebook verwijderen</string>
 </resources>

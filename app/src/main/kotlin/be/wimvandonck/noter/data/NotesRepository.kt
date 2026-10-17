@@ -3,6 +3,7 @@ package be.wimvandonck.noter.data
 import be.wimvandonck.noter.data.api.NotionClient
 import be.wimvandonck.noter.data.api.NotionErrors
 import be.wimvandonck.noter.data.api.NotionException
+import be.wimvandonck.noter.data.api.objOrNull
 import be.wimvandonck.noter.data.api.stringOrNull
 import be.wimvandonck.noter.data.model.Block
 import be.wimvandonck.noter.data.model.BlockType
@@ -45,6 +46,7 @@ import be.wimvandonck.noter.data.sync.withProperty
 import be.wimvandonck.noter.logic.Columns
 import be.wimvandonck.noter.logic.KnownUsers
 import be.wimvandonck.noter.logic.NoteOrdering
+import be.wimvandonck.noter.logic.NotebookStructure
 import be.wimvandonck.noter.logic.Notebooks
 import be.wimvandonck.noter.logic.NotePreviews
 import be.wimvandonck.noter.logic.SchemaOptions
@@ -126,6 +128,11 @@ class NotesRepository(
     /** True when the last attempt to reach Notion failed for lack of a connection. */
     val offline: StateFlow<Boolean> = _offline.asStateFlow()
 
+    private val _missingSources = MutableStateFlow<Set<String>>(emptySet())
+
+    /** Data sources (IDs without dashes) Notion can't find or has in its trash: their notebooks say so. */
+    val missingSources: StateFlow<Set<String>> = _missingSources.asStateFlow()
+
     private val _previews = MutableStateFlow<Map<String, String>>(emptyMap())
 
     /** Preview text of notes' content for the overview cards, by page ID (see [NotePreviews]). */
@@ -176,9 +183,14 @@ class NotesRepository(
         scope.launch {
             outboxLoaded.await()
             flush()
+            // At most every quarter of an hour: where the notebooks' data sources are in Notion now.
+            if (clock() - lastReconcileMs > RECONCILE_EVERY_MS) reconcileNotebooks()
             Notebooks.leaves(settings.current().databases).map { it.sourceId }.distinct().forEach { refresh(it, userAsked = false) }
         }
     }
+
+    /** When [reconcileNotebooks] last ran (0: not since the app started). */
+    private var lastReconcileMs = 0L
 
     /** Databases whose on-phone copy was read (once per app start). */
     private val cacheRead = mutableSetOf<String>()
@@ -280,9 +292,11 @@ class NotesRepository(
                 }
             }
             _offline.value = false
+            _missingSources.update { it - plain(databaseId) }
         } catch (e: NotionException) {
             if (e.isOffline) _offline.value = true
             if (e.status == 401) _events.tryEmit(RepoEvent.KeyRejected)
+            if (e.status == 404) _missingSources.update { it + plain(databaseId) }
             setState(databaseId) { it.copy(refreshing = false, loaded = true, error = NotionErrors.of(e)) }
         }
     }
@@ -1183,10 +1197,61 @@ class NotesRepository(
         }
     }
 
-    /** Removes a view from the navigation. The notes stay (as a copy, for Pinned and Browse). */
+    /**
+     * Removes a notebook, or a sub-notebook from its notebook. The notes stay (as a copy, for
+     * Pinned and Browse).
+     */
     suspend fun removeDatabase(id: String) {
-        settings.update { s -> s.copy(databases = s.databases.filterNot { it.id == id }) }
+        settings.update { s ->
+            s.copy(databases = s.databases.filterNot { it.id == id }.map { top -> top.copy(children = top.children.filterNot { it.id == id }) })
+        }
     }
+
+    /**
+     * Checks which database each notebook's data source is in now and brings the notebooks in line
+     * ([NotebookStructure]): a data source moved into another database becomes a sub-notebook of
+     * its notebook. One request per data source and per database; nothing changes while offline
+     * or when Notion is busy. Notes the data sources Notion can't find ([missingSources]).
+     */
+    suspend fun reconcileNotebooks() = withContext(Dispatchers.IO) {
+        if (!hasKey()) return@withContext
+        lastReconcileMs = clock()
+        val leaves = Notebooks.leaves(settings.current().databases).filter { it.pageId == null }.distinctBy { it.sourceId }
+        val parents = mutableMapOf<String, String>()
+        val missing = mutableSetOf<String>()
+        try {
+            for (leaf in leaves) {
+                try {
+                    // A key from before data sources: the notebook is kept under its data source first.
+                    val id = resolveSource(leaf.sourceId)
+                    if (id != leaf.sourceId) renameSource(leaf.sourceId, id)
+                    val source = client.getDataSource(id)
+                    if (PropertyCodec.isTrashed(source)) missing += plain(id)
+                    source.objOrNull("parent")?.stringOrNull("database_id")?.let { parents[id] = it }
+                } catch (e: NotionException) {
+                    if (e.status != 404) throw e
+                    missing += plain(leaf.sourceId)
+                }
+            }
+            val sources = parents.values.distinctBy(::plain).mapNotNull { database ->
+                try {
+                    WorkspaceCodec.databaseInfo(client.getDatabase(database))?.let { database to it.sources }
+                } catch (e: NotionException) {
+                    if (e.status != 404) throw e
+                    null
+                }
+            }.toMap()
+            settings.update { s ->
+                val reconciled = NotebookStructure.reconcile(s.databases, parents, sources) { "view-" + UUID.randomUUID() }
+                if (reconciled == s.databases) s else s.copy(databases = reconciled)
+            }
+            _missingSources.value = missing
+        } catch (e: NotionException) {
+            if (e.isOffline) _offline.value = true
+        }
+    }
+
+    private fun plain(id: String) = id.replace("-", "")
 
     suspend fun moveDatabase(id: String, up: Boolean) {
         settings.update { s ->
@@ -1239,6 +1304,9 @@ class NotesRepository(
     companion object {
         /** The key under which pages that are not in a database are kept, like a database's notes. */
         const val PAGES = "pages"
+
+        /** How often, at most, opening the app checks where the notebooks' data sources are. */
+        private const val RECONCILE_EVERY_MS = 15 * 60_000L
 
         /** The title property of a page on its own (Notion's name for it). */
         const val PAGE_TITLE = "title"

@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -53,6 +54,7 @@ import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -338,6 +340,17 @@ fun MainScreen(
                     body = stringResource(R.string.no_notebooks_body),
                 ) {
                     Button(onClick = onOpenViews) { Text(stringResource(R.string.add_database)) }
+                }
+                // Notion can't find the data source (deleted, in the trash, or no access any more).
+                state.sourceMissing -> EmptyState(
+                    Icons.Rounded.SearchOff,
+                    stringResource(R.string.source_missing_title),
+                    body = stringResource(R.string.source_missing_body),
+                ) {
+                    Button(onClick = viewModel::removeMissingNotebook) {
+                        Text(stringResource(if (state.subTabs.size > 1) R.string.source_missing_remove_sub else R.string.source_missing_remove))
+                    }
+                    OutlinedButton(onClick = viewModel::refresh) { Text(stringResource(R.string.retry)) }
                 }
                 else -> NotesPane(
                     state = state,
