@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: Properties arranged in place, all shown by default
+
+The owner found choosing and ordering a note's properties too complicated: a separate sheet, and only the first three shown by default. Now every property is shown, as in Notion, and the tune button turns the properties into a list to arrange right where they are: drag to reorder, drag below the "Hidden" line (or tap the eye) to hide. The layout stores the hidden properties instead of the shown ones, so a property added in Notion later shows up, as it would in Notion. Rejected: keeping the sheet (one more screen to learn) and long-pressing a property to drag it while editing values (the two gestures clash).
+
 ## 2026-10-17: Personal access tokens
 
 The app asked for an internal integration's key, which only sees the pages shared with it and can't add pages at the top of the workspace; the owner found "only available for some connections" a poor experience. Notion now has personal access tokens: they act as the person who made them, see everything that person sees, and can add private pages at the top of the workspace. Settings now walks through making one (with a button to Notion's token page), and the app asks Notion which kind of token it has (`GET /users/me`: a person owns a personal access token's bot, the workspace owns a connection's). With a connection's token, Settings says what it can't do and the top-of-workspace option isn't shown. A personal access token can't list the workspace's people, so person properties fall back to the people in the notes and the token's owner. Rejected: OAuth now (it needs a server for Notion's client secret; on hold) and refusing connection tokens (they still work for shared pages).
