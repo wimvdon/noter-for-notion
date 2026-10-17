@@ -128,6 +128,10 @@ class NotebooksTest {
         assertEquals("Shelf", Notebooks.update(all, "b") { it.copy(name = "Shelf") }[1].name)
         assertEquals("h", Notebooks.topOf(all, "f")?.id)
         assertEquals("b", Notebooks.topOf(all, "b")?.id)
+        // "Edit" in a sub-notebook edits that one on its own; a notebook itself is no sub-notebook.
+        assertEquals("f", Notebooks.subNotebookOf(all, "f")?.id)
+        assertEquals(null, Notebooks.subNotebookOf(all, "h"))
+        assertEquals(null, Notebooks.subNotebookOf(all, "b"))
 
         val renamed = Notebooks.mapLeaves(all) { it.copy(databaseId = it.databaseId + "!") }
         assertEquals("db-health", renamed[0].databaseId)

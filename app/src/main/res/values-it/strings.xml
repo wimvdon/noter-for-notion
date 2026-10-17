@@ -162,6 +162,8 @@
     <string name="chip_checked">%1$s</string>
     <string name="chip_unchecked">Non %1$s</string>
     <string name="cards_properties">Proprietà sulla scheda (fino a %1$d)</string>
+    <string name="edit_named">Modifica “%1$s”</string>
+    <string name="sub_notebook_of">Parte di %1$s</string>
     <string name="edit_view">Modifica notebook</string>
     <string name="new_page">Nuova pagina</string>
     <string name="new_page_top_level">In cima al tuo workspace</string>

@@ -247,7 +247,9 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   first is where the app opens, Search is locked last because it opens the keyboard. The notebooks are peers within Notebooks: a primary scrollable tab row under the top
   app bar, leading-icon tabs with the notebook's icon. A notebook of several data sources has a
   secondary scrollable tab row below it, one tab per data source (a sub-notebook). The top app bar's ⋮ menu has Edit
-  notebook, Manage notebooks and Settings; there is no drawer. On Pinned and Notebooks the whole
+  notebook, Manage notebooks and Settings; there is no drawer. In a sub-notebook, Edit notebook
+  becomes two items, Edit “notebook” (name, icon, every sub-notebook's cards) and Edit
+  “sub-notebook” (only its cards, under "Part of" the notebook). On Pinned and Notebooks the whole
   header (top app bar, tab rows and rows of chips, `surface`) scrolls away with the notes and
   comes back on the first scroll up (`QuickReturnHeader`); the status bar area stays.
 - Filters and sort: icon buttons in a notebook's top app bar. Filters shows a small badge dot

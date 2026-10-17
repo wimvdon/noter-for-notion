@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: Edit a sub-notebook on its own
+
+In a sub-notebook, Edit notebook opened the whole notebook's editor, with the cards of every sub-notebook one after another, so the owner had to look for the one they were in. The ⋮ menu now offers both, as the owner suggested: Edit “Notities” (the notebook: name, icon and every sub-notebook's cards, as before) and Edit “Development” (only that sub-notebook's cards, with the notebook it is part of under the title). Rejected: scrolling the whole editor to the sub-notebook (still a long sheet) and leaving out the notebook item (its name and icon would be out of reach from a sub-notebook).
+
 ## 2026-10-17: Same design rules as the sibling apps
 
 A design review of all the apps found Noter doing some things its own way. Lists in your own order (Manage notebooks, Settings › Navigation bar) had up and down arrows while the Filters panel had drag handles: every reorderable list now has a drag handle at the end of the row, from the shared `Reorder.kt` (Move up and Move down stay as screen reader actions). The Filters panel's handle moved from the start to the end of the row to match. The navigation bar shows outlined icons for the destinations that aren't selected, as Tracker for Simkl does and Material describes. The note editor and Search keep a readable width (640dp) on wide windows (`Layout.kt`). Noter now also speaks French, German, Spanish and Italian, like the other apps. Rejected: keeping arrows for short lists (two ways to do the same thing across the apps).
