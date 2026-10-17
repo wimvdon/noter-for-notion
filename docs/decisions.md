@@ -2,6 +2,14 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: Notebooks are a database's raw notes; Notebooks sheet instead of the drawer
+
+The owner found following Notion views too confusing: "take the raw data sources and the user sets up the notebook as they want". Notebooks no longer use Notion's views at all: no view picker when adding one, no "Follow the view" or "Reset to Notion's view", and the app no longer asks Notion for views (`/views` calls removed). A notebook shows all notes of its database, with its own filters and sort on the phone. Notebooks that followed a view keep their name, icon, filters and chip rows and show all notes now; one sorted in the view's order gets the custom order. Rejected: keeping views as an option (the confusing part was the two layers of filters, not the default).
+
+Each quick filter now has its own row of chips, starting with the property's name, instead of all chips in one row, and which properties have a row (and in which order) is arranged in the Filters panel with the same arranger as a note's properties (drag by the handle, the eye), so there is one way to arrange things in the app.
+
+The owner found four notebooks in the bar too few and the menu button in the top corner hard to reach. The navigation drawer is replaced by a "Notebooks" item at the end of the navigation bar, which opens a bottom sheet with every notebook, Manage notebooks and Settings (Material 3: a bar for the few most used destinations; a sheet keeps the rest within reach of the thumb, a drawer behind a top-corner button doesn't). It costs one bar slot (three notebooks next to Pinned on a phone). Rejected: scrollable tabs at the top (Material: tabs are for peer views within one destination, and they are at the top too), and a bar beyond five items (labels get cut off).
+
 ## 2026-10-17: A page can be a notebook of its subpages
 
 The owner asked to make regular pages notebooks too, with their subpages as the notes. A page's notebook lists the child pages directly on the page (`GET /blocks/{page}/children`, the `child_page` blocks), in the page's order, and downloads a subpage only when it changed; a new note is a new subpage. They are kept under a key of their own (`page:<id>`), so they work like a database's notes everywhere (Pinned, pins, trash, previews). Rejected: subpages nested deeper (inside toggles or columns; slower, and rarely what "the notes of this page" means) and the page's own text as a note (it is opened as a page as before).

@@ -23,15 +23,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.PushPin
-import androidx.compose.material.icons.automirrored.rounded.ViewList
-import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.GridView
-import androidx.compose.material.icons.rounded.Map
-import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.Description
-import androidx.compose.material.icons.rounded.TableChart
-import androidx.compose.material.icons.rounded.ViewKanban
-import androidx.compose.material.icons.rounded.ViewTimeline
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -68,7 +60,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import be.wimvandonck.noter.R
 import be.wimvandonck.noter.data.model.DatabaseConfig
-import be.wimvandonck.noter.data.model.NotionView
 import be.wimvandonck.noter.logic.Destinations
 import be.wimvandonck.noter.logic.PropertyLayouts
 import be.wimvandonck.noter.data.model.PropertyLayout
@@ -87,8 +78,8 @@ fun rememberWindowWidthDp(): Int {
 
 /**
  * Manage notebooks: the notebooks in their order, each in the navigation drawer and, when pinned,
- * in the navigation bar (as many as fit). Tapping one edits it; "Add notebook" picks a database,
- * then one of its Notion views to start from.
+ * in the navigation bar (as many as fit). Tapping one edits it; "Add notebook" picks a database
+ * (all its notes) or a page (its subpages).
  */
 @Composable
 fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: String? = null, addDatabaseId: String? = null) {
@@ -105,10 +96,10 @@ fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: Strin
         opened = true
         when {
             editViewId != null -> viewModel.startEdit(editViewId)
-            addDatabaseId != null -> viewModel.chooseViewFor(addDatabaseId, roomInBar = room > 0)
+            addDatabaseId != null -> viewModel.startAddFor(addDatabaseId, roomInBar = room > 0)
         }
     }
-    val capacity = Destinations.barCapacity(width) - 1
+    val capacity = Destinations.barNotebooks(width)
 
     SettingsScaffold(
         title = stringResource(R.string.manage_views),
@@ -168,19 +159,12 @@ fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: Strin
             onDismiss = { addingDatabase = false },
             onPick = {
                 addingDatabase = false
-                viewModel.chooseView(it, roomInBar = room > 0)
+                viewModel.startAdd(it, roomInBar = room > 0)
             },
             onPickPage = {
                 addingDatabase = false
                 viewModel.startAddPage(it, roomInBar = room > 0)
             },
-        )
-    }
-    state.viewChoice?.let { choice ->
-        ViewChoiceSheet(
-            choice = choice,
-            onPick = { view -> viewModel.startAdd(choice, view) },
-            onDismiss = viewModel::cancelViewChoice,
         )
     }
     state.draft?.let { draft ->
@@ -208,8 +192,6 @@ private fun DatabaseRow(
 ) {
     val filters = if (config.pageId != null) {
         stringResource(R.string.notebook_subpages)
-    } else if (config.viewId != null && config.followView) {
-        stringResource(R.string.notebook_follows, config.viewName.orEmpty())
     } else {
         stringResource(R.string.notebook_all_notes)
     }
@@ -277,7 +259,7 @@ private fun AddDatabaseSheet(
                     if (list.isNotEmpty()) SheetSection(stringResource(R.string.browse_databases))
                     list.forEach { db ->
                         val added = db.id.replace("-", "") in configured
-                        // A database can be more than one notebook (each with its own view or filters).
+                        // A database can be more than one notebook (each with its own filters and sort).
                         ListItem(
                             headlineContent = { Text(db.title.ifBlank { stringResource(R.string.untitled) }) },
                             supportingContent = if (added) ({ Text(stringResource(R.string.already_added)) }) else null,
@@ -361,12 +343,10 @@ private fun DatabaseEditorSheet(
                 Spacer(Modifier.width(16.dp))
                 Switch(checked = draft.config.inBar, onCheckedChange = null)
             }
-            // Filters and sort are set in the notebook itself (Filters, Sort); here only where it starts from.
+            // Filters and sort are set in the notebook itself (Filters, Sort); here only what it shows.
             Text(
                 if (draft.config.pageId != null) {
                     stringResource(R.string.notebook_subpages)
-                } else if (draft.config.viewId != null) {
-                    stringResource(R.string.notebook_follows, draft.config.viewName.orEmpty())
                 } else {
                     stringResource(R.string.notebook_all_notes)
                 },
@@ -452,67 +432,4 @@ private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = null)
     }
-}
-
-/**
- * Adding a notebook, second step: which of the database's Notion views it starts from (its
- * filter, order, quick filters and property layout), or all its notes.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ViewChoiceSheet(choice: ViewChoice, onPick: (NotionView?) -> Unit, onDismiss: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
-            Text(
-                stringResource(R.string.choose_view),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-            )
-            Text(
-                choice.database.title.ifBlank { stringResource(R.string.untitled) },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 24.dp),
-            )
-            val views = choice.views
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                when {
-                    views == null -> Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                    else -> {
-                        views.forEach { view ->
-                            ListItem(
-                                headlineContent = { Text(view.name.ifBlank { stringResource(R.string.untitled) }) },
-                                leadingContent = { Icon(viewTypeIcon(view.type), contentDescription = null) },
-                                modifier = Modifier.clickable { onPick(view) },
-                            )
-                        }
-                        ListItem(
-                            headlineContent = { Text(stringResource(R.string.notebook_all_notes)) },
-                            supportingContent = { Text(stringResource(R.string.notebook_all_notes_help)) },
-                            leadingContent = { Icon(Icons.Rounded.SelectAll, contentDescription = null) },
-                            modifier = Modifier.clickable { onPick(null) },
-                        )
-                        if (choice.error != null) {
-                            Text(
-                                stringResource(R.string.key_failed, choice.error),
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(horizontal = 24.dp),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/** Notion's view layouts, drawn with the closest Material icon. */
-private fun viewTypeIcon(type: String) = when (type) {
-    "board" -> Icons.Rounded.ViewKanban
-    "gallery" -> Icons.Rounded.GridView
-    "list" -> Icons.AutoMirrored.Rounded.ViewList
-    "calendar" -> Icons.Rounded.CalendarMonth
-    "timeline" -> Icons.Rounded.ViewTimeline
-    "map" -> Icons.Rounded.Map
-    else -> Icons.Rounded.TableChart
 }

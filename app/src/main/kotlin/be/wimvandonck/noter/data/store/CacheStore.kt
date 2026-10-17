@@ -110,7 +110,7 @@ class CacheStore(private val dir: File) {
     fun savePages(databaseId: String, cache: PagesCache) =
         write("pages_${safe(databaseId)}.json", PagesCache.serializer(), cache)
 
-    /** The notes each followed Notion view showed when last asked, by view ID. */
+    /** Each page notebook's order of its subpages when last asked, by its key. */
     @Synchronized
     fun views(): Map<String, ViewResult> = read(VIEWS, MapSerializer(String.serializer(), ViewResult.serializer())).orEmpty()
 

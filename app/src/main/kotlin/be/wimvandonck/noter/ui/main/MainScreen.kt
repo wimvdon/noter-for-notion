@@ -1,6 +1,14 @@
 package be.wimvandonck.noter.ui.main
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridItemInfo
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
@@ -17,11 +25,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
@@ -32,12 +40,10 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.PushPin
-import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,8 +56,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
@@ -66,7 +70,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -74,7 +77,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,7 +95,6 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -118,6 +119,7 @@ import be.wimvandonck.noter.logic.FilterChip as Chip
 import be.wimvandonck.noter.logic.Destinations
 import be.wimvandonck.noter.logic.NoteTargets
 import androidx.compose.material.icons.automirrored.rounded.ViewList
+import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Workspaces
 import androidx.compose.material.icons.rounded.FilterAltOff
@@ -125,13 +127,13 @@ import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.automirrored.rounded.StickyNote2
 import be.wimvandonck.noter.ui.theme.EmptyState
 import be.wimvandonck.noter.ui.theme.SkeletonBlock
-import kotlinx.coroutines.launch
 
 /**
  * The overview, in the style of Google Keep. Top-level destinations: Pinned (the pinned notes of
- * everything) and the user's notebooks. All are in the navigation drawer, with Manage notebooks
- * and Settings; the navigation bar holds Pinned and the notebooks pinned to it, as many as fit.
- * The search button opens Search (the notes here, then Notion's pages and databases).
+ * everything) and the user's notebooks. The navigation bar holds Pinned, the notebooks pinned to
+ * it (as many as fit) and Notebooks, which opens a sheet with every notebook, Manage notebooks and
+ * Settings: all within reach of the thumb, however many notebooks there are. The search button
+ * opens Search (the notes here, then Notion's pages and databases).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -148,8 +150,7 @@ fun MainScreen(
     val snackbar = remember { SnackbarHostState() }
     val resources = androidx.compose.ui.platform.LocalResources.current
     var choosingDatabase by remember { mutableStateOf(false) }
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
+    var notebooksOpen by remember { mutableStateOf(false) }
 
     val sortedByHand = stringResource(R.string.sorted_by_hand)
     val undo = stringResource(R.string.undo)
@@ -188,145 +189,110 @@ fun MainScreen(
     val barTabs = state.tabs.filter { it.isPinned || it.key in barIds }
     val targets = NoteTargets.of(state.views, null)
 
-    fun closeDrawerThen(action: () -> Unit) {
-        scope.launch { drawerState.close() }
-        action()
-    }
-
-    // Material's modal drawer opens from its menu button; swiping only closes it, so the swipe
-    // from the edge stays Android's back gesture.
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = drawerState.isOpen,
-        drawerContent = {
-            ModalDrawerSheet {
-                Column(Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 12.dp)) {
-                    Text(
-                        stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    )
-                    state.tabs.forEachIndexed { index, tab ->
-                        if (index == 1) {
-                            // Pinned, then the notebooks under their own header.
-                            HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-                            Text(
-                                stringResource(R.string.section_views),
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                            )
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        snackbarHost = { SnackbarHost(snackbar) },
+        topBar = {
+            TopAppBar(
+                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                actions = {
+                    SyncButton(state.pendingCount, state.offline, syncing = false, onSync = viewModel::refresh, alwaysShown = false)
+                    if (state.hasKey) {
+                        IconButton(onClick = onOpenSearch) {
+                            Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.action_search))
                         }
-                        NavigationDrawerItem(
-                            label = { Text(labels.of(tab), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            icon = { Icon(tab.iconVector(), contentDescription = null) },
-                            selected = tab.key == state.currentTab,
-                            onClick = { closeDrawerThen { viewModel.selectTab(tab.key) } },
-                        )
                     }
-                    HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-                    NavigationDrawerItem(
-                        label = { Text(stringResource(R.string.manage_views)) },
-                        icon = { Icon(Icons.AutoMirrored.Rounded.ViewList, contentDescription = null) },
-                        selected = false,
-                        onClick = { closeDrawerThen(onOpenViews) },
+                },
+                scrollBehavior = scrollBehavior,
+            )
+        },
+        bottomBar = {
+            NavigationBar {
+                barTabs.forEach { tab ->
+                    NavigationBarItem(
+                        selected = tab.key == state.currentTab,
+                        onClick = { viewModel.selectTab(tab.key) },
+                        icon = { Icon(tab.iconVector(), contentDescription = null) },
+                        label = { Text(labels.of(tab), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     )
-                    NavigationDrawerItem(
-                        label = { Text(stringResource(R.string.settings_title)) },
-                        icon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
-                        selected = false,
-                        onClick = { closeDrawerThen(onOpenSettings) },
-                    )
+                }
+                // Every notebook, also the ones not in the bar; selected while one of those is shown.
+                NavigationBarItem(
+                    selected = !state.isHome && barTabs.none { it.key == state.currentTab },
+                    onClick = { notebooksOpen = true },
+                    icon = { Icon(Icons.AutoMirrored.Rounded.LibraryBooks, contentDescription = null) },
+                    label = { Text(stringResource(R.string.section_views), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                )
+            }
+        },
+        floatingActionButton = {
+            // A notebook adds to itself; Pinned asks where (when there is a choice): a notebook, or
+            // a page at the top of the workspace (with a personal access token).
+            val inNotebook = !state.isHome
+            if (state.hasKey && (inNotebook || targets.isNotEmpty() || state.canAddTopLevel)) {
+                FloatingActionButton(
+                    onClick = {
+                        when {
+                            inNotebook -> viewModel.createNote(onCreated = onOpenNote)
+                            targets.size == 1 && !state.canAddTopLevel -> viewModel.createNote(targets.first().databaseId, onOpenNote)
+                            else -> choosingDatabase = true
+                        }
+                    },
+                ) {
+                    Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.action_new_note))
                 }
             }
         },
-    ) {
-        Scaffold(
-            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-            snackbarHost = { SnackbarHost(snackbar) },
-            topBar = {
-                TopAppBar(
-                    title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Rounded.Menu, contentDescription = stringResource(R.string.open_navigation))
-                        }
-                    },
-                    actions = {
-                        SyncButton(state.pendingCount, state.offline, syncing = false, onSync = viewModel::refresh, alwaysShown = false)
-                        if (state.hasKey) {
-                            IconButton(onClick = onOpenSearch) {
-                                Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.action_search))
-                            }
-                        }
-                    },
-                    scrollBehavior = scrollBehavior,
+    ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            when {
+                !state.ready -> Unit
+                !state.hasKey -> EmptyState(
+                    Icons.Rounded.Key,
+                    stringResource(R.string.empty_no_key_title),
+                    body = stringResource(R.string.empty_no_key),
+                ) {
+                    Button(onClick = onOpenSettings) { Text(stringResource(R.string.empty_no_key_action)) }
+                }
+                else -> NotesPane(
+                    state = state,
+                    previews = previews,
+                    onLoadPreviews = viewModel::loadPreviews,
+                    notebookActions = NotebookActions(
+                        onQuickFilters = viewModel::setQuickFilters,
+                        onSort = viewModel::setSort,
+                    ),
+                    onToggleChip = viewModel::toggleChip,
+                    onClearChips = viewModel::clearChips,
+                    onLoadChipTitles = { viewModel.loadChipTitles(it) },
+                    onRefresh = viewModel::refresh,
+                    onOpen = onOpenNote,
+                    onTogglePin = viewModel::togglePin,
+                    onTrash = viewModel::trash,
+                    onReordered = viewModel::saveOrder,
                 )
-            },
-            bottomBar = {
-                NavigationBar {
-                    barTabs.forEach { tab ->
-                        NavigationBarItem(
-                            selected = tab.key == state.currentTab,
-                            onClick = { viewModel.selectTab(tab.key) },
-                            icon = { Icon(tab.iconVector(), contentDescription = null) },
-                            label = { Text(labels.of(tab), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        )
-                    }
-                }
-            },
-            floatingActionButton = {
-                // A notebook adds to itself; Pinned asks where (when there is a choice): a notebook, or
-                // a page at the top of the workspace (with a personal access token).
-                val inNotebook = !state.isHome
-                if (state.hasKey && (inNotebook || targets.isNotEmpty() || state.canAddTopLevel)) {
-                    FloatingActionButton(
-                        onClick = {
-                            when {
-                                inNotebook -> viewModel.createNote(onCreated = onOpenNote)
-                                targets.size == 1 && !state.canAddTopLevel -> viewModel.createNote(targets.first().databaseId, onOpenNote)
-                                else -> choosingDatabase = true
-                            }
-                        },
-                    ) {
-                        Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.action_new_note))
-                    }
-                }
-            },
-        ) { padding ->
-            Box(Modifier.fillMaxSize().padding(padding)) {
-                when {
-                    !state.ready -> Unit
-                    !state.hasKey -> EmptyState(
-                        Icons.Rounded.Key,
-                        stringResource(R.string.empty_no_key_title),
-                        body = stringResource(R.string.empty_no_key),
-                    ) {
-                        Button(onClick = onOpenSettings) { Text(stringResource(R.string.empty_no_key_action)) }
-                    }
-                    else -> NotesPane(
-                        state = state,
-                        previews = previews,
-                        onLoadPreviews = viewModel::loadPreviews,
-                        notebookActions = NotebookActions(
-                            onQuickFilter = viewModel::setQuickFilter,
-                            onFollowView = viewModel::setFollowView,
-                            onSort = viewModel::setSort,
-                            onResetToView = viewModel::resetToView,
-                        ),
-                        onToggleChip = viewModel::toggleChip,
-                        onClearChips = viewModel::clearChips,
-                        onLoadChipTitles = { viewModel.loadChipTitles(it) },
-                        onRefresh = viewModel::refresh,
-                        onOpen = onOpenNote,
-                        onTogglePin = viewModel::togglePin,
-                        onTrash = viewModel::trash,
-                        onReordered = viewModel::saveOrder,
-                    )
-                }
             }
         }
+    }
+
+    if (notebooksOpen) {
+        NotebooksSheet(
+            tabs = state.tabs.filterNot { it.isPinned },
+            current = state.currentTab,
+            onSelect = { key ->
+                notebooksOpen = false
+                viewModel.selectTab(key)
+            },
+            onManage = {
+                notebooksOpen = false
+                onOpenViews()
+            },
+            onSettings = {
+                notebooksOpen = false
+                onOpenSettings()
+            },
+            onDismiss = { notebooksOpen = false },
+        )
     }
 
     if (choosingDatabase) {
@@ -366,6 +332,61 @@ fun MainScreen(
                 }
                 Spacer(Modifier.padding(bottom = 24.dp))
             }
+        }
+    }
+}
+
+/**
+ * Every notebook, within reach at the bottom of the screen (the navigation bar only has room for
+ * a few), then Manage notebooks and Settings.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NotebooksSheet(
+    tabs: List<Tab>,
+    current: String,
+    onSelect: (String) -> Unit,
+    onManage: () -> Unit,
+    onSettings: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(start = 12.dp, end = 12.dp, bottom = 16.dp),
+        ) {
+            SheetHeader(stringResource(R.string.section_views))
+            if (tabs.isEmpty()) {
+                Text(
+                    stringResource(R.string.no_notebooks),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+            tabs.forEach { tab ->
+                NavigationDrawerItem(
+                    label = { Text(tab.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    icon = { Icon(tab.iconVector(), contentDescription = null) },
+                    selected = tab.key == current,
+                    onClick = { onSelect(tab.key) },
+                )
+            }
+            HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            NavigationDrawerItem(
+                label = { Text(stringResource(R.string.manage_views)) },
+                icon = { Icon(Icons.AutoMirrored.Rounded.ViewList, contentDescription = null) },
+                selected = false,
+                onClick = onManage,
+            )
+            NavigationDrawerItem(
+                label = { Text(stringResource(R.string.settings_title)) },
+                icon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
+                selected = false,
+                onClick = onSettings,
+            )
         }
     }
 }
@@ -421,7 +442,7 @@ internal fun NotesPane(
     Column(Modifier.fillMaxSize()) {
         val actions = notebookActions?.takeIf { state.notebook != null }
         if (state.chipGroups.isNotEmpty() || actions != null) {
-            ChipRow(state, actions, onToggle = onToggleChip, onClear = onClearChips, onOpenFilters = { filtersOpen = true })
+            ChipRows(state, actions, onToggle = onToggleChip, onClear = onClearChips, onOpenFilters = { filtersOpen = true })
         }
         PullToRefreshBox(
             isRefreshing = state.refreshing && !state.loading,
@@ -479,8 +500,12 @@ internal fun NotesPane(
     }
 }
 
+/**
+ * The chips above the notes. A notebook: Filters and Sort, then one row per quick filter, named
+ * after its property. Pinned (its sources) and a database on its own: All, then the chips.
+ */
 @Composable
-private fun ChipRow(
+private fun ChipRows(
     state: MainUiState,
     actions: NotebookActions?,
     onToggle: (property: String?, key: String) -> Unit,
@@ -488,40 +513,57 @@ private fun ChipRow(
     onOpenFilters: () -> Unit,
 ) {
     val anySelected = state.chipGroups.any { it.selected.isNotEmpty() }
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+    Column(Modifier.padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (actions != null) {
-            // A notebook: Filters and Sort first; "Clear filters" is in the Filters panel.
-            item(key = "__notebook") { Row { NotebookChips(state, actions, onOpenFilters) } }
-        } else {
-            item(key = "__all") {
-                FilterChip(
-                    selected = !anySelected,
-                    onClick = onClear,
-                    label = { Text(stringResource(R.string.chip_all)) },
-                )
+            // "Clear filters" is in the Filters panel.
+            Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+                NotebookChips(state, actions, onOpenFilters)
             }
         }
-        state.chipGroups.forEach { group ->
+        state.chipGroups.forEachIndexed { index, group ->
             val property = group.property
-            items(group.chips, key = { (property?.name ?: "") + "/" + it.key }) { chip ->
-                val selected = chip.key in group.selected
-                val icon = if (state.isHome) state.databaseIcons[chip.key] else null
-                val label = chipLabel(chip, property?.name, state)
-                FilterChip(
-                    selected = selected,
-                    onClick = { onToggle(property?.name, chip.key) },
-                    label = { Text(if (chip.count > 0) "$label  ${chip.count}" else label) },
-                    leadingIcon = if (state.isHome) {
-                        { Icon(DatabaseIcons.icon(icon), contentDescription = null, Modifier.size(FilterChipDefaults.IconSize)) }
-                    } else if (chip.isCheckbox || chip.isDate || chip.label.isEmpty()) {
-                        null
-                    } else {
-                        { OptionDot(chip.color) }
-                    },
-                )
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (actions == null && index == 0) {
+                    item(key = "__all") {
+                        FilterChip(
+                            selected = !anySelected,
+                            onClick = onClear,
+                            label = { Text(stringResource(R.string.chip_all)) },
+                        )
+                    }
+                }
+                if (actions != null && property != null) {
+                    item(key = "__name") {
+                        Text(
+                            property.name,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 120.dp),
+                        )
+                    }
+                }
+                items(group.chips, key = { it.key }) { chip ->
+                    val selected = chip.key in group.selected
+                    val icon = if (state.isHome) state.databaseIcons[chip.key] else null
+                    FilterChip(
+                        selected = selected,
+                        onClick = { onToggle(property?.name, chip.key) },
+                        label = { ChipText(chipLabel(chip, property?.name, state), chip.count) },
+                        leadingIcon = if (state.isHome) {
+                            { Icon(DatabaseIcons.icon(icon), contentDescription = null, Modifier.size(FilterChipDefaults.IconSize)) }
+                        } else if (chip.isCheckbox || chip.isDate || chip.label.isEmpty()) {
+                            null
+                        } else {
+                            { OptionDot(chip.color) }
+                        },
+                    )
+                }
             }
         }
     }
@@ -572,6 +614,10 @@ private sealed interface GridItem {
  * The notes as cards in a staggered grid (two columns on a phone, more on wider screens).
  * Long-press and drag moves a note within its section; a long press without moving opens the
  * note's menu. The order is kept on this phone.
+ *
+ * While dragging, the card follows the finger exactly: its place on screen is worked out from
+ * where the finger is, not from where the grid put it, so it doesn't jump when cards of
+ * different heights change places. Near the top or bottom edge the grid scrolls.
  */
 @Composable
 internal fun NoteGrid(
@@ -586,9 +632,16 @@ internal fun NoteGrid(
     val pinned = remember { mutableStateListOf<NoteSummary>() }
     val others = remember { mutableStateListOf<NoteSummary>() }
     var draggingKey by remember { mutableStateOf<String?>(null) }
+    // The order just dropped, until the state has it too (so the cards don't flash back).
+    val dropped = remember { DroppedOrder() }
     if (draggingKey == null) {
-        if (pinned.toList() != state.pinned) { pinned.clear(); pinned.addAll(state.pinned) }
-        if (others.toList() != state.others) { others.clear(); others.addAll(state.others) }
+        val ids = state.pinned.map { it.id } + state.others.map { it.id }
+        val waiting = dropped.ids
+        if (waiting == null || waiting == ids || waiting.toSet() != ids.toSet()) {
+            dropped.ids = null
+            if (pinned.toList() != state.pinned) { pinned.clear(); pinned.addAll(state.pinned) }
+            if (others.toList() != state.others) { others.clear(); others.addAll(state.others) }
+        }
     }
     val showHeaders = pinned.isNotEmpty() && others.isNotEmpty()
     val items = buildList {
@@ -598,15 +651,32 @@ internal fun NoteGrid(
         others.forEach { add(GridItem.Note(it)) }
     }
     val gridState = rememberLazyStaggeredGridState()
-    var dragOffset by remember { mutableStateOf(Offset.Zero) }
-    var dragDistance by remember { mutableStateOf(0f) }
+    // The finger, in the grid's item coordinates, and where it held the card.
+    var finger by remember { mutableStateOf(Offset.Zero) }
+    var grab by remember { mutableStateOf(Offset.Zero) }
+    var dragDistance by remember { mutableFloatStateOf(0f) }
+    // The card just swapped with: not again until the finger has left it (no back and forth).
+    var swappedWith by remember { mutableStateOf<String?>(null) }
     var menuKey by remember { mutableStateOf<String?>(null) }
     val haptics = LocalHapticFeedback.current
+    val density = LocalDensity.current
+    val touchSlop = LocalViewConfiguration.current.touchSlop
+    val edge = with(density) { AUTO_SCROLL_EDGE.toPx() }
+    val maxStep = with(density) { AUTO_SCROLL_STEP.toPx() }
+    val currentState by rememberUpdatedState(state)
 
     fun groupOf(key: String): MutableList<NoteSummary>? = when {
         pinned.any { it.id == key } -> pinned
         others.any { it.id == key } -> others
         else -> null
+    }
+
+    fun changed(): Boolean = pinned.map { it.id } != currentState.pinned.map { it.id } || others.map { it.id } != currentState.others.map { it.id }
+
+    fun save(key: String) {
+        val group = groupOf(key) ?: return
+        dropped.ids = pinned.map { it.id } + others.map { it.id }
+        onReordered(group.map { it.id })
     }
 
     fun move(key: String, by: Int) {
@@ -615,11 +685,41 @@ internal fun NoteGrid(
         val to = from + by
         if (to !in group.indices) return
         group.add(to, group.removeAt(from))
-        onReordered(group.map { it.id })
+        save(key)
+    }
+
+    /** Moves the dragged card to the place of the card under the finger (same section only). */
+    fun reorderUnderFinger() {
+        val key = draggingKey ?: return
+        val visible = gridState.layoutInfo.visibleItemsInfo
+        val under = visible.firstOrNull { it.key != key && it.contains(finger) }
+        if (swappedWith != null && visible.none { it.key == swappedWith && it.contains(finger) }) swappedWith = null
+        val targetKey = under?.key as? String ?: return
+        if (targetKey == swappedWith) return
+        val group = groupOf(key) ?: return
+        if (groupOf(targetKey) !== group) return
+        val from = group.indexOfFirst { it.id == key }
+        val to = group.indexOfFirst { it.id == targetKey }
+        group.add(to, group.removeAt(from))
+        swappedWith = targetKey
+    }
+
+    // Near an edge while dragging: scroll, faster closer to the edge.
+    LaunchedEffect(draggingKey) {
+        if (draggingKey == null) return@LaunchedEffect
+        while (true) {
+            val info = gridState.layoutInfo
+            val step = when {
+                finger.y < info.viewportStartOffset + edge -> -maxStep * (1 - (finger.y - info.viewportStartOffset) / edge).coerceIn(0f, 1f)
+                finger.y > info.viewportEndOffset - edge -> maxStep * (1 - (info.viewportEndOffset - finger.y) / edge).coerceIn(0f, 1f)
+                else -> 0f
+            }
+            if (step != 0f && gridState.scrollBy(step) != 0f) reorderUnderFinger()
+            withFrameNanos { }
+        }
     }
     val moveUp = stringResource(R.string.action_move_up)
     val moveDown = stringResource(R.string.action_move_down)
-    val currentItems by rememberUpdatedState(items)
 
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Adaptive(160.dp),
@@ -640,6 +740,7 @@ internal fun NoteGrid(
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
+                        .animateItem()
                         .padding(start = 4.dp, top = 12.dp, bottom = 4.dp)
                         .semantics { heading() },
                 )
@@ -673,45 +774,52 @@ internal fun NoteGrid(
                         },
                         modifier = Modifier
                             .zIndex(if (isDragging) 1f else 0f)
+                            .then(if (isDragging) Modifier else Modifier.animateItem())
+                            // Outside the card's own layer, so moving the card doesn't move the touch.
+                            .pointerInput(key) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = { touch ->
+                                        val info = gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }
+                                            ?: return@detectDragGesturesAfterLongPress
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        grab = touch
+                                        finger = Offset(info.offset.x.toFloat(), info.offset.y.toFloat()) + touch
+                                        dragDistance = 0f
+                                        swappedWith = null
+                                        draggingKey = key
+                                    },
+                                    onDragEnd = {
+                                        if (draggingKey == key) {
+                                            if (dragDistance < touchSlop) {
+                                                // A long press without moving: the note's menu.
+                                                menuKey = key
+                                            } else if (changed()) {
+                                                save(key)
+                                            }
+                                        }
+                                        draggingKey = null
+                                    },
+                                    onDragCancel = { draggingKey = null },
+                                    onDrag = { change, amount ->
+                                        if (draggingKey != key) return@detectDragGesturesAfterLongPress
+                                        change.consume()
+                                        dragDistance += amount.getDistance()
+                                        finger += amount
+                                        reorderUnderFinger()
+                                    },
+                                )
+                            }
                             .graphicsLayer {
                                 if (isDragging) {
-                                    translationX = dragOffset.x
-                                    translationY = dragOffset.y
+                                    // Under the finger, wherever the grid put the card.
+                                    gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.let { info ->
+                                        translationX = finger.x - grab.x - info.offset.x
+                                        translationY = finger.y - grab.y - info.offset.y
+                                    }
                                     shadowElevation = 12f
                                     scaleX = 1.03f
                                     scaleY = 1.03f
                                 }
-                            }
-                            .then(if (isDragging) Modifier else Modifier.animateItem())
-                            .pointerInput(key) {
-                                detectDragGesturesAfterLongPress(
-                                    onDragStart = {
-                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        draggingKey = key
-                                        dragOffset = Offset.Zero
-                                        dragDistance = 0f
-                                    },
-                                    onDragEnd = {
-                                        if (dragDistance < DRAG_SLOP_PX) {
-                                            // A long press without moving: the note's menu.
-                                            menuKey = key
-                                        } else {
-                                            groupOf(key)?.let { group -> onReordered(group.map { it.id }) }
-                                        }
-                                        draggingKey = null
-                                        dragOffset = Offset.Zero
-                                    },
-                                    onDragCancel = {
-                                        draggingKey = null
-                                        dragOffset = Offset.Zero
-                                    },
-                                    onDrag = { change, amount ->
-                                        change.consume()
-                                        dragDistance += amount.getDistance()
-                                        dragOffset += amount
-                                        dragOffset = swapIfNeeded(gridState, key, dragOffset, currentItems, ::groupOf)
-                                    },
-                                )
                             }
                             .semantics {
                                 customActions = listOf(
@@ -726,45 +834,21 @@ internal fun NoteGrid(
     }
 }
 
+/** The order of the notes just dropped, while the saved order is on its way (not state: no redraw). */
+private class DroppedOrder {
+    var ids: List<String>? = null
+}
+
+/** True when [point] (in the grid's item coordinates) is on this item. */
+private fun LazyStaggeredGridItemInfo.contains(point: Offset): Boolean =
+    point.x >= offset.x && point.x < offset.x + size.width && point.y >= offset.y && point.y < offset.y + size.height
+
 /** Height of a header image on a card. */
 private val CARD_COVER_HEIGHT = 96.dp
 
-/** Movement (px) below which a long press counts as a press, not a drag. */
-private const val DRAG_SLOP_PX = 24f
-
-/**
- * While dragging: when the middle of the dragged card is over another card of the same section,
- * the two swap places and the offset is corrected so the card stays under the finger. Returns
- * the new offset.
- */
-private fun swapIfNeeded(
-    gridState: LazyStaggeredGridState,
-    key: String,
-    offset: Offset,
-    items: List<GridItem>,
-    groupOf: (String) -> MutableList<NoteSummary>?,
-): Offset {
-    val visible = gridState.layoutInfo.visibleItemsInfo
-    val current = visible.firstOrNull { it.key == key } ?: return offset
-    val middle = Offset(
-        current.offset.x + offset.x + current.size.width / 2f,
-        current.offset.y + offset.y + current.size.height / 2f,
-    )
-    val target = visible.firstOrNull { info ->
-        info.key != key &&
-            middle.x > info.offset.x && middle.x < info.offset.x + info.size.width &&
-            middle.y > info.offset.y && middle.y < info.offset.y + info.size.height &&
-            items.any { it is GridItem.Note && it.key == info.key }
-    } ?: return offset
-    val group = groupOf(key) ?: return offset
-    val targetKey = target.key as String
-    if (groupOf(targetKey) !== group) return offset
-    val from = group.indexOfFirst { it.id == key }
-    val to = group.indexOfFirst { it.id == targetKey }
-    group.add(to, group.removeAt(from))
-    val shift: IntOffset = current.offset - target.offset
-    return offset + Offset(shift.x.toFloat(), shift.y.toFloat())
-}
+/** How close to the top or bottom a dragged card makes the grid scroll, and its fastest step per frame. */
+private val AUTO_SCROLL_EDGE = 64.dp
+private val AUTO_SCROLL_STEP = 12.dp
 
 /** A note as a card: its title, the start of its content and its labels, like a Keep note. */
 @OptIn(ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)

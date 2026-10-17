@@ -67,20 +67,35 @@ object ChipFilter {
             "date" -> fixed(*DATE_KEYS.toTypedArray())
             // Linked pages, named by the screen (it knows their titles).
             "relation" -> keysPerNote.flatten().distinct().map { FilterChip(it, "", count = count(it)) }
-            "created_by", "last_edited_by" -> keysPerNote.flatten().distinct().sortedBy { it.lowercase() }
+            "created_by", "last_edited_by" -> keysPerNote.flatten().distinct().sortedWith(NATURAL)
                 .map { FilterChip(it, it, count = count(it)) }
             "formula" -> {
                 val values = keysPerNote.flatten().distinct()
                 if (values.isNotEmpty() && values.all { it == CHECKED || it == UNCHECKED }) {
                     fixed(CHECKED, UNCHECKED)
                 } else {
-                    values.filter { it != CHECKED && it != UNCHECKED }.sortedBy { it.lowercase() }.take(MAX_FORMULA_CHIPS)
+                    values.filter { it != CHECKED && it != UNCHECKED }.sortedWith(NATURAL).take(MAX_FORMULA_CHIPS)
                         .map { FilterChip(it, it, count = count(it)) }
                 }
             }
             else -> emptyList()
         }
     }
+
+    /** Texts in the order people expect: ignoring case, and numbers by their value (2 before 10). */
+    val NATURAL: Comparator<String> = Comparator { a, b ->
+        val x = chunks(a.lowercase())
+        val y = chunks(b.lowercase())
+        for (i in 0 until minOf(x.size, y.size)) {
+            val p = x[i]
+            val q = y[i]
+            val byValue = if (p[0] in '0'..'9' && q[0] in '0'..'9') p.toBigInteger().compareTo(q.toBigInteger()) else p.compareTo(q)
+            if (byValue != 0) return@Comparator byValue
+        }
+        x.size.compareTo(y.size)
+    }
+
+    private fun chunks(text: String): List<String> = Regex("\\d+|\\D+").findAll(text).map { it.value }.toList()
 
     /** The chip keys a note has for [propertyName]. */
     fun keysOf(note: NoteSummary, propertyName: String, today: LocalDate = LocalDate.now()): Set<String> =

@@ -373,29 +373,6 @@ class NotesRepositoryTest {
     }
 
     @Test
-    fun `a followed Notion view's notes are asked for page by page, and the query is removed`() = runBlocking {
-        notion.respond = { sent ->
-            when {
-                sent.method == "POST" && sent.path == "/views/v1/queries" ->
-                    200 to """{"object":"view_query","id":"q1","results":[{"object":"page","id":"p2"},{"object":"page","id":"p1"}],"has_more":true,"next_cursor":"c1"}"""
-                sent.method == "GET" && sent.path.startsWith("/views/v1/queries/q1") ->
-                    200 to """{"object":"list","results":[{"object":"page","id":"p3"}],"has_more":false,"next_cursor":null}"""
-                sent.method == "DELETE" && sent.path == "/views/v1/queries/q1" -> 200 to """{"object":"view_query","id":"q1","deleted":true}"""
-                sent.method == "GET" && sent.path == "/views/gone" -> 404 to """{"object":"error","status":404,"message":"Not found"}"""
-                sent.method == "POST" && sent.path == "/views/gone/queries" -> 404 to """{"object":"error","status":404,"message":"Not found"}"""
-                else -> 200 to "{}"
-            }
-        }
-        val repo = repository()
-        repo.refreshView("v1")
-        assertEquals(listOf("p2", "p1", "p3"), repo.viewResults.value["v1"]?.ids)
-        assertTrue(notion.requests.any { it.method == "DELETE" && it.path == "/views/v1/queries/q1" })
-
-        repo.refreshView("gone")
-        assertTrue("gone" in repo.missingViews.value)
-    }
-
-    @Test
     fun `a page's notebook has its subpages as notes, in the page's order`() = runBlocking {
         val child = { id: String, title: String ->
             """{"object":"block","id":"$id","type":"child_page","has_children":false,"created_time":"2026-10-01T10:00:00.000Z",

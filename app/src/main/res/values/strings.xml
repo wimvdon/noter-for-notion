@@ -13,7 +13,6 @@
     <string name="source_pages">Pages</string>
     <string name="add_view">Add as notebook</string>
     <string name="page_open_failed">Couldn’t open the page. Check your connection.</string>
-    <string name="open_navigation">Open navigation</string>
     <string name="settings_title">Settings</string>
     <string name="back">Back</string>
     <string name="cancel">Cancel</string>
@@ -157,9 +156,9 @@
     </plurals>
     <string name="view_in_bar">In the bar at the bottom</string>
     <string name="view_no_room">Pinned to the bar, but there’s no room on this screen</string>
-    <string name="view_in_drawer">In the menu</string>
+    <string name="view_in_drawer">Under Notebooks</string>
     <string name="pin_to_bar">Show in the bar at the bottom</string>
-    <string name="pin_to_bar_help">When there’s room. The notebook is always in the menu (☰).</string>
+    <string name="pin_to_bar_help">When there’s room. The notebook is always under Notebooks in the bar.</string>
     <string name="icon_search">Search icons (in English)</string>
     <string name="icon_none_found">No icons found. Try another word, such as “list”, “food” or “work”.</string>
     <string name="cards_title">Cards in the overview</string>
@@ -186,7 +185,7 @@
     <string name="filters">Filters</string>
     <string name="filters_count">Filters · %1$d</string>
     <string name="sort">Sort</string>
-    <string name="sort_notion">Notion’s order</string>
+    <string name="sort_notion">Page order</string>
     <string name="sort_custom">Custom order</string>
     <string name="sort_last_edited">Last edited</string>
     <string name="sort_created">Created</string>
@@ -194,16 +193,8 @@
     <string name="sort_reverse">Reverse order</string>
     <string name="sorted_by_hand">Now in your own order</string>
     <string name="undo">Undo</string>
-    <string name="follow_view">Follow “%1$s”</string>
-    <string name="follow_view_help">Only the notes this view shows in Notion, with its filter.</string>
-    <string name="view_missing">The Notion view “%1$s” no longer exists, so all notes are shown.</string>
-    <string name="show_as_chips">Chips</string>
     <string name="filter_no_values">No values yet</string>
-    <string name="reset_to_view">Reset to Notion’s view</string>
-    <string name="choose_view">Start from a Notion view</string>
-    <string name="notebook_follows">Follows the Notion view “%1$s”</string>
     <string name="notebook_all_notes">All notes of the database</string>
-    <string name="notebook_all_notes_help">No Notion view: filter and sort in the notebook</string>
     <string name="notebook_subpages">The subpages of a page</string>
     <string name="notebook_pages">Pages</string>
     <string name="empty_error_title">Couldn’t load the notes</string>
@@ -212,4 +203,9 @@
     <string name="chip_next_7_days">Next 7 days</string>
     <string name="chip_later">Later</string>
     <string name="chip_no_date">No date</string>
+    <string name="chip_rows_help">Each property shown here gets its own row of chips above the notes. Drag by the handle to change the order.</string>
+    <string name="chip_rows_shown">Rows of chips</string>
+    <string name="chip_rows_hidden">Only here</string>
+    <string name="chip_row_shown">Row of chips for %1$s</string>
+    <string name="no_notebooks">No notebooks yet</string>
 </resources>

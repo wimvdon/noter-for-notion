@@ -121,4 +121,11 @@ class ChipFilterTest {
         val texts = listOf(with("a", "Kind", "formula", PropertyValue.ReadOnly("Big")), with("b", "Kind", "formula", PropertyValue.ReadOnly("Small")))
         assertEquals(listOf("Big", "Small"), ChipFilter.chips(PropertySchema(name = "Kind", type = "formula"), texts, today).map { it.key })
     }
+
+    @Test
+    fun `numbers among a formula's values are in order of their value`() {
+        val scores = listOf("10", "2", "0", "5", "1").mapIndexed { i, v -> with("n$i", "Score", "formula", PropertyValue.ReadOnly(v)) }
+        assertEquals(listOf("0", "1", "2", "5", "10"), ChipFilter.chips(PropertySchema(name = "Score", type = "formula"), scores, today).map { it.key })
+        assertEquals(listOf("Week 2", "week 9", "Week 10"), listOf("Week 10", "week 9", "Week 2").sortedWith(ChipFilter.NATURAL))
+    }
 }

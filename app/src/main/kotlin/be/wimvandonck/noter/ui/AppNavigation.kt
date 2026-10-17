@@ -170,7 +170,7 @@ private const val SEARCH = "search"
 /** Manage notebooks with one notebook's setup open. */
 private const val EDIT_VIEW = "views:"
 
-/** Manage notebooks, adding a notebook of a database (choosing its Notion view first). */
+/** Manage notebooks, or adding a notebook of a database or page. */
 private const val ADD_NOTEBOOK = "add-notebook:"
 private const val NOTE = "note:"
 private const val DATABASE = "database:"

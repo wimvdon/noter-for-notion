@@ -90,8 +90,6 @@ data class MainUiState(
     val filterCount: Int = 0,
     /** Every property the notebook can filter by, with its values, for the Filters panel. */
     val filterOptions: List<ChipGroup> = emptyList(),
-    /** The Notion view the notebook follows doesn't exist any more (all notes are shown). */
-    val viewMissing: Boolean = false,
 ) {
     val isHome: Boolean get() = currentTab == Destinations.PINNED
 
@@ -119,21 +117,19 @@ data class BrowseState(
 )
 
 /**
- * The notes of one database ([db]) as notebook [config] shows them: in its Notion view, filtered,
- * sorted, its quick filters on top. Also for a database opened on its own (a notebook that isn't
+ * The notes of one database ([db]) as notebook [config] shows them: filtered, sorted, its quick
+ * filters on top ([pageOrder]: a page's order of its subpages, for a page's notebook). Also for a database opened on its own (a notebook that isn't
  * saved, see DatabaseViewModel).
  */
 internal fun notebookContent(
     base: MainUiState,
     config: DatabaseConfig,
     db: DatabaseState?,
-    viewResult: ViewResult?,
+    pageOrder: ViewResult?,
     settings: AppSettings,
-    viewMissing: Boolean = false,
 ): MainUiState {
     val notes = db?.notes.orEmpty()
-    val content = Notebooks.content(notes, db?.schema, config, viewResult, settings.pinned, settings.order[config.sourceId].orEmpty())
-    val inView = if (config.viewId != null && config.followView) Notebooks.inView(notes, viewResult) else notes
+    val content = Notebooks.content(notes, db?.schema, config, pageOrder, settings.pinned, settings.order[config.sourceId].orEmpty())
     val selected = Notebooks.selection(config, db?.schema)
     return base.copy(
         chipGroups = content.groups,
@@ -146,9 +142,8 @@ internal fun notebookContent(
         databaseId = config.sourceId,
         filterCount = content.filterCount,
         filterOptions = db?.schema?.properties.orEmpty().filter { it.isChipCandidate }.map { property ->
-            ChipGroup(property, ChipFilter.chips(property, inView), selected[property.name].orEmpty())
+            ChipGroup(property, ChipFilter.chips(property, notes), selected[property.name].orEmpty())
         },
-        viewMissing = viewMissing,
     )
 }
 
@@ -213,16 +208,13 @@ class MainViewModel(
 
     private val status = combine(repository.pendingCount, repository.offline, hasKey, tokenKind, ::Status)
 
-    private val views = combine(repository.viewResults, repository.missingViews) { results, missing -> results to missing }
-
     val state: StateFlow<MainUiState> = combine(
         repository.settingsFlow(),
         repository.databases,
         currentTab,
-        combine(pinnedChips, views) { chips, v -> chips to v },
+        combine(pinnedChips, repository.viewResults) { chips, orders -> chips to orders },
         status,
-    ) { settings, databases, tab, (chips, viewState), (pending, offline, key, kind) ->
-        val (viewResults, missingViews) = viewState
+    ) { settings, databases, tab, (chips, pageOrders), (pending, offline, key, kind) ->
         val notebooks = settings.databases
         val tabKey = Destinations.valid(tab, notebooks)
         val tabs = listOf(Tab(Destinations.PINNED, "", null)) + notebooks.map { Tab(it.id, it.name, it.icon) }
@@ -257,12 +249,8 @@ class MainViewModel(
             }
             else -> {
                 val notebook = notebooks.first { it.id == tabKey }
-                val missing = notebook.viewId != null && notebook.viewId in missingViews
-                // A view Notion doesn't have any more: all notes, until the notebook is set up again.
-                val shown = if (missing) notebook.copy(followView = false) else notebook
-                // A page's notebook keeps the page's order of its subpages like a view's results.
-                val result = if (notebook.pageId != null) viewResults[notebook.sourceId] else viewResults[notebook.viewId]
-                notebookContent(base, shown, databases[notebook.sourceId], result, settings, missing)
+                val pageOrder = if (notebook.pageId != null) pageOrders[notebook.sourceId] else null
+                notebookContent(base, notebook, databases[notebook.sourceId], pageOrder, settings)
                     .copy(notebook = notebook)
             }
         }
@@ -286,7 +274,7 @@ class MainViewModel(
         }
     }
 
-    /** Changes the notebook shown, kept on this phone (Notion's view isn't changed). */
+    /** Changes the notebook shown, kept on this phone (Notion isn't changed). */
     private fun updateNotebook(transform: (DatabaseConfig) -> DatabaseConfig) {
         val id = state.value.notebook?.id ?: return
         viewModelScope.launch {
@@ -307,21 +295,10 @@ class MainViewModel(
         if (state.value.isHome) pinnedChips.value = emptySet() else updateNotebook { it.copy(selected = emptyMap()) }
     }
 
-    /** Shows the property's values as chips above the notes, or not. */
-    fun setQuickFilter(property: String, shown: Boolean) =
-        updateNotebook { it.copy(quickFilters = if (shown) (it.quickFilters - property) + property else it.quickFilters - property) }
-
-    /** Follows the Notion view's filter (shows only its notes), or shows all notes of the database. */
-    fun setFollowView(follow: Boolean) {
-        updateNotebook { it.copy(followView = follow) }
-        val view = state.value.notebook?.viewId ?: return
-        if (follow) viewModelScope.launch { repository.refreshView(view) }
-    }
+    /** The properties with a row of chips above the notes, in this order. */
+    fun setQuickFilters(properties: List<String>) = updateNotebook { it.copy(quickFilters = properties) }
 
     fun setSort(sort: NotebookSort?) = updateNotebook { it.copy(sort = sort) }
-
-    /** Back to what the Notion view shows: its filter and order, no filters of the notebook's own. */
-    fun resetToView() = updateNotebook { it.copy(followView = true, selected = emptyMap(), sort = null) }
 
     /** Undo after dragging switched a notebook to the custom order. */
     fun undoSortedByHand(event: MainEvent.SortedByHand) {
@@ -336,10 +313,7 @@ class MainViewModel(
             repository.flush()
             when {
                 ui.isHome -> repository.databases.value.keys.forEach { launch { repository.refresh(it, userAsked = true) } }
-                else -> {
-                    ui.databaseId?.let { repository.refresh(it, userAsked = true) }
-                    ui.notebook?.takeIf { it.followView }?.viewId?.let { repository.refreshView(it) }
-                }
+                else -> ui.databaseId?.let { repository.refresh(it, userAsked = true) }
             }
         }
     }

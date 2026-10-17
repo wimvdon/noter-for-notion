@@ -215,10 +215,14 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   Medium), or else the filter property's options. "Pinned" and "Others" are Label Large headers spanning
   the grid. A dragged card lifts (shadow, 3% larger, `surfaceContainerHigh`).
 - Navigation: Pinned and the user's notebooks are the top-level destinations, in that order.
-  All are in a modal navigation drawer (menu button; it doesn't open with a swipe), with the
-  notebooks under a "Notebooks" header, then Manage notebooks and Settings. The navigation bar
-  shows Pinned and the notebooks pinned to it, as many as fit (an item per 80dp; owner's choice,
-  see decisions). Search is a screen of its own behind the search button in the top app bar: the
+  The navigation bar shows Pinned, the notebooks pinned to it, as many as fit (an item per 80dp;
+  owner's choice, see decisions), and last "Notebooks", which opens a modal bottom sheet with
+  every notebook (navigation drawer items, the current one selected), then Manage notebooks and
+  Settings. There is no drawer or menu button: the bar and the sheet are within reach of the
+  thumb. "Notebooks" is selected while a notebook that isn't in the bar is shown.
+- Filters: a notebook's first chip row holds Filters and Sort; each quick filter has a row of its
+  own below it, starting with the property's name (Label Large, `onSurfaceVariant`). A chip's
+  count of notes sits in a small `surfaceContainerHighest` pill after its label. Search is a screen of its own behind the search button in the top app bar: the
   query field in the app bar, then "Notes on this phone", "Databases" and "Pages" headers (Title
   Small, primary). A database opened from Search is a child page with an "Add as notebook" text
   button in its app bar, "Edit notebook" once it is one. "Notebook" stays in English in every

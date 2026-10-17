@@ -169,33 +169,6 @@ class NotionClient(
 
     suspend fun getPage(pageId: String): JsonObject = call("GET", "/pages/$pageId")
 
-    /** The IDs of the views over data source [dataSourceId] (also linked views elsewhere). */
-    suspend fun listViews(dataSourceId: String): List<String> =
-        paged { cursor ->
-            call("GET", "/views?data_source_id=$dataSourceId&page_size=100" + (cursor?.let { "&start_cursor=$it" } ?: ""))
-        }.mapNotNull { it.stringOrNull("id") }
-
-    /** A view: its name, layout, filters and settings. */
-    suspend fun getView(viewId: String): JsonObject = call("GET", "/views/$viewId")
-
-    /**
-     * The IDs of the pages view [viewId] shows, in its order, as Notion works them out (its saved
-     * filter and sort). At most [limit]. The query Notion keeps for paging is removed afterwards.
-     */
-    suspend fun queryView(viewId: String, limit: Int = VIEW_RESULTS_LIMIT): List<String> {
-        val first = call("POST", "/views/$viewId/queries", mapOf("page_size" to 100))
-        val queryId = first.stringOrNull("id")
-        val ids = first.arrayOrNull("results").orEmpty().mapNotNull { it.asObjectOrNull()?.stringOrNull("id") }.toMutableList()
-        var cursor = if (first.boolOrNull("has_more") == true) first.stringOrNull("next_cursor") else null
-        while (cursor != null && queryId != null && ids.size < limit) {
-            val page = call("GET", "/views/$viewId/queries/$queryId?page_size=100&start_cursor=$cursor")
-            page.arrayOrNull("results")?.forEach { el -> el.asObjectOrNull()?.stringOrNull("id")?.let(ids::add) }
-            cursor = if (page.boolOrNull("has_more") == true) page.stringOrNull("next_cursor") else null
-        }
-        if (queryId != null) runCatching { call("DELETE", "/views/$viewId/queries/$queryId") }
-        return ids.take(limit)
-    }
-
     suspend fun createPage(
         dataSourceId: String,
         properties: Map<String, Any?>,
@@ -317,9 +290,6 @@ class NotionClient(
         /** Data sources (see decisions.md, 2026-10-16), "in_trash" and "position" (2026-10-17). */
         const val NOTION_VERSION = "2026-03-11"
         const val MAX_ATTEMPTS = 4
-
-        /** A notebook shows at most this many notes of a Notion view (Notion pages them by 100). */
-        const val VIEW_RESULTS_LIMIT = 2_000
 
         /** Notion accepts at most 100 blocks per request. */
         const val MAX_CHILDREN = 100
