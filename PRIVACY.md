@@ -1,6 +1,6 @@
 # Privacy policy
 
-_Last updated: 2026-10-16 (images)_
+_Last updated: 2026-10-17 (page icons)_
 
 Noter for Notion shows and edits notes in **your own Notion workspace**. It has no server of its
 own, no analytics, no advertising and no crash reporting.
@@ -11,7 +11,7 @@ own, no analytics, no advertising and no crash reporting.
   integration you create yourself. It reads the pages and databases you shared with that
   integration (Browse searches them by title), and writes the changes you make (titles, properties, note content, moving a note to
   Notion's trash).
-- **Images** in your notes (header images and image blocks) are downloaded straight from where
+- **Images** in your notes (header images, image blocks and page icons that are pictures) are downloaded straight from where
   Notion keeps them: Notion's own file storage for images uploaded to Notion, or the website an
   image links to. Those websites see an ordinary image request from your phone (its IP address),
   as a browser would; nothing about you or your notes is sent with it. Files, videos and links

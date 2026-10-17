@@ -516,26 +516,30 @@ class NotesRepository(
      * need the top level.
      */
     private suspend fun downloadContent(id: String, previous: List<Block>, edited: String?, nested: Boolean = true): PageContent {
-        val parsed = downloadBlocks(id, parentId = null, depth = 0, nested = nested)
+        val parsed = downloadBlocks(id, parentId = null, parentType = null, depth = 0, nested = nested)
         // Blocks keep their keys on this phone, also blocks sent from here whose ID wasn't known yet.
         val keys = BlockMatch.keysFor(previous, parsed)
         val blocks = parsed.map { it.copy(key = keys[it.notionId] ?: UUID.randomUUID().toString()) }
         return PageContent(id, blocks = blocks, base = blocks, dirty = false, remoteEditedTime = edited, nestedLoaded = nested)
     }
 
-    /** The blocks in [blockId] (a page or a block), each followed by what is nested in it. */
-    private suspend fun downloadBlocks(blockId: String, parentId: String?, depth: Int, nested: Boolean): List<Block> {
+    /**
+     * The blocks in [blockId] (a page or a block of Notion's kind [parentType]), each followed by
+     * what is nested in it.
+     */
+    private suspend fun downloadBlocks(blockId: String, parentId: String?, parentType: String?, depth: Int, nested: Boolean): List<Block> {
         val result = mutableListOf<Block>()
         for (json in client.blockChildren(blockId)) {
             val notionId = json.stringOrNull("id") ?: continue
-            val block = BlockCodec.parse(json, notionId)?.copy(depth = depth, parentId = parentId) ?: continue
+            val parsed = BlockCodec.parse(json, notionId)?.copy(depth = depth, parentId = parentId) ?: continue
+            val block = if (parentType == Columns.TABS) BlockCodec.asTab(parsed) else parsed
             when {
                 // A table's cells are its rows (nested blocks): one more request per table.
                 block.rawType == "table" && block.hasChildren -> result += block.copy(rows = BlockCodec.tableRows(client.blockChildren(notionId)))
                 // Text blocks and columns show what is in them; images, synced blocks, … keep theirs in Notion.
                 nested && block.hasChildren && (block.type != BlockType.UNSUPPORTED || Columns.isContainer(block)) && depth < MAX_DEPTH -> {
                     result += block.copy(hasChildren = false)
-                    result += downloadBlocks(notionId, notionId, depth + 1, nested = true)
+                    result += downloadBlocks(notionId, notionId, block.rawType, depth + 1, nested = true)
                 }
                 else -> result += block
             }

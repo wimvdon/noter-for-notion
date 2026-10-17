@@ -114,6 +114,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import be.wimvandonck.noter.ui.common.NotionImage
+import be.wimvandonck.noter.ui.common.PageIconView
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -129,6 +130,7 @@ import be.wimvandonck.noter.logic.DocumentEditor
 import be.wimvandonck.noter.logic.NestedContent
 import be.wimvandonck.noter.logic.ReadOnlyBlocks
 import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.Tab
 import be.wimvandonck.noter.logic.PropertyLayouts
 import be.wimvandonck.noter.ui.theme.AppShapes
 import be.wimvandonck.noter.ui.theme.SkeletonLine
@@ -315,7 +317,7 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
             }
             note.icon?.let { icon ->
                 item(key = "__icon") {
-                    Text(icon, style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(top = 12.dp))
+                    PageIconView(icon, size = 48.dp, modifier = Modifier.padding(top = 12.dp))
                 }
             }
             item(key = "__title") {
@@ -433,6 +435,27 @@ private fun NestedPlaceholder(state: NestedContent.State) {
     ) {
         SkeletonLine(Modifier.fillMaxWidth(0.85f))
         SkeletonLine(Modifier.fillMaxWidth(0.55f))
+    }
+}
+
+/** A tab's name (with its emoji), above the tab's blocks: tabs are shown one below the other. */
+@Composable
+private fun TabLabel(block: Block) {
+    Row(
+        Modifier.padding(top = 16.dp, bottom = 4.dp).semantics(mergeDescendants = true) { heading() },
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (block.icon != null) {
+            Text(block.icon, style = MaterialTheme.typography.titleSmall)
+        } else {
+            Icon(Icons.Rounded.Tab, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+        }
+        Text(
+            InlineMarkdown.stripped(block.text).ifBlank { stringResource(R.string.untitled) },
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
     }
 }
 
@@ -598,6 +621,7 @@ private fun BlockRow(
             when {
                 // Columns whose content hasn't arrived yet: a placeholder until it does.
                 NestedContent.isMissing(block) -> NestedPlaceholder(nested)
+                block.rawType == Columns.TAB -> TabLabel(block)
                 // Columns whose content is shown here: a column list only holds its columns, and a
                 // column starts with a thin line (after the first). Deeper ones are opened in Notion.
                 block.hasChildren || !Columns.isContainer(block) -> ReadOnlyBlock(block, headings, onOpenPage, onOpenDatabase, onOpenInNotion)
@@ -631,6 +655,7 @@ private fun BlockRow(
         BlockType.HEADING_1 -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold, color = colors.onSurface)
         BlockType.HEADING_2 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold, color = colors.onSurface)
         BlockType.HEADING_3 -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold, color = colors.onSurface)
+        BlockType.HEADING_4 -> MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold, color = colors.onSurface)
         BlockType.TODO -> if (block.checked) baseStyle.copy(textDecoration = TextDecoration.LineThrough) else baseStyle
         BlockType.CODE -> MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace, color = colors.onSurface)
         BlockType.QUOTE -> baseStyle.copy(fontStyle = FontStyle.Italic)
@@ -801,6 +826,7 @@ private fun FormatToolbar(
             typeButton(BlockType.HEADING_1, R.string.type_h1) { Text("H1", style = MaterialTheme.typography.labelLarge) }
             typeButton(BlockType.HEADING_2, R.string.type_h2) { Text("H2", style = MaterialTheme.typography.labelLarge) }
             typeButton(BlockType.HEADING_3, R.string.type_h3) { Text("H3", style = MaterialTheme.typography.labelLarge) }
+            typeButton(BlockType.HEADING_4, R.string.type_h4) { Text("H4", style = MaterialTheme.typography.labelLarge) }
             typeButton(BlockType.BULLETED, R.string.type_bulleted) { Icon(Icons.AutoMirrored.Rounded.FormatListBulleted, null) }
             typeButton(BlockType.NUMBERED, R.string.type_numbered) { Icon(Icons.Rounded.FormatListNumbered, null) }
             typeButton(BlockType.TODO, R.string.type_checkbox) { Icon(Icons.Rounded.CheckBox, null) }

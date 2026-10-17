@@ -42,4 +42,20 @@ class ColumnsTest {
         val withB2 = blocks.subList(0, 7) + text("b2", 2) + blocks.subList(7, blocks.size)
         assertTrue(editor.canIndent(withB2, "b2"))
     }
+
+    @Test
+    fun `tabs are shown like columns, and their blocks stay in their tab`() {
+        val tabs = listOf(
+            container("tabs", Columns.TABS, 0),
+            container("tab1", Columns.TAB, 1),
+            text("a", 2, BlockType.PARAGRAPH),
+            container("tab2", Columns.TAB, 1),
+            text("b", 2, BlockType.PARAGRAPH),
+        )
+        assertEquals(listOf(0, 0, 0, 0, 0), Columns.visualDepths(tabs))
+        val editor = DocumentEditor()
+        assertFalse(editor.canOutdent(tabs, "a"))
+        // Backspace at the start of a tab's first line doesn't join it with the tab's name.
+        assertEquals(tabs, editor.backspaceAtStart(tabs, "a").blocks)
+    }
 }

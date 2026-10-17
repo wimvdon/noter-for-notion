@@ -65,12 +65,26 @@ data class NotionUser(
     val name: String,
 )
 
+/**
+ * A page's or database's icon, as Notion has it: an emoji, an image ([url]: uploaded, a link, or
+ * a custom emoji of the workspace), or one of Notion's own icons ([name] in [color]).
+ */
+@Serializable
+data class PageIcon(
+    val emoji: String? = null,
+    val url: String? = null,
+    /** When [url] stops working, for a file Notion hosts. */
+    val urlExpiry: String? = null,
+    val name: String? = null,
+    val color: String? = null,
+)
+
 /** Something shared with the integration, for the Browse list. */
 data class WorkspaceItem(
     val id: String,
     val isDatabase: Boolean,
     val title: String,
-    val icon: String? = null,
+    val icon: PageIcon? = null,
     val lastEditedTime: String = "",
     /** A page: the note as the editor needs it (in its database, or among the pages). */
     val note: NoteSummary? = null,
@@ -219,7 +233,7 @@ data class NoteSummary(
     val id: String,
     val databaseId: String,
     val title: String,
-    val icon: String? = null,
+    val icon: PageIcon? = null,
     val url: String? = null,
     val createdTime: String = "",
     val lastEditedTime: String = "",
@@ -240,7 +254,7 @@ data class NoteSummary(
 }
 
 enum class BlockType {
-    PARAGRAPH, HEADING_1, HEADING_2, HEADING_3, BULLETED, NUMBERED, TODO,
+    PARAGRAPH, HEADING_1, HEADING_2, HEADING_3, HEADING_4, BULLETED, NUMBERED, TODO,
     TOGGLE, QUOTE, CALLOUT, CODE,
 
     /** A horizontal line; it has no text. */
@@ -254,7 +268,7 @@ enum class BlockType {
     ;
 
     val isListItem: Boolean get() = this == BULLETED || this == NUMBERED || this == TODO
-    val isHeading: Boolean get() = this == HEADING_1 || this == HEADING_2 || this == HEADING_3
+    val isHeading: Boolean get() = this == HEADING_1 || this == HEADING_2 || this == HEADING_3 || this == HEADING_4
 
     /** Blocks with text the user types in (all but dividers and unsupported blocks). */
     val hasText: Boolean get() = this != DIVIDER && this != UNSUPPORTED

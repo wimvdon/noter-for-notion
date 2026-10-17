@@ -81,6 +81,7 @@
     <string name="type_h1">Heading 1</string>
     <string name="type_h2">Heading 2</string>
     <string name="type_h3">Heading 3</string>
+    <string name="type_h4">Heading 4</string>
     <string name="type_bulleted">Bulleted list</string>
     <string name="type_numbered">Numbered list</string>
     <string name="type_checkbox">To-do list</string>

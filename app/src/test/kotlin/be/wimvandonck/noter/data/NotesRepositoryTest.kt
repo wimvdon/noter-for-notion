@@ -84,7 +84,7 @@ class NotesRepositoryTest {
             when {
                 sent.path.startsWith("/data_sources/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "Old"))
                 sent.path.startsWith("/data_sources/db") -> 200 to FakeNotion.database("db")
-                sent.method == "PATCH" && sent.path == "/pages/page-1" -> 200 to FakeNotion.page("page-1", "db", archived = true)
+                sent.method == "PATCH" && sent.path == "/pages/page-1" -> 200 to FakeNotion.page("page-1", "db", inTrash = true)
                 else -> 200 to "{}"
             }
         }
@@ -100,7 +100,7 @@ class NotesRepositoryTest {
 
         val patches = notion.requests.filter { it.method == "PATCH" }
         assertEquals(1, patches.size)
-        assertTrue(patches.single().body, patches.single().body.contains("\"archived\":true"))
+        assertTrue(patches.single().body, patches.single().body.contains("\"in_trash\":true"))
     }
 
     @Test
@@ -282,7 +282,7 @@ class NotesRepositoryTest {
         repo.flush()
 
         val append = notion.requests.single { it.method == "PATCH" && it.path == "/blocks/t/children" }
-        assertTrue(append.body, append.body.contains("\"after\":\"c1\""))
+        assertTrue(append.body, append.body.contains("\"position\":{\"type\":\"after_block\",\"after_block\":{\"id\":\"c1\"}}"))
         assertEquals(0, repo.pendingCount.first())
     }
 

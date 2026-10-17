@@ -44,7 +44,7 @@ class PropertyCodecTest {
     fun `reads a page with every kind of property`() {
         val note = PropertyCodec.parsePage(page, "db")!!
         assertEquals("Groceries", note.title)
-        assertEquals("🛒", note.icon)
+        assertEquals("🛒", note.icon?.emoji)
         assertEquals("db", note.databaseId)
         assertEquals(PropertyValue.Select(SelectOption("Doing", "blue", "1")), note.property("Status")!!.value)
         assertEquals(listOf("home", "food"), (note.property("Tags")!!.value as PropertyValue.MultiSelect).options.map { it.name })

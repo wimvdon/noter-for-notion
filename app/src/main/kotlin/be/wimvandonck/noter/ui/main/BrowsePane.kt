@@ -38,6 +38,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import be.wimvandonck.noter.R
+import be.wimvandonck.noter.ui.common.PageIconView
 import be.wimvandonck.noter.data.model.WorkspaceItem
 import be.wimvandonck.noter.logic.NotionDates
 import be.wimvandonck.noter.ui.theme.EmptyState
@@ -139,7 +140,7 @@ private fun Row(item: WorkspaceItem, locale: java.util.Locale, fallbackIcon: and
         leadingContent = {
             Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
                 if (item.icon != null) {
-                    Text(item.icon, style = MaterialTheme.typography.titleMedium)
+                    PageIconView(item.icon, size = 24.dp)
                 } else {
                     Icon(fallbackIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

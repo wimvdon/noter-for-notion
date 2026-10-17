@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: Notion API 2026-03-11
+
+The owner asked whether the app uses Notion's newest API. It moves from 2025-09-03 to 2026-03-11, whose breaking changes the app meets with small changes: a page goes to the trash with `in_trash` (no more `archived`), and new blocks go after a block with `position: {type: after_block}` (no more `after`). With it the app reads heading 4 (editable, `#### `), tab blocks (shown like columns, see `logic/Columns.kt`) and every kind of page icon: Notion's own icons used to come as an SVG link and now come as a name and color, uploaded images and custom emoji as a link. Notion's own icons are SVG files, which the app can't draw without a new library; it shows the closest Material Symbol in the icon's color instead. Rejected: staying on 2025-09-03 (no heading 4 or tabs, and the `archived` field it still used was deprecated in 2024) and adding Coil's SVG decoder (a new dependency for a small gain).
+
 ## 2026-10-17: Package name be.wimvandonck.noter
 
 The app's package name (`applicationId` and the Kotlin package) was `com.impca201.noter`, after the owner's old GitHub name. Before the first Play Store release it becomes `be.wimvandonck.noter`, the owner's own domain written backwards: a domain stays the owner's, a username can change, and a package name can never change once the app is on the Play Store. Android treats the new name as a different app, so the old one doesn't update to it: the owner installs the new app next to the old one, sets it up again (key, views) and removes the old one. Notes are in Notion, so nothing is lost; settings on the phone (views, pins, order) are set up again. Rejected: `com.wimvdon.noter` (tied to a username again) and keeping the old name (the Play Store would freeze it).

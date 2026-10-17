@@ -34,7 +34,8 @@ class NotionException(
     val isNotFound: Boolean get() = status == 404
 
     /** The page or block is in Notion's trash, so it can't be edited. */
-    val isArchived: Boolean get() = status == 400 && message.orEmpty().contains("archived", ignoreCase = true)
+    val isArchived: Boolean
+        get() = status == 400 && message.orEmpty().let { it.contains("archived", ignoreCase = true) || it.contains("trash", ignoreCase = true) }
     val isTemporary: Boolean get() = status == null || status == 429 || status >= 500
 }
 
@@ -199,7 +200,7 @@ class NotionClient(
 
     /** Moves a page to Notion's trash (it can be restored there for 30 days). */
     suspend fun trashPage(pageId: String) {
-        call("PATCH", "/pages/$pageId", mapOf("archived" to true))
+        call("PATCH", "/pages/$pageId", mapOf("in_trash" to true))
     }
 
     suspend fun blockChildren(blockId: String): List<JsonObject> =
@@ -230,7 +231,7 @@ class NotionClient(
             val body = buildMap<String, Any?> {
                 put("children", chunk)
                 when {
-                    anchor != null -> put("after", anchor)
+                    anchor != null -> put("position", mapOf("type" to "after_block", "after_block" to mapOf("id" to anchor)))
                     start -> put("position", mapOf("type" to "start"))
                 }
             }
@@ -269,8 +270,8 @@ class NotionClient(
 
     private companion object {
         const val BASE_URL = "https://api.notion.com/v1"
-        /** Data sources: a database can have several (see decisions.md, 2026-10-16). */
-        const val NOTION_VERSION = "2025-09-03"
+        /** Data sources (see decisions.md, 2026-10-16), "in_trash" and "position" (2026-10-17). */
+        const val NOTION_VERSION = "2026-03-11"
         const val MAX_ATTEMPTS = 4
 
         /** Notion accepts at most 100 blocks per request. */
