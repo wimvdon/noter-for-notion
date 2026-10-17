@@ -71,7 +71,8 @@
     <string name="properties_title">Properties</string>
     <string name="properties_help">Shown properties are above the note, the others are folded away. Applies to every note in this database.</string>
     <string name="property_shown">Show %1$s</string>
-    <string name="unsupported_block">%1$s (edit in Notion)</string>
+    <string name="unsupported_block">Can’t be shown or edited here.</string>
+    <string name="nested_not_loaded">Not loaded. Check your connection and tap sync to try again.</string>
     <string name="block_image">Image</string>
     <string name="block_linked_page">Linked page</string>
     <string name="block_equation">Equation</string>

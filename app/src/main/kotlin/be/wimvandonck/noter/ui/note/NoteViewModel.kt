@@ -19,6 +19,7 @@ import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.sync.SaveTiming
 import be.wimvandonck.noter.logic.DocumentEditor
 import be.wimvandonck.noter.logic.EditResult
+import be.wimvandonck.noter.logic.NestedContent
 import be.wimvandonck.noter.logic.PropertyLayouts
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -42,6 +43,8 @@ data class NoteUiState(
     /** True until content is known (cached or downloaded). */
     val loadingContent: Boolean = true,
     val contentError: Boolean = false,
+    /** Whether what is nested in the blocks is there yet (see [NestedContent]). */
+    val nested: NestedContent.State = NestedContent.State.LOADED,
     val users: List<NotionUser> = emptyList(),
     /** Pages of related databases, by database ID (null while loading or when not shared). */
     val relatedPages: Map<String, List<PageRef>?> = emptyMap(),
@@ -52,7 +55,10 @@ data class NoteUiState(
     val offline: Boolean = false,
     /** True while the sync button's sync runs. */
     val syncing: Boolean = false,
-)
+) {
+    /** The content can be edited: not while the note's full content is still on its way. */
+    val editable: Boolean get() = nested != NestedContent.State.LOADING
+}
 
 class NoteViewModel(
     private val pageId: String,
@@ -61,6 +67,9 @@ class NoteViewModel(
     private val editor = DocumentEditor()
     private val blocks = MutableStateFlow<List<Block>>(emptyList())
     private val loadingContent = MutableStateFlow(true)
+
+    /** True while the note's content is being downloaded after opening it. */
+    private val downloading = MutableStateFlow(true)
     private val contentError = MutableStateFlow(false)
     private val users = MutableStateFlow<List<NotionUser>>(emptyList())
     private val relatedPages = MutableStateFlow<Map<String, List<PageRef>?>>(emptyMap())
@@ -101,6 +110,8 @@ class NoteViewModel(
         state.copy(users = u, relatedPages = r, contentError = e)
     }.combine(syncStatus) { state, (pending, offline, busy) ->
         state.copy(pendingCount = pending, offline = offline, syncing = busy)
+    }.combine(downloading) { state, busy ->
+        state.copy(nested = NestedContent.state(state.blocks, busy))
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NoteUiState())
 
     init {
@@ -110,6 +121,7 @@ class NoteViewModel(
                 setLoaded(cached.blocks)
             }
             val fresh = repository.fetchContent(pageId)
+            downloading.value = false
             when {
                 fresh != null && !editedSinceOpen -> setLoaded(fresh.blocks)
                 cached == null && fresh == null -> {
@@ -130,7 +142,11 @@ class NoteViewModel(
 
     // ---- Content ----
 
+    /** Edits wait until the note's full content is here (an edit would keep the incomplete copy). */
+    private fun editable(): Boolean = NestedContent.state(blocks.value, downloading.value) != NestedContent.State.LOADING
+
     private fun apply(result: EditResult, typedKey: String? = null, typedText: String? = null) {
+        if (!editable()) return
         blocks.value = result.blocks
         val focusKey = result.focusKey
         val structural = typedKey == null || focusKey != typedKey ||
@@ -149,6 +165,7 @@ class NoteViewModel(
     fun setType(key: String, type: BlockType) = apply(editor.setType(blocks.value, key, type))
 
     fun toggleChecked(key: String) {
+        if (!editable()) return
         blocks.value = editor.toggleChecked(blocks.value, key)
         scheduleSave(fast = true)
     }
@@ -157,6 +174,7 @@ class NoteViewModel(
 
     /** Tapping below the content: a text line at the end to type in. */
     fun addLineAtEnd() {
+        if (!editable()) return
         val result = editor.addLineAtEnd(blocks.value)
         if (result.blocks === blocks.value) {
             result.focusKey?.let { focusBlock(it, 0) }

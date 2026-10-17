@@ -1,6 +1,7 @@
 package be.wimvandonck.noter.ui.note
 
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,7 +61,14 @@ import be.wimvandonck.noter.ui.theme.AppShapes
  * the file or link in the browser; linked pages and databases in the app).
  */
 @Composable
-fun ReadOnlyBlock(block: Block, headings: List<Block>, onOpenPage: (String) -> Unit, onOpenDatabase: (String) -> Unit) {
+fun ReadOnlyBlock(
+    block: Block,
+    headings: List<Block>,
+    onOpenPage: (String) -> Unit,
+    onOpenDatabase: (String) -> Unit,
+    /** Opens the block in Notion (null for a note Notion doesn't have yet). */
+    onOpenInNotion: (() -> Unit)? = null,
+) {
     val context = LocalContext.current
     val open: (String) -> Unit = { link -> runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, link.toUri())) } }
     val url = block.url
@@ -80,7 +89,7 @@ fun ReadOnlyBlock(block: Block, headings: List<Block>, onOpenPage: (String) -> U
                 if (block.text.isNotBlank()) Caption(block.text)
             }
         } else {
-            Fallback(block)
+            Fallback(block, onOpenInNotion)
         }
         "video", "file", "pdf", "audio", "bookmark", "embed", "link_preview" -> if (url != null) {
             LinkRow(
@@ -90,7 +99,7 @@ fun ReadOnlyBlock(block: Block, headings: List<Block>, onOpenPage: (String) -> U
                 onClick = { open(url) },
             )
         } else {
-            Fallback(block)
+            Fallback(block, onOpenInNotion)
         }
         "child_page", "child_database", "link_to_page" -> if (url != null) {
             LinkRow(
@@ -101,7 +110,7 @@ fun ReadOnlyBlock(block: Block, headings: List<Block>, onOpenPage: (String) -> U
                 onClick = { if (block.linksDatabase) onOpenDatabase(url) else onOpenPage(url) },
             )
         } else {
-            Fallback(block)
+            Fallback(block, onOpenInNotion)
         }
         "equation" -> Surface(
             shape = AppShapes.Item,
@@ -115,12 +124,12 @@ fun ReadOnlyBlock(block: Block, headings: List<Block>, onOpenPage: (String) -> U
         }
         "table" -> {
             val rows = block.rows
-            if (rows.isNullOrEmpty()) Fallback(block) else Table(rows, block.headerRow)
+            if (rows.isNullOrEmpty()) Fallback(block, onOpenInNotion) else Table(rows, block.headerRow)
         }
         "table_of_contents" -> if (headings.isNotEmpty()) TableOfContents(headings) else Unit
         // Notion's path to the page: the app has its own back arrow.
         "breadcrumb" -> Unit
-        else -> Fallback(block)
+        else -> Fallback(block, onOpenInNotion)
     }
 }
 
@@ -228,24 +237,36 @@ private fun TableOfContents(headings: List<Block>) {
     }
 }
 
-/** Anything else: its kind and text, to be edited in Notion. */
+/**
+ * Anything else: its kind, what it says, and a button to open it in Notion. Outlined, not filled,
+ * so it doesn't look like content that is still loading.
+ */
 @Composable
-private fun Fallback(block: Block) {
+private fun Fallback(block: Block, onOpenInNotion: (() -> Unit)?) {
     Surface(
         shape = AppShapes.Item,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 0.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp, end = 8.dp),
     ) {
-        Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.Widgets, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Column(Modifier.weight(1f)) {
-                Text(
-                    stringResource(R.string.unsupported_block, block.rawType.orEmpty().replace('_', ' ')),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (block.text.isNotBlank()) {
-                    Text(block.text, style = MaterialTheme.typography.bodyMedium, maxLines = 3)
+        Column(Modifier.padding(start = 12.dp, end = 4.dp, top = 12.dp, bottom = if (onOpenInNotion != null) 0.dp else 12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+                Icon(Icons.Rounded.Widgets, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(Modifier.weight(1f).padding(end = 8.dp)) {
+                    Text(ReadOnlyBlocks.kindName(block.rawType), style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        stringResource(R.string.unsupported_block),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (block.text.isNotBlank()) {
+                        Text(block.text, style = MaterialTheme.typography.bodyMedium, maxLines = 3, modifier = Modifier.padding(top = 4.dp))
+                    }
+                }
+            }
+            if (onOpenInNotion != null) {
+                TextButton(onClick = onOpenInNotion, modifier = Modifier.align(Alignment.End)) {
+                    Text(stringResource(R.string.action_open_in_notion))
                 }
             }
         }

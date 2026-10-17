@@ -17,4 +17,11 @@ object ReadOnlyBlocks {
 
     /** Notion's web link for a page or database ID. */
     fun notionUrl(id: String): String = "https://www.notion.so/" + id.replace("-", "")
+
+    /** Notion's web link to block [blockId] on page [pageId]: the page, scrolled to the block. */
+    fun blockUrl(pageId: String, blockId: String): String = notionUrl(pageId) + "#" + blockId.replace("-", "")
+
+    /** A block kind as Notion names it, for people: "synced_block" becomes "Synced block". */
+    fun kindName(rawType: String?): String =
+        rawType.orEmpty().replace('_', ' ').replaceFirstChar { it.uppercase() }
 }
