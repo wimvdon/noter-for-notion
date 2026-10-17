@@ -153,7 +153,7 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
 
 ## Structure
 ```
-app/src/main/kotlin/com/impca201/noter/
+app/src/main/kotlin/be/wimvandonck/noter/
   MainActivity.kt, NoterApp.kt   Entry point; the app object creates the repository.
   data/api/                      NotionClient: every HTTP call.
   data/model/                    Notes, blocks, properties, schemas.
