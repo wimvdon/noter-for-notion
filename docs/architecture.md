@@ -11,8 +11,9 @@ properties and content: the pages of databases and pages on their own.
   inside Notebooks, as scrollable tabs under the top app bar (in the order of Manage notebooks);
   tapping Notebooks shows the notebook seen last. The top app bar has the sync button, a
   notebook's **Filters** and **Sort** buttons, and a ⋮ menu with Edit notebook (in a notebook),
-  Manage notebooks and Settings. The top app bar scrolls away with the notes and comes back on
-  the first scroll up (and on another notebook); the tabs stay. Back from Notebooks or Search goes to Pinned first.
+  Manage notebooks and Settings. The header (app bar, tabs and rows of chips) scrolls away with
+  the notes and comes back on the first scroll up, and on another notebook
+  (`ui/main/QuickReturnHeader.kt`, offset in `logic/QuickReturn.kt`). Back from Notebooks or Search goes to Pinned first.
   - **Pinned**: the pinned notes of everything (databases and pages), filtered by source. Any
     page can be pinned, also one that isn't in a notebook; a note made with + on Pinned is pinned.
   - **Notebooks** (`DatabaseConfig`, kept under `AppSettings.databases`; the code still calls them

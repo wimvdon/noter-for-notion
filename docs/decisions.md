@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: The whole header scrolls away
+
+The owner wants as much room for notes as possible: the tabs and the rows of chips now scroll away together with the top app bar, and come back on the first scroll up (quick return). This replaces keeping the tabs fixed (decided earlier today): a notebook is a scroll up away instead of always in view. Built as one header around the app bar, tabs and chips with a nested-scroll connection, because Material's `enterAlways` behaviour only moves the app bar itself; no new library.
+
 ## 2026-10-17: One Filters list, app bar scrolls away
 
 The Filters panel is one list again: each property has its drag handle, name and eye, with its values to filter by right below it, instead of the arranger above a separate list of values (owner's request: one integrated screen). The property arranger takes the content under each row and swaps rows by their measured height, since a property with chips is taller than a row. On Pinned and Notebooks the top app bar scrolls away with the notes and comes back on the first scroll up (Material 3's `enterAlways`); the tabs stay, so the notebooks remain one tap away, and the bar keeps the tabs' `surface` color instead of changing color while notes scroll under it. It comes back when another notebook is opened, since a short list can't scroll it into view. Rejected: letting the tabs scroll away too (switching notebooks would need a scroll up first).
