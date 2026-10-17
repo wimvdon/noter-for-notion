@@ -30,6 +30,8 @@ data class AppSettings(
     val propertyLayouts: Map<String, PropertyLayout> = emptyMap(),
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = false,
+    /** The navigation bar's order, as names of Destinations.Section (Search is always last). */
+    val navigation: List<String> = emptyList(),
 ) {
     companion object {
         const val HOME = "home"

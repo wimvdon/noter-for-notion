@@ -39,4 +39,27 @@ class DestinationsTest {
         assertEquals("db", DatabaseConfig("db", "Notes").sourceId)
         assertEquals("db", DatabaseConfig("v", "Notes", databaseId = "db").sourceId)
     }
+
+    @Test
+    fun `the bar is Pinned, Notebooks, Search by default and Search always stays last`() {
+        assertEquals(listOf(Section.PINNED, Section.NOTEBOOKS, Section.SEARCH), Destinations.bar(emptyList()))
+        assertEquals(listOf(Section.NOTEBOOKS, Section.PINNED, Section.SEARCH), Destinations.bar(listOf("NOTEBOOKS", "PINNED")))
+        assertEquals(listOf(Section.NOTEBOOKS, Section.PINNED, Section.SEARCH), Destinations.bar(listOf("SEARCH", "NOTEBOOKS", "unknown")))
+    }
+
+    @Test
+    fun `moving swaps Pinned and Notebooks, never past Search`() {
+        assertEquals(listOf("NOTEBOOKS", "PINNED"), Destinations.moved(emptyList(), Section.NOTEBOOKS, up = true))
+        assertEquals(listOf("NOTEBOOKS", "PINNED"), Destinations.moved(emptyList(), Section.PINNED, up = false))
+        assertEquals(listOf("PINNED", "NOTEBOOKS"), Destinations.moved(emptyList(), Section.NOTEBOOKS, up = false))
+        assertEquals(listOf("PINNED", "NOTEBOOKS"), Destinations.moved(emptyList(), Section.SEARCH, up = true))
+    }
+
+    @Test
+    fun `the app opens on the bar's first destination`() {
+        assertEquals(Destinations.PINNED, Destinations.valid(Destinations.START, views(2)))
+        assertEquals("v1", Destinations.valid(Destinations.START, views(2), listOf("NOTEBOOKS", "PINNED")))
+        assertEquals(Destinations.NOTEBOOKS, Destinations.valid(Destinations.START, emptyList(), listOf("NOTEBOOKS")))
+        assertEquals(Destinations.SEARCH, Destinations.valid(Destinations.SEARCH, views(2), listOf("NOTEBOOKS")))
+    }
 }

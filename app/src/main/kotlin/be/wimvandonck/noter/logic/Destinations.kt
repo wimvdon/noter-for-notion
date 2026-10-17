@@ -17,7 +17,32 @@ object Destinations {
 
     const val SEARCH = "search"
 
+    /** Where the app opens: the first destination of the navigation bar (see [start]). */
+    const val START = "start"
+
     enum class Section { PINNED, NOTEBOOKS, SEARCH }
+
+    /**
+     * The navigation bar, in the order the user [saved] (names of [Section]). Search is always
+     * last: it opens the keyboard, so it is never where the app opens.
+     */
+    fun bar(saved: List<String>): List<Section> {
+        val chosen = saved.mapNotNull { name -> Section.entries.firstOrNull { it.name == name } }.filter { it != Section.SEARCH }
+        return (chosen + Section.PINNED + Section.NOTEBOOKS).distinct() + Section.SEARCH
+    }
+
+    /** The order to save after moving [section] one place up or down; Search can't move. */
+    fun moved(saved: List<String>, section: Section, up: Boolean): List<String> {
+        val movable = bar(saved).dropLast(1).toMutableList()
+        val from = movable.indexOf(section)
+        val to = if (up) from - 1 else from + 1
+        if (from >= 0 && to in movable.indices) movable.add(to, movable.removeAt(from))
+        return movable.map { it.name }
+    }
+
+    /** The destination the app opens on: Pinned, or the first notebook when Notebooks comes first. */
+    fun start(saved: List<String>, views: List<DatabaseConfig>): String =
+        if (bar(saved).first() == Section.NOTEBOOKS) notebook(null, views) else PINNED
 
     fun section(key: String): Section = when (key) {
         PINNED -> Section.PINNED
@@ -26,10 +51,11 @@ object Destinations {
     }
 
     /**
-     * The destination to show: [current] while it exists; under Notebooks, a notebook that's gone
-     * (removed) gives way to the first notebook.
+     * The destination to show: [current] while it exists ([START]: the bar's first, in the order
+     * [saved]); under Notebooks, a notebook that's gone (removed) gives way to the first notebook.
      */
-    fun valid(current: String, views: List<DatabaseConfig>): String = when {
+    fun valid(current: String, views: List<DatabaseConfig>, saved: List<String> = emptyList()): String = when {
+        current == START -> start(saved, views)
         current == PINNED || current == SEARCH -> current
         views.any { it.id == current } -> current
         else -> views.firstOrNull()?.id ?: NOTEBOOKS

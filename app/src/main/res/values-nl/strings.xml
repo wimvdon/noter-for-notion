@@ -197,4 +197,7 @@
     <string name="new_subpage">Nieuwe subpagina</string>
     <string name="cards_of">Kaarten: %1$s</string>
     <string name="filter_no_values">Nog geen waarden</string>
+    <string name="section_navigation_bar">Navigatiebalk</string>
+    <string name="navigation_start">Hier opent de app</string>
+    <string name="navigation_search_last">Altijd als laatste</string>
 </resources>
