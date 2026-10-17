@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: Notebooks, and Search instead of Browse
+
+The owner asked where browsing all of Notion fits, without making the app a full Notion client, and proposed calling the app's collections notebooks. "Views" become **notebooks** in every screen and language ("Notebook" stays in English, as a name of the app's own, like Noter); the code keeps its names (`DatabaseConfig`, `AppSettings.databases`) so saved settings stay. Browse leaves the navigation bar: the bar is for places to stay (Material 3), and browsing Notion is a tool used now and then. It becomes **Search**, a screen behind the search button that first lists the notes on the phone whose title matches (at once, offline too), then Notion's databases and pages; a database found there can be added as a notebook. "New page at the top of the workspace" moved to + on Pinned (with a personal access token). Rejected: keeping Browse as a tab (it competed with the notebooks for room in the bar) and removing it (opening any page or database stays useful, also to add notebooks).
+
 ## 2026-10-17: Properties arranged in place, all shown by default
 
 The owner found choosing and ordering a note's properties too complicated: a separate sheet, and only the first three shown by default. Now every property is shown, as in Notion, and the tune button turns the properties into a list to arrange right where they are: drag to reorder, drag below the "Hidden" line (or tap the eye) to hide. The layout stores the hidden properties instead of the shown ones, so a property added in Notion later shows up, as it would in Notion. Rejected: keeping the sheet (one more screen to learn) and long-pressing a property to drag it while editing values (the two gestures clash).

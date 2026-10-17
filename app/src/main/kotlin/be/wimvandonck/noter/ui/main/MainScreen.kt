@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -118,8 +118,6 @@ import be.wimvandonck.noter.logic.NoteTargets
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Workspaces
-import androidx.compose.material.icons.rounded.Description
-import be.wimvandonck.noter.data.NotesRepository
 import androidx.compose.material.icons.rounded.FilterAltOff
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.automirrored.rounded.StickyNote2
@@ -129,9 +127,9 @@ import kotlinx.coroutines.launch
 
 /**
  * The overview, in the style of Google Keep. Top-level destinations: Pinned (the pinned notes of
- * everything), Browse (the pages and databases shared with the integration) and the user's views
- * (a database with its filters). All are in the navigation drawer, with Manage views and
- * Settings; the navigation bar holds Pinned, Browse and the views pinned to it, as many as fit.
+ * everything) and the user's notebooks. All are in the navigation drawer, with Manage notebooks
+ * and Settings; the navigation bar holds Pinned and the notebooks pinned to it, as many as fit.
+ * The search button opens Search (the notes here, then Notion's pages and databases).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -141,9 +139,9 @@ fun MainScreen(
     onOpenDatabase: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenViews: () -> Unit,
+    onOpenSearch: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val browse by viewModel.browse.collectAsStateWithLifecycle()
     val previews by viewModel.previews.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val resources = androidx.compose.ui.platform.LocalResources.current
@@ -167,13 +165,13 @@ fun MainScreen(
         }
     }
 
-    val labels = TabLabels(stringResource(R.string.tab_home), stringResource(R.string.tab_browse))
+    val labels = TabLabels(stringResource(R.string.tab_home))
     val title = state.tabs.firstOrNull { it.key == state.currentTab }?.let { labels.of(it) } ?: labels.pinned
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val width = rememberWindowWidthDp()
     val barIds = Destinations.barViews(state.views, width).map { it.id }.toSet()
-    val barTabs = state.tabs.filter { it.isPinned || it.isBrowse || it.key in barIds }
-    val targets = NoteTargets.of(state.views, if (state.isBrowse) browse.items else null)
+    val barTabs = state.tabs.filter { it.isPinned || it.key in barIds }
+    val targets = NoteTargets.of(state.views, null)
 
     fun closeDrawerThen(action: () -> Unit) {
         scope.launch { drawerState.close() }
@@ -195,8 +193,8 @@ fun MainScreen(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                     )
                     state.tabs.forEachIndexed { index, tab ->
-                        if (index == 2) {
-                            // Pinned and Browse, then the views under their own header.
+                        if (index == 1) {
+                            // Pinned, then the notebooks under their own header.
                             HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                             Text(
                                 stringResource(R.string.section_views),
@@ -242,6 +240,11 @@ fun MainScreen(
                     },
                     actions = {
                         SyncButton(state.pendingCount, state.offline, syncing = false, onSync = viewModel::refresh, alwaysShown = false)
+                        if (state.hasKey) {
+                            IconButton(onClick = onOpenSearch) {
+                                Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.action_search))
+                            }
+                        }
                     },
                     scrollBehavior = scrollBehavior,
                 )
@@ -259,16 +262,15 @@ fun MainScreen(
                 }
             },
             floatingActionButton = {
-                // A view adds to its database; Pinned and Browse ask which database (when there is a choice).
-                // Browse also makes pages: at the top of the workspace or inside a page.
-                val inView = !state.isHome && !state.isBrowse
-                if (state.hasKey && (inView || state.isBrowse || targets.isNotEmpty())) {
+                // A notebook adds to itself; Pinned asks where (when there is a choice): a notebook, or
+                // a page at the top of the workspace (with a personal access token).
+                val inNotebook = !state.isHome
+                if (state.hasKey && (inNotebook || targets.isNotEmpty() || state.canAddTopLevel)) {
                     FloatingActionButton(
                         onClick = {
                             when {
-                                inView -> viewModel.createNote(onCreated = onOpenNote)
-                                state.isBrowse -> choosingDatabase = true
-                                targets.size == 1 -> viewModel.createNote(targets.first().databaseId, onOpenNote)
+                                inNotebook -> viewModel.createNote(onCreated = onOpenNote)
+                                targets.size == 1 && !state.canAddTopLevel -> viewModel.createNote(targets.first().databaseId, onOpenNote)
                                 else -> choosingDatabase = true
                             }
                         },
@@ -288,13 +290,6 @@ fun MainScreen(
                     ) {
                         Button(onClick = onOpenSettings) { Text(stringResource(R.string.empty_no_key_action)) }
                     }
-                    state.isBrowse -> BrowsePane(
-                        state = browse,
-                        onSearch = viewModel::search,
-                        onRefresh = viewModel::refresh,
-                        onOpenPage = { viewModel.openItem(it, onOpenNote) },
-                        onOpenDatabase = onOpenDatabase,
-                    )
                     else -> NotesPane(
                         state = state,
                         previews = previews,
@@ -316,34 +311,18 @@ fun MainScreen(
     if (choosingDatabase) {
         ModalBottomSheet(onDismissRequest = { choosingDatabase = false }) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                if (state.isBrowse) {
+                // Notion only lets a personal access token add pages at the top of the workspace.
+                if (state.canAddTopLevel) {
                     SheetHeader(stringResource(R.string.new_page))
-                    // Notion only lets a personal access token add pages at the top of the workspace.
-                    if (state.canAddTopLevel) {
-                        ListItem(
-                            headlineContent = { Text(stringResource(R.string.new_page_top_level)) },
-                            supportingContent = { Text(stringResource(R.string.new_page_top_level_help)) },
-                            leadingContent = { Icon(Icons.Rounded.Workspaces, contentDescription = null) },
-                            modifier = Modifier.clickable {
-                                choosingDatabase = false
-                                viewModel.createPage(null, onOpenNote)
-                            },
-                        )
-                    }
-                    browse.items.orEmpty().filter { !it.isDatabase && it.note?.databaseId == NotesRepository.PAGES }.forEach { page ->
-                        ListItem(
-                            headlineContent = { Text(stringResource(R.string.new_page_inside, page.title.ifBlank { stringResource(R.string.untitled) })) },
-                            leadingContent = {
-                                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                                    if (page.icon != null) PageIconView(page.icon, size = 24.dp) else Icon(Icons.Rounded.Description, contentDescription = null)
-                                }
-                            },
-                            modifier = Modifier.clickable {
-                                choosingDatabase = false
-                                viewModel.createPage(page.id, onOpenNote)
-                            },
-                        )
-                    }
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.new_page_top_level)) },
+                        supportingContent = { Text(stringResource(R.string.new_page_top_level_help)) },
+                        leadingContent = { Icon(Icons.Rounded.Workspaces, contentDescription = null) },
+                        modifier = Modifier.clickable {
+                            choosingDatabase = false
+                            viewModel.createPage(null, onOpenNote)
+                        },
+                    )
                 }
                 if (targets.isNotEmpty()) SheetHeader(stringResource(R.string.new_note_in))
                 targets.forEach { target ->
@@ -379,19 +358,14 @@ private fun SheetHeader(text: String) {
     )
 }
 
-/** The names of the fixed destinations (views have their own). */
-private class TabLabels(val pinned: String, val browse: String) {
-    fun of(tab: Tab): String = when {
-        tab.isPinned -> pinned
-        tab.isBrowse -> browse
-        else -> tab.name
-    }
+/** The name of the fixed destination (notebooks have their own). */
+private class TabLabels(val pinned: String) {
+    fun of(tab: Tab): String = if (tab.isPinned) pinned else tab.name
 }
 
 @Composable
 private fun Tab.iconVector(): ImageVector = when {
     isPinned -> Icons.Rounded.PushPin
-    isBrowse -> Icons.Rounded.Explore
     else -> DatabaseIcons.icon(icon)
 }
 

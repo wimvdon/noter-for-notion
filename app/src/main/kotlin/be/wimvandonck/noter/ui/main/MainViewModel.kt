@@ -24,6 +24,7 @@ import be.wimvandonck.noter.logic.ChipFilter
 import be.wimvandonck.noter.logic.Destinations
 import be.wimvandonck.noter.logic.FilterChip
 import be.wimvandonck.noter.logic.NoteLists
+import be.wimvandonck.noter.logic.NoteSearch
 import be.wimvandonck.noter.logic.NoteSource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -38,10 +39,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-/** A top-level destination: Pinned, Browse or a view. */
+/** A top-level destination: Pinned or a notebook. */
 data class Tab(val key: String, val name: String, val icon: String?) {
     val isPinned: Boolean get() = key == Destinations.PINNED
-    val isBrowse: Boolean get() = key == Destinations.BROWSE
 }
 
 data class MainUiState(
@@ -80,12 +80,15 @@ data class MainUiState(
     val views: List<DatabaseConfig> = emptyList(),
 ) {
     val isHome: Boolean get() = currentTab == Destinations.PINNED
-    val isBrowse: Boolean get() = currentTab == Destinations.BROWSE
 }
 
-/** The Browse list: pages and databases shared with the integration. */
+/**
+ * Search: the notes on this phone whose title matches ([notes], at once), then the pages and
+ * databases Notion finds ([items]; without a query, the most recently edited ones).
+ */
 data class BrowseState(
     val query: String = "",
+    val notes: List<NoteSummary> = emptyList(),
     val items: List<WorkspaceItem>? = null,
     val loading: Boolean = false,
     val error: String? = null,
@@ -182,8 +185,7 @@ class MainViewModel(
     ) { settings, databases, tab, chipsByTab, (pending, offline, key, kind) ->
         val views = settings.databases
         val tabKey = Destinations.valid(tab, views)
-        val tabs = listOf(Tab(Destinations.PINNED, "", null), Tab(Destinations.BROWSE, "", null)) +
-            views.map { Tab(it.id, it.name, it.icon) }
+        val tabs = listOf(Tab(Destinations.PINNED, "", null)) + views.map { Tab(it.id, it.name, it.icon) }
         val base = MainUiState(
             ready = true,
             hasKey = key,
@@ -198,7 +200,6 @@ class MainViewModel(
             views = views,
         )
         when (tabKey) {
-            Destinations.BROWSE -> base
             Destinations.PINNED -> {
                 val selected = chipsByTab[tabKey].orEmpty()
                 val content = NoteLists.home(
@@ -237,7 +238,6 @@ class MainViewModel(
 
     fun selectTab(key: String) {
         currentTab.value = key
-        if (key == Destinations.BROWSE && _browse.value.items == null) search("")
         viewModelScope.launch {
             val view = repository.currentSettings().databases.firstOrNull { it.id == key } ?: return@launch
             repository.refresh(view.sourceId, userAsked = false)
@@ -263,7 +263,6 @@ class MainViewModel(
         viewModelScope.launch {
             repository.flush()
             when {
-                ui.isBrowse -> search(_browse.value.query)
                 ui.isHome -> repository.databases.value.keys.forEach { launch { repository.refresh(it, userAsked = true) } }
                 else -> ui.databaseId?.let { repository.refresh(it, userAsked = true) }
             }
@@ -321,9 +320,13 @@ class MainViewModel(
     val browse: StateFlow<BrowseState> = _browse.asStateFlow()
     private var searchJob: Job? = null
 
-    /** Searches pages and databases; typing waits for a short pause before asking Notion. */
+    /**
+     * Searches the notes here at once, and Notion's pages and databases after a short pause in
+     * typing (each letter isn't a request).
+     */
     fun search(query: String) {
-        _browse.update { it.copy(query = query, loading = true, error = null) }
+        val notes = NoteSearch.matches(repository.databases.value.values.flatMap { it.notes }, query)
+        _browse.update { it.copy(query = query, notes = notes, loading = true, error = null) }
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             if (query.isNotBlank()) delay(SEARCH_PAUSE_MS)

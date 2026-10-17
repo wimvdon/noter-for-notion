@@ -2,18 +2,19 @@
 <resources>
     <string name="app_name">Noter</string>
     <string name="tab_home">Pinned</string>
-    <string name="tab_browse">Browse</string>
-    <string name="browse_search">Search pages and databases</string>
+    <string name="browse_search">Search Notion</string>
     <string name="browse_databases">Databases</string>
+    <string name="search_notes">Notes on this phone</string>
+    <string name="action_search">Search</string>
     <string name="browse_pages">Pages</string>
-    <string name="browse_empty">In Notion, share pages and databases with your integration (⋯ › Connections).</string>
+    <string name="browse_empty">Nothing in Notion yet that this token can see.</string>
     <string name="browse_nothing_found">Nothing found</string>
     <string name="browse_edited">Edited %1$s</string>
     <string name="source_pages">Pages</string>
-    <string name="add_view">Add view</string>
-    <string name="view_added">Added to the views. Change it in ☰ › Manage views.</string>
+    <string name="add_view">Add as notebook</string>
+    <string name="view_added">Added to your notebooks. Change it in ☰ › Manage notebooks.</string>
     <string name="view_filters">Show only</string>
-    <string name="view_filters_help">The filters that are on when the view opens. None: all notes.</string>
+    <string name="view_filters_help">The filters that are on when the notebook opens. None: all notes.</string>
     <string name="view_filtered">%1$s: %2$s</string>
     <string name="page_open_failed">Couldn’t open the page. Check your connection.</string>
     <string name="open_navigation">Open navigation</string>
@@ -118,12 +119,12 @@
     <string name="key_removed">Token removed. Notes copied to this phone were deleted.</string>
     <string name="sync_all_saved">Everything is saved in Notion.</string>
     <string name="sync_now">Sync now</string>
-    <string name="section_views">Views</string>
+    <string name="section_views">Notebooks</string>
     <string name="databases_none">None yet</string>
-    <string name="databases_help">Views stay on this phone; Notion isn’t changed.</string>
-    <string name="add_database">Add view</string>
-    <string name="edit_database">Edit view</string>
-    <string name="already_added">Has a view</string>
+    <string name="databases_help">Notebooks stay on this phone; Notion isn’t changed.</string>
+    <string name="add_database">Add notebook</string>
+    <string name="edit_database">Edit notebook</string>
+    <string name="already_added">Already a notebook</string>
     <string name="no_databases_found">No databases found. Share a database with your integration in Notion first.</string>
     <string name="database_name">Name</string>
     <string name="database_icon">Icon</string>
@@ -137,7 +138,7 @@
     <string name="type_multi_select">Multi-select</string>
     <string name="type_people">Person</string>
     <string name="remove_database">Remove</string>
-    <string name="remove_database_title">Remove this view?</string>
+    <string name="remove_database_title">Remove this notebook?</string>
     <string name="remove_database_body">It disappears from the navigation. Nothing is deleted in Notion.</string>
     <string name="section_appearance">Appearance</string>
     <string name="theme">Theme</string>
@@ -161,20 +162,20 @@
         <item quantity="other">%d linked pages</item>
     </plurals>
     <!-- Manage views and the navigation bar -->
-    <string name="manage_views">Manage views</string>
+    <string name="manage_views">Manage notebooks</string>
     <plurals name="views_count">
-        <item quantity="one">%d view</item>
-        <item quantity="other">%d views</item>
+        <item quantity="one">%d notebook</item>
+        <item quantity="other">%d notebooks</item>
     </plurals>
     <plurals name="bar_room">
-        <item quantity="one">The bottom bar has room for %d view on this screen.</item>
-        <item quantity="other">The bottom bar has room for %d views on this screen.</item>
+        <item quantity="one">The bottom bar has room for %d notebook on this screen.</item>
+        <item quantity="other">The bottom bar has room for %d notebooks on this screen.</item>
     </plurals>
     <string name="view_in_bar">In the bar at the bottom</string>
     <string name="view_no_room">Pinned to the bar, but there’s no room on this screen</string>
     <string name="view_in_drawer">In the menu</string>
     <string name="pin_to_bar">Show in the bar at the bottom</string>
-    <string name="pin_to_bar_help">When there’s room. The view is always in the menu (☰).</string>
+    <string name="pin_to_bar_help">When there’s room. The notebook is always in the menu (☰).</string>
     <string name="icon_search">Search icons (in English)</string>
     <string name="icon_none_found">No icons found. Try another word, such as “list”, “food” or “work”.</string>
     <string name="cards_title">Cards in the overview</string>
@@ -185,17 +186,16 @@
     <string name="chip_checked">%1$s</string>
     <string name="chip_unchecked">Not %1$s</string>
     <string name="type_checkbox_property">Checkbox</string>
-    <string name="cards_help">Applies to every view of this database.</string>
+    <string name="cards_help">Applies to every notebook of this database.</string>
     <string name="cards_properties">Properties on the card (up to %1$d)</string>
-    <string name="edit_view">Edit view</string>
+    <string name="edit_view">Edit notebook</string>
     <string name="new_page">New page</string>
     <string name="new_page_top_level">At the top of your workspace</string>
     <string name="new_page_top_level_help">Among your private pages</string>
-    <string name="new_page_inside">Inside %1$s</string>
     <string name="new_subpage">New subpage</string>
-    <string name="create_top_level_failed">Notion doesn’t let this connection add pages at the top of the workspace. Add the page inside a page instead (+ in Browse, or ⋮ › New subpage in a page).</string>
+    <string name="create_top_level_failed">Notion doesn’t let this token add pages at the top of your workspace. Add the page inside a page instead (⋮ › New subpage in a page).</string>
     <string name="create_failed">Notion couldn’t make the page: %1$s</string>
-    <string name="browse_empty_title">Nothing shared yet</string>
+    <string name="browse_empty_title">Nothing here yet</string>
     <string name="empty_no_key_title">Connect to Notion</string>
     <string name="empty_home_title">No pinned notes</string>
     <string name="empty_database_title">No notes yet</string>

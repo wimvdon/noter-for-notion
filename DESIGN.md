@@ -214,16 +214,20 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   properties chosen for cards (up to three; options in Notion's colours, other values in Label
   Medium), or else the filter property's options. "Pinned" and "Others" are Label Large headers spanning
   the grid. A dragged card lifts (shadow, 3% larger, `surfaceContainerHigh`).
-- Navigation: Pinned, Browse and the user's views are the top-level destinations, in that order.
-  All are in a modal navigation drawer (menu button; it doesn't open with a swipe), with the views
-  under a "Views" header, then Manage views and Settings. The navigation bar shows Pinned, Browse
-  and the views pinned to it, as many as fit (an item per 80dp; owner's choice, see decisions). Browse is one list with
-  a pill-shaped search field and "Databases" and "Pages" headers (Title Small, primary). A
-  database opened from Browse is a child page with an "Add view" text button in its app bar,
-  "Edit view" once it is a view.
+- Navigation: Pinned and the user's notebooks are the top-level destinations, in that order.
+  All are in a modal navigation drawer (menu button; it doesn't open with a swipe), with the
+  notebooks under a "Notebooks" header, then Manage notebooks and Settings. The navigation bar
+  shows Pinned and the notebooks pinned to it, as many as fit (an item per 80dp; owner's choice,
+  see decisions). Search is a screen of its own behind the search button in the top app bar: the
+  query field in the app bar, then "Notes on this phone", "Databases" and "Pages" headers (Title
+  Small, primary). A database opened from Search is a child page with an "Add as notebook" text
+  button in its app bar, "Edit notebook" once it is one. "Notebook" stays in English in every
+  language: it is the app's name for its collections.
 - The note editor follows Notion's look: headings in SemiBold, quotes with a bar, callouts and
   code on `surfaceContainerHigh` (code in a monospace font), dividers as `outlineVariant` lines.
-  Read-only blocks sit in a `surfaceContainer` box with "(edit in Notion)".
+  Blocks the app can't show sit in an outlined box (`outlineVariant`) with their kind and an
+  "Open in Notion" button; nested content still downloading shows skeleton lines instead, so the
+  two never look alike.
   Columns are shown one below the other with a thin `outlineVariant` line between them.
 - The block toolbar sits above the keyboard on `surfaceContainerHigh`; the selected kind uses
   `secondaryContainer`.
