@@ -128,7 +128,9 @@ class PropertyCodecTest {
         assertEquals("other", schema.property("Project")!!.relationDatabaseId)
         assertEquals("Created", schema.properties.last().name)
         assertTrue(schema.property("Status")!!.isChipCandidate)
-        assertFalse(schema.property("Project")!!.isChipCandidate)
+        // Relations can be filters (one chip per linked page); timestamps can't.
+        assertTrue(schema.property("Project")!!.isChipCandidate)
+        assertFalse(schema.property("Created")!!.isChipCandidate)
     }
 
     @Test

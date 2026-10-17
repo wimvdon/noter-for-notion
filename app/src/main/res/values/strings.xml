@@ -189,4 +189,14 @@
     <string name="empty_database_title">No notes yet</string>
     <string name="empty_clear_filters">Clear filters</string>
     <string name="empty_error_title">Couldn’t load the notes</string>
+    <string name="chip_overdue">Overdue</string>
+    <string name="chip_today">Today</string>
+    <string name="chip_next_7_days">Next 7 days</string>
+    <string name="chip_later">Later</string>
+    <string name="chip_no_date">No date</string>
+    <string name="type_relation">Relation (linked pages)</string>
+    <string name="type_created_by">Created by</string>
+    <string name="type_last_edited_by">Last edited by</string>
+    <string name="type_date">Date (overdue, today, next 7 days, …)</string>
+    <string name="type_formula">Formula</string>
 </resources>

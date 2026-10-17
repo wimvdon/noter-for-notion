@@ -21,8 +21,11 @@ properties and content: the pages of databases and pages on their own.
   Notes are cards in a staggered grid with a preview of their content; pinned notes come first
   under "Pinned". Long-press and drag moves a note within its section; a long press without
   moving opens its menu (pin, move to trash). Filters (Material filter chips) come from one
-  select, status, multi-select, person or checkbox property (a checkbox gives "Done" and "Not
-  Done", named after the property).
+  property (`logic/ChipFilter.kt`): select, status, multi-select, person, checkbox ("Done" and
+  "Not Done", named after the property), relation (a chip per linked page, named by its title),
+  created by / last edited by, date (Overdue, Today, Next 7 days, Later, No date) or formula (a
+  yes/no formula like a checkbox, others a chip per value). A new note made with a filter selected
+  gets its value where it can (not for computed properties; a date only for Today).
 - **Database** (`DatabaseScreen.kt`): a database opened from Browse or a link in a note, as a
   child page with its notes and filters; "Add view" makes it a view, after which the button is
   "Edit view" and opens that view's setup (Manage views), so a database isn't added twice.

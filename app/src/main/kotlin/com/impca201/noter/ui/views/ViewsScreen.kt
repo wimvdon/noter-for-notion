@@ -346,13 +346,20 @@ private fun DatabaseEditorSheet(
                     // The filters selected when the view opens (status and select options; people vary).
                     val chipSchema = draft.config.chipProperty?.let { schema.property(it) }
                     // (key, label): the options, or checked and not checked for a checkbox.
-                    val options = if (chipSchema?.type == "checkbox") {
-                        listOf(
+                    val options = when (chipSchema?.type) {
+                        "checkbox" -> listOf(
                             ChipFilter.CHECKED to stringResource(R.string.chip_checked, chipSchema.name),
                             ChipFilter.UNCHECKED to stringResource(R.string.chip_unchecked, chipSchema.name),
                         )
-                    } else {
-                        chipSchema?.options.orEmpty().map { it.name to it.name }
+                        "date" -> listOf(
+                            ChipFilter.OVERDUE to stringResource(R.string.chip_overdue),
+                            ChipFilter.TODAY to stringResource(R.string.chip_today),
+                            ChipFilter.NEXT_7_DAYS to stringResource(R.string.chip_next_7_days),
+                            ChipFilter.LATER to stringResource(R.string.chip_later),
+                            ChipFilter.NO_DATE to stringResource(R.string.chip_no_date),
+                        )
+                        // Relations, people and formulas: their values come from the notes (choose them in the view).
+                        else -> chipSchema?.options.orEmpty().map { it.name to it.name }
                     }
                     if (options.isNotEmpty()) {
                         Text(stringResource(R.string.view_filters), style = MaterialTheme.typography.titleSmall)
@@ -475,6 +482,11 @@ private fun ChipChoice(property: PropertySchema?, label: String, selected: Boole
                             "select" -> R.string.type_select
                             "multi_select" -> R.string.type_multi_select
                             "checkbox" -> R.string.type_checkbox_property
+                            "relation" -> R.string.type_relation
+                            "created_by" -> R.string.type_created_by
+                            "last_edited_by" -> R.string.type_last_edited_by
+                            "date" -> R.string.type_date
+                            "formula" -> R.string.type_formula
                             else -> R.string.type_people
                         },
                     ),

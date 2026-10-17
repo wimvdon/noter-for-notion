@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 /** A top-level destination: Pinned, Browse or a view. */
 data class Tab(val key: String, val name: String, val icon: String?) {
@@ -65,6 +66,10 @@ data class MainUiState(
     val offline: Boolean = false,
     /** The database of the view shown (null on Pinned and Browse). */
     val databaseId: String? = null,
+    /** The database a relation filter links to (its pages' titles name the chips), else null. */
+    val chipRelationDatabase: String? = null,
+    /** Titles of linked pages, by page ID, for relation filters. */
+    val chipTitles: Map<String, String> = emptyMap(),
     /** The views, for the navigation bar and "New note" on Pinned and Browse. */
     val views: List<DatabaseConfig> = emptyList(),
 ) {
@@ -105,6 +110,7 @@ internal fun databaseContent(
         pinned = content.pinned,
         others = content.others,
         chipProperty = chipSchema?.name,
+        chipRelationDatabase = chipSchema?.takeIf { it.type == "relation" }?.relationDatabaseId,
         loading = db?.loaded != true,
         refreshing = db?.refreshing == true,
         error = db?.error,
@@ -122,18 +128,30 @@ internal fun defaultChipProperty(databaseId: String, settings: AppSettings, db: 
 }
 
 /** A filter property's value for a new note made while filter [key] is selected. */
-internal fun presetFor(schema: PropertySchema, chip: FilterChip): NoteProperty? {
+internal fun presetFor(schema: PropertySchema, chip: FilterChip, today: LocalDate = LocalDate.now()): NoteProperty? {
     val value = when (schema.type) {
         "select", "status" -> PropertyValue.Select(schema.options.firstOrNull { it.name == chip.key })
         "multi_select" -> PropertyValue.MultiSelect(listOfNotNull(schema.options.firstOrNull { it.name == chip.key }))
         "people" -> PropertyValue.People(listOf(NotionUser(chip.key, chip.label)))
         "checkbox" -> PropertyValue.Checkbox(chip.key == ChipFilter.CHECKED)
+        "relation" -> PropertyValue.Relation(listOf(chip.key))
+        // A note made while "Today" is selected is for today; other date ranges have no one date.
+        "date" -> if (chip.key == ChipFilter.TODAY) PropertyValue.Date(today.toString()) else return null
+        // Computed by Notion (created by, formulas): nothing to fill in.
         else -> return null
     }
     return NoteProperty(schema.name, schema.type, value)
 }
 
 class MainViewModel(private val repository: NotesRepository, hasKey: StateFlow<Boolean>) : ViewModel() {
+    private val chipTitles = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    /** Loads the titles of a related database's pages, for the chips of a relation filter. */
+    fun loadChipTitles(databaseId: String) = viewModelScope.launch {
+        val pages = repository.relatedPages(databaseId) ?: return@launch
+        chipTitles.update { it + pages.associate { page -> page.id to page.title } }
+    }
+
     private val currentTab = MutableStateFlow(Destinations.PINNED)
 
     /** Filters the user picked per destination since the app started (else a view's own). */
@@ -194,7 +212,8 @@ class MainViewModel(private val repository: NotesRepository, hasKey: StateFlow<B
                 databaseContent(base, view.sourceId, db, chipSchema, Destinations.selectedFilters(view, chipsByTab[tabKey]), settings)
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
+    }.combine(chipTitles) { state, titles -> state.copy(chipTitles = titles) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
     /** Every source of notes, named after its first view, else its database title ("" for the pages). */
     private fun sources(settings: AppSettings, databases: Map<String, DatabaseState>): List<NoteSource> {

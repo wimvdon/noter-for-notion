@@ -117,6 +117,7 @@ fun DatabaseScreen(databaseId: String, onBack: () -> Unit, onOpenNote: (String) 
                 onLoadPreviews = viewModel::loadPreviews,
                 onToggleChip = viewModel::toggleChip,
                 onClearChips = viewModel::clearChips,
+                onLoadChipTitles = { viewModel.loadChipTitles(it) },
                 onRefresh = { viewModel.refresh() },
                 onOpen = onOpenNote,
                 onTogglePin = { viewModel.togglePin(it) },

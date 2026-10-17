@@ -110,6 +110,7 @@ import com.impca201.noter.ui.common.OptionChip
 import com.impca201.noter.ui.common.SyncButton
 import com.impca201.noter.ui.views.rememberWindowWidthDp
 import com.impca201.noter.logic.ChipFilter
+import com.impca201.noter.logic.FilterChip as Chip
 import com.impca201.noter.logic.Destinations
 import com.impca201.noter.logic.NoteTargets
 import androidx.compose.material.icons.automirrored.rounded.ViewList
@@ -298,6 +299,7 @@ fun MainScreen(
                         onLoadPreviews = viewModel::loadPreviews,
                         onToggleChip = viewModel::toggleChip,
                         onClearChips = viewModel::clearChips,
+                        onLoadChipTitles = { viewModel.loadChipTitles(it) },
                         onRefresh = viewModel::refresh,
                         onOpen = onOpenNote,
                         onTogglePin = viewModel::togglePin,
@@ -400,6 +402,7 @@ internal fun NotesPane(
     onLoadPreviews: (List<NoteSummary>) -> Unit,
     onToggleChip: (String) -> Unit,
     onClearChips: () -> Unit,
+    onLoadChipTitles: (String) -> Unit,
     onRefresh: () -> Unit,
     onOpen: (String) -> Unit,
     onTogglePin: (String) -> Unit,
@@ -407,6 +410,7 @@ internal fun NotesPane(
     onReordered: (List<String>) -> Unit,
 ) {
     var confirmTrash by remember { mutableStateOf<NoteSummary?>(null) }
+    LaunchedEffect(state.chipRelationDatabase) { state.chipRelationDatabase?.let(onLoadChipTitles) }
     // Previews are only downloaded for cards that show the content.
     LaunchedEffect(state.pinned, state.others, state.propertyLayouts) {
         onLoadPreviews((state.pinned + state.others).filter { PropertyLayouts.showsContent(state.propertyLayouts[it.databaseId]) })
@@ -477,23 +481,40 @@ private fun ChipRow(state: MainUiState, onToggle: (String) -> Unit, onClear: () 
         items(state.chips, key = { it.key }) { chip ->
             val selected = chip.key in state.selectedChips
             val icon = if (state.isHome) state.databaseIcons[chip.key] else null
-            val label = when (chip.key) {
-                ChipFilter.CHECKED -> stringResource(R.string.chip_checked, state.chipProperty.orEmpty())
-                ChipFilter.UNCHECKED -> stringResource(R.string.chip_unchecked, state.chipProperty.orEmpty())
-                else -> chip.label.ifEmpty { stringResource(R.string.source_pages) }
-            }
+            val label = chipLabel(chip, state)
             FilterChip(
                 selected = selected,
                 onClick = { onToggle(chip.key) },
                 label = { Text(if (chip.count > 0) "$label  ${chip.count}" else label) },
                 leadingIcon = if (state.isHome) {
                     { Icon(DatabaseIcons.icon(icon), contentDescription = null, Modifier.size(FilterChipDefaults.IconSize)) }
-                } else if (chip.isCheckbox) {
+                } else if (chip.isCheckbox || chip.isDate || chip.label.isEmpty()) {
                     null
                 } else {
                     { OptionDot(chip.color) }
                 },
             )
+        }
+    }
+}
+
+/** A chip's words: fixed ones for checkbox and date filters, a linked page's title, else its own label. */
+@Composable
+internal fun chipLabel(chip: Chip, state: MainUiState): String {
+    val property = state.chipProperty.orEmpty()
+    return when (chip.key) {
+        ChipFilter.CHECKED -> stringResource(R.string.chip_checked, property)
+        ChipFilter.UNCHECKED -> stringResource(R.string.chip_unchecked, property)
+        ChipFilter.OVERDUE -> stringResource(R.string.chip_overdue)
+        ChipFilter.TODAY -> stringResource(R.string.chip_today)
+        ChipFilter.NEXT_7_DAYS -> stringResource(R.string.chip_next_7_days)
+        ChipFilter.LATER -> stringResource(R.string.chip_later)
+        ChipFilter.NO_DATE -> stringResource(R.string.chip_no_date)
+        else -> when {
+            chip.label.isNotEmpty() -> chip.label
+            // Pinned's chips are the sources; the one without a name is the pages on their own.
+            state.isHome -> stringResource(R.string.source_pages)
+            else -> state.chipTitles[chip.key]?.ifBlank { null } ?: stringResource(R.string.untitled)
         }
     }
 }
