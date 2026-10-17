@@ -193,7 +193,10 @@ fun MainScreen(
     }
 
     val notebookActions = NotebookActions(onQuickFilters = viewModel::setQuickFilters, onSort = viewModel::setSort)
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    // The app bar scrolls away with the notes and comes back on the first scroll up; the tabs stay.
+    // Another notebook or destination brings it back (a short list can't scroll it into view).
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    LaunchedEffect(section, state.notebook?.id) { scrollBehavior.state.heightOffset = 0f }
     val targets = NoteTargets.of(Notebooks.named(state.views), null)
     val navigationBar: @Composable () -> Unit = {
         NavigationBar {
@@ -264,6 +267,8 @@ fun MainScreen(
                             onSettings = onOpenSettings,
                         )
                     },
+                    // One color with the tabs below it, also while notes scroll underneath.
+                    colors = TopAppBarDefaults.topAppBarColors(scrolledContainerColor = MaterialTheme.colorScheme.surface),
                     scrollBehavior = scrollBehavior,
                 )
                 // The notebooks are peers within Notebooks: tabs, in the order of Manage notebooks.

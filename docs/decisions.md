@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: One Filters list, app bar scrolls away
+
+The Filters panel is one list again: each property has its drag handle, name and eye, with its values to filter by right below it, instead of the arranger above a separate list of values (owner's request: one integrated screen). The property arranger takes the content under each row and swaps rows by their measured height, since a property with chips is taller than a row. On Pinned and Notebooks the top app bar scrolls away with the notes and comes back on the first scroll up (Material 3's `enterAlways`); the tabs stay, so the notebooks remain one tap away, and the bar keeps the tabs' `surface` color instead of changing color while notes scroll under it. It comes back when another notebook is opened, since a short list can't scroll it into view. Rejected: letting the tabs scroll away too (switching notebooks would need a scroll up first).
+
 ## 2026-10-17: Notebooks with sub-notebooks for databases of several data sources
 
 Notion's API (2025-09-03 and later) has no flag on a data source for "nested": every data source has a database as parent, and the database lists its data sources. A database with one data source is what users see as a plain database (Notities); one with several (Gezondheid: Huid, Spijsvertering, Mentale gezondheid) is a container. So the app asks Notion about each database once and keeps the answer. A container becomes one notebook with a sub-notebook per data source (secondary tabs, Material 3's tabs for peers within one place), each with its own filters, sort and cards, because the data sources have different properties. Rejected: an "All" tab across data sources (they share almost no properties). Notion's search can also list a data source the connection can't read (a "Gezondheid" that gave "Notion vindt dit niet"); a data source its own database doesn't list is left out. A key is now asked about as a database before as a data source, since Notion may answer for a database's ID as a data source.

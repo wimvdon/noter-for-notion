@@ -1,5 +1,6 @@
 package be.wimvandonck.noter.ui.note
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -28,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
@@ -46,7 +49,8 @@ import be.wimvandonck.noter.logic.PropertyLayouts
  * Arranging a database's properties in place, where they are shown in the note: drag a property
  * by its handle to change the order, and past the "Hidden" line to hide it (or back to show it);
  * the eye does the same with one tap. Applies to every note of the database. A notebook's Filters
- * panel arranges its rows of chips the same way ([shownTitle], no [onDone]).
+ * panel arranges its rows of chips the same way ([shownTitle], no [onDone]), with each property's
+ * values to filter by [below] its row (they move along with it).
  */
 @Composable
 fun PropertyArranger(
@@ -55,6 +59,7 @@ fun PropertyArranger(
     onArrange: (shown: List<String>, hidden: List<String>) -> Unit,
     onDone: (() -> Unit)?,
     shownTitle: String = stringResource(R.string.properties_shown),
+    below: (@Composable (name: String) -> Unit)? = null,
 ) {
     val sections = remember(names, layout) { PropertyLayouts.sections(names, layout) }
     // A working copy (shown, the "Hidden" line, hidden), so a dragged row moves at once; it
@@ -67,7 +72,10 @@ fun PropertyArranger(
         entries.clear()
         entries.addAll(fromLayout)
     }
+    // Each entry's height as laid out (a property with its values below it is taller than a row).
+    val heights = remember { mutableStateMapOf<String, Int>() }
     val rowPx = with(LocalDensity.current) { ROW_HEIGHT.toPx() }
+    fun heightOf(index: Int): Float = entries.getOrNull(index)?.let { heights[it]?.toFloat() } ?: rowPx
     val haptics = LocalHapticFeedback.current
     val moveUp = stringResource(R.string.action_move_up)
     val moveDown = stringResource(R.string.action_move_down)
@@ -107,16 +115,17 @@ fun PropertyArranger(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .height(ROW_HEIGHT)
+                            .onSizeChanged { heights[name] = it.height }
                             .padding(top = 20.dp)
                             .semantics { heading() },
                     )
                 } else {
                     val isDragging = dragging == name
                     val isShown = entries.indexOf(name) < entries.indexOf(HIDDEN_LINE)
-                    Row(
+                    Column(
                         Modifier
                             .fillMaxWidth()
-                            .height(ROW_HEIGHT)
+                            .onSizeChanged { heights[name] = it.height }
                             .zIndex(if (isDragging) 1f else 0f)
                             .graphicsLayer {
                                 if (isDragging) {
@@ -124,69 +133,75 @@ fun PropertyArranger(
                                     shadowElevation = 8f
                                 }
                             }
+                            .then(if (isDragging) Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow) else Modifier)
                             .semantics {
                                 customActions = listOf(
                                     CustomAccessibilityAction(moveUp) { move(name, -1).also { if (it) save() } },
                                     CustomAccessibilityAction(moveDown) { move(name, 1).also { if (it) save() } },
                                 )
                             },
-                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(
-                            Icons.Rounded.DragIndicator,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier
-                                .padding(end = 8.dp, top = 12.dp, bottom = 12.dp)
-                                .pointerInput(name) {
-                                    detectDragGestures(
-                                        onDragStart = {
-                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            dragging = name
-                                            dragOffset = 0f
-                                        },
-                                        onDrag = { change, amount ->
-                                            change.consume()
-                                            dragOffset += amount.y
-                                            // Past half a row: swap with the neighbour (or the "Hidden" line)
-                                            // and keep the row under the finger.
-                                            if (dragOffset > rowPx / 2 && move(name, 1)) dragOffset -= rowPx
-                                            if (dragOffset < -rowPx / 2 && move(name, -1)) dragOffset += rowPx
-                                        },
-                                        onDragEnd = {
-                                            dragging = null
-                                            dragOffset = 0f
-                                            save()
-                                        },
-                                        onDragCancel = {
-                                            dragging = null
-                                            dragOffset = 0f
-                                        },
-                                    )
-                                },
-                        )
-                        Text(
-                            name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (isShown) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
-                        )
-                        IconToggleButton(
-                            checked = isShown,
-                            onCheckedChange = {
-                                val shown = entries.subList(0, entries.indexOf(HIDDEN_LINE)).toList()
-                                val hidden = entries.subList(entries.indexOf(HIDDEN_LINE) + 1, entries.size).toList()
-                                if (isShown) onArrange(shown - name, listOf(name) + hidden) else onArrange(shown + name, hidden - name)
-                            },
-                        ) {
+                        Row(Modifier.fillMaxWidth().height(ROW_HEIGHT), verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                if (isShown) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
-                                contentDescription = stringResource(R.string.property_shown, name),
-                                tint = if (isShown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                Icons.Rounded.DragIndicator,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .padding(end = 8.dp, top = 12.dp, bottom = 12.dp)
+                                    .pointerInput(name) {
+                                        detectDragGestures(
+                                            onDragStart = {
+                                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                dragging = name
+                                                dragOffset = 0f
+                                            },
+                                            onDrag = { change, amount ->
+                                                change.consume()
+                                                dragOffset += amount.y
+                                                // Past half the neighbour: swap with it (or the "Hidden" line) and
+                                                // keep the row under the finger.
+                                                val at = entries.indexOf(name)
+                                                val next = heightOf(at + 1)
+                                                val previous = heightOf(at - 1)
+                                                if (dragOffset > next / 2 && move(name, 1)) dragOffset -= next
+                                                if (dragOffset < -previous / 2 && move(name, -1)) dragOffset += previous
+                                            },
+                                            onDragEnd = {
+                                                dragging = null
+                                                dragOffset = 0f
+                                                save()
+                                            },
+                                            onDragCancel = {
+                                                dragging = null
+                                                dragOffset = 0f
+                                            },
+                                        )
+                                    },
                             )
+                            Text(
+                                name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (isShown) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            IconToggleButton(
+                                checked = isShown,
+                                onCheckedChange = {
+                                    val shown = entries.subList(0, entries.indexOf(HIDDEN_LINE)).toList()
+                                    val hidden = entries.subList(entries.indexOf(HIDDEN_LINE) + 1, entries.size).toList()
+                                    if (isShown) onArrange(shown - name, listOf(name) + hidden) else onArrange(shown + name, hidden - name)
+                                },
+                            ) {
+                                Icon(
+                                    if (isShown) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
+                                    contentDescription = stringResource(R.string.property_shown, name),
+                                    tint = if (isShown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
+                        below?.invoke(name)
                     }
                 }
             }
