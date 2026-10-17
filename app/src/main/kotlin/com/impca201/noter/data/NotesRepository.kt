@@ -35,6 +35,7 @@ import com.impca201.noter.data.sync.SourceKeys
 import com.impca201.noter.data.sync.RefreshKind
 import com.impca201.noter.data.sync.SyncPolicy
 import com.impca201.noter.data.sync.withProperty
+import com.impca201.noter.logic.Columns
 import com.impca201.noter.logic.NoteOrdering
 import com.impca201.noter.logic.NotePreviews
 import kotlinx.coroutines.CompletableDeferred
@@ -531,8 +532,8 @@ class NotesRepository(
             when {
                 // A table's cells are its rows (nested blocks): one more request per table.
                 block.rawType == "table" && block.hasChildren -> result += block.copy(rows = BlockCodec.tableRows(client.blockChildren(notionId)))
-                // Nested text blocks are shown and edited; images, columns, … keep theirs in Notion.
-                nested && block.hasChildren && block.type != BlockType.UNSUPPORTED && depth < MAX_DEPTH -> {
+                // Text blocks and columns show what is in them; images, synced blocks, … keep theirs in Notion.
+                nested && block.hasChildren && (block.type != BlockType.UNSUPPORTED || Columns.isContainer(block)) && depth < MAX_DEPTH -> {
                     result += block.copy(hasChildren = false)
                     result += downloadBlocks(notionId, notionId, depth + 1, nested = true)
                 }

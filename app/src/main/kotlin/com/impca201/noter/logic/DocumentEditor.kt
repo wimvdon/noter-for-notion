@@ -173,6 +173,8 @@ class DocumentEditor(private val newKey: () -> String = { UUID.randomUUID().toSt
         val index = blocks.indexOfFirst { it.key == key }
         if (index < 0 || blocks[index].depth == 0) return false
         val block = blocks[index]
+        // A block in a column stays in it: out of it, it would sit directly in the column list.
+        if (Columns.parentOf(blocks, index)?.let(Columns::isContainer) == true) return false
         val end = siblingsEnd(blocks, index)
         val takesSiblings = end > subtreeEnd(blocks, index)
         if (takesSiblings && (!canNest(block.type, block.toggleable) || block.hasChildren)) return false

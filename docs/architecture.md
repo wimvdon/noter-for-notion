@@ -99,8 +99,10 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
   block that moves to another parent or changes kind is deleted and added again with what is in
   it (`data/sync/ContentDiff.kt`); the editor only allows that when everything in it can be added
   again (text and dividers; not images, tables or content nested deeper than the app shows).
-  What is nested in images, columns, synced blocks and the like stays in Notion; such a block
-  says it has nested content. Previews in the overview download only the top level
+  Columns (`logic/Columns.kt`) are downloaded too and shown one below the other, a thin line
+  between columns, without indenting what is in them; a block in a column can be edited and
+  nested but not taken out of its column. What is nested in images, synced blocks and the like
+  stays in Notion; such a block says it has nested content. Previews in the overview download only the top level
   (`PageContent.nestedLoaded`), and opening the note gets the rest.
 - **Inline styles** (`data/notion/InlineMarkdown.kt`): bold, italic, strikethrough, inline code and
   links are kept as Markdown in the editor and turned back into Notion rich text. Code blocks keep

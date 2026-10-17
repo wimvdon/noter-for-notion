@@ -341,4 +341,34 @@ class NotesRepositoryTest {
         collector.cancel()
         assertTrue(events.toString(), events.any { it is RepoEvent.CreateFailed && it.topLevel })
     }
+
+    @Test
+    fun `what is in columns is downloaded and new lines go into their column`() = runBlocking {
+        val column = mutableListOf(FakeNotion.todo("c1", "In column"))
+        notion.respond = { sent ->
+            when {
+                sent.path.startsWith("/data_sources/db/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "db", "List"))
+                sent.path.startsWith("/data_sources/db") -> 200 to FakeNotion.database("db")
+                sent.path == "/pages/page-1" -> 200 to FakeNotion.page("page-1", "db", "List")
+                sent.method == "GET" && sent.path.startsWith("/blocks/page-1/children") ->
+                    200 to FakeNotion.list("""{"object":"block","id":"list","type":"column_list","has_children":true,"column_list":{}}""")
+                sent.method == "GET" && sent.path.startsWith("/blocks/list/children") ->
+                    200 to FakeNotion.list("""{"object":"block","id":"col","type":"column","has_children":true,"column":{}}""")
+                sent.method == "GET" && sent.path.startsWith("/blocks/col/children") -> 200 to FakeNotion.list(*column.toTypedArray())
+                sent.method == "PATCH" && sent.path == "/blocks/col/children" -> 200 to FakeNotion.list(FakeNotion.todo("new-1", "Added"))
+                else -> 200 to "{}"
+            }
+        }
+        val repo = repository()
+        repo.refresh("db", userAsked = true)
+        val loaded = checkNotNull(repo.fetchContent("page-1")).blocks
+        assertEquals(listOf("list", "col", "c1"), loaded.map { it.notionId })
+        assertEquals(listOf(0, 1, 2), loaded.map { it.depth })
+
+        repo.saveContent("page-1", loaded + Block("x", type = BlockType.TODO, text = "Added", depth = 2))
+        repo.flush()
+
+        assertTrue(notion.requests.any { it.method == "PATCH" && it.path == "/blocks/col/children" })
+        assertEquals(0, repo.pendingCount.first())
+    }
 }

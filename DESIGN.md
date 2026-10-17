@@ -224,5 +224,6 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
 - The note editor follows Notion's look: headings in SemiBold, quotes with a bar, callouts and
   code on `surfaceContainerHigh` (code in a monospace font), dividers as `outlineVariant` lines.
   Read-only blocks sit in a `surfaceContainer` box with "(edit in Notion)".
+  Columns are shown one below the other with a thin `outlineVariant` line between them.
 - The block toolbar sits above the keyboard on `surfaceContainerHigh`; the selected kind uses
   `secondaryContainer`.

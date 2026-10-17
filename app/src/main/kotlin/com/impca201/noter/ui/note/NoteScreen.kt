@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
@@ -123,6 +124,7 @@ import com.impca201.noter.data.model.BlockType
 import com.impca201.noter.data.model.NoteProperty
 import com.impca201.noter.data.model.NoteSummary
 import com.impca201.noter.data.model.PropertyValue
+import com.impca201.noter.logic.Columns
 import com.impca201.noter.logic.DocumentEditor
 import com.impca201.noter.logic.PropertyLayouts
 import com.impca201.noter.ui.theme.AppShapes
@@ -283,6 +285,7 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
             return@Scaffold
         }
         val numbers = remember(state.blocks) { DocumentEditor.numbers(state.blocks) }
+        val visualDepths = remember(state.blocks) { Columns.visualDepths(state.blocks) }
         val headings = remember(state.blocks) { state.blocks.filter { it.type.isHeading && it.text.isNotBlank() } }
         val styling = MarkdownStyling(MaterialTheme.colorScheme.outline, MaterialTheme.colorScheme.primary)
         val titleProperty = note.properties.firstOrNull { it.type == "title" }
@@ -344,11 +347,12 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
                         )
                     }
                 }
-                items(state.blocks, key = { it.key }) { block ->
-                    // Nested blocks are indented, as in Notion.
-                    Column(Modifier.animateItem().padding(start = NEST_INDENT * block.depth)) {
+                itemsIndexed(state.blocks, key = { _, it -> it.key }) { index, block ->
+                    // Nested blocks are indented, as in Notion; columns are shown one below the other.
+                    Column(Modifier.animateItem().padding(start = NEST_INDENT * (visualDepths.getOrNull(index) ?: block.depth))) {
                         BlockRow(
                             block = block,
+                            previousRawType = state.blocks.getOrNull(index - 1)?.rawType,
                             number = numbers[block.key],
                             onlyBlock = state.blocks.size == 1,
                             focus = focus,
@@ -385,6 +389,17 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
             }
         }
     }
+}
+
+/** Where a column starts: nothing for a list's first column, a thin line for the others. */
+@Composable
+private fun ColumnStart(first: Boolean) {
+    if (first) return
+    HorizontalDivider(
+        Modifier.padding(top = 8.dp, bottom = 8.dp, end = 48.dp),
+        thickness = 1.dp,
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+    )
 }
 
 @Composable
@@ -515,6 +530,8 @@ private fun PropertiesPanel(
 @Composable
 private fun BlockRow(
     block: Block,
+    /** The kind of the block above, to tell a list's first column from the others. */
+    previousRawType: String?,
     number: Int?,
     onlyBlock: Boolean,
     focus: FocusTarget?,
@@ -530,7 +547,13 @@ private fun BlockRow(
 ) {
     when (block.type) {
         BlockType.UNSUPPORTED -> {
-            ReadOnlyBlock(block, headings, onOpenPage, onOpenDatabase)
+            when {
+                // Columns whose content is shown here: a column list only holds its columns, and a
+                // column starts with a thin line (after the first). Deeper ones say "edit in Notion".
+                block.hasChildren || !Columns.isContainer(block) -> ReadOnlyBlock(block, headings, onOpenPage, onOpenDatabase)
+                block.rawType == Columns.COLUMN -> ColumnStart(first = previousRawType == Columns.LIST)
+                else -> Unit
+            }
             return
         }
         BlockType.DIVIDER -> {
