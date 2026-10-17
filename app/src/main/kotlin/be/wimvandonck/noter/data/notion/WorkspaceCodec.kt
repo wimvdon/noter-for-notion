@@ -51,6 +51,20 @@ object WorkspaceCodec {
     }
 
     /**
+     * Search results as the Browse list. A database whose data sources are among the results is
+     * left out: it is only their container (opening it as a notebook doesn't work), and each of
+     * its data sources is listed on its own.
+     */
+    fun parseAll(results: List<JsonObject>, includeNotes: Boolean, pagesKey: String): List<WorkspaceItem> {
+        val containers = results.filter { it.stringOrNull("object") == "data_source" }
+            .mapNotNull { it.objOrNull("parent")?.stringOrNull("database_id")?.replace("-", "") }
+            .toSet()
+        return results
+            .filterNot { it.stringOrNull("object") == "database" && it.stringOrNull("id")?.replace("-", "") in containers }
+            .mapNotNull { parse(it, includeNotes, pagesKey) }
+    }
+
+    /**
      * One search result. Pages of a database (the notes) are left out unless [includeNotes]: the
      * list is about pages and databases, a database's notes are one tap further. [pagesKey] is the
      * key under which pages on their own are kept.

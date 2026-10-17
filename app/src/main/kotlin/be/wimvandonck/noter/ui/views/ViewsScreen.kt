@@ -55,20 +55,28 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import be.wimvandonck.noter.R
 import be.wimvandonck.noter.data.model.DatabaseConfig
 import be.wimvandonck.noter.logic.PropertyLayouts
-import be.wimvandonck.noter.data.model.PropertyLayout
+import be.wimvandonck.noter.data.model.CardLayout
 import be.wimvandonck.noter.ui.common.DatabaseIcons
 import be.wimvandonck.noter.ui.common.IconPicker
+import be.wimvandonck.noter.ui.common.errorText
 import be.wimvandonck.noter.ui.theme.SettingsBlock
 import be.wimvandonck.noter.ui.theme.SettingsScaffold
 
 /**
  * Manage notebooks: the notebooks in their order (the order of the tabs under Notebooks). Tapping
- * one edits it; "Add notebook" picks a database (all its notes) or a page (its subpages).
+ * one edits it; "Add notebook" opens Search to pick a database (all its notes) or a page (its
+ * subpages).
  */
 @Composable
-fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: String? = null, addDatabaseId: String? = null) {
+fun ViewsScreen(
+    viewModel: ViewsViewModel,
+    onBack: () -> Unit,
+    onAddNotebook: () -> Unit,
+    editViewId: String? = null,
+    addDatabaseId: String? = null,
+    addTitle: String? = null,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var addingDatabase by remember { mutableStateOf(false) }
     val views = state.views
     // Opened from "Edit notebook" or "Add as notebook" on a database's page: that step, once.
     var opened by rememberSaveable { mutableStateOf(false) }
@@ -77,7 +85,7 @@ fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: Strin
         opened = true
         when {
             editViewId != null -> viewModel.startEdit(editViewId)
-            addDatabaseId != null -> viewModel.startAddFor(addDatabaseId)
+            addDatabaseId != null -> viewModel.startAddFor(addDatabaseId, addTitle)
         }
     }
 
@@ -86,15 +94,6 @@ fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: Strin
         backLabel = stringResource(R.string.back),
         onBack = onBack,
     ) {
-        item(key = "help") {
-            SettingsBlock {
-                Text(
-                    stringResource(R.string.databases_help),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
         views.forEachIndexed { index, db ->
             item(key = db.id) {
                 DatabaseRow(
@@ -109,10 +108,7 @@ fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: Strin
         item(key = "add") {
             SettingsBlock {
                 FilledTonalButton(
-                    onClick = {
-                        addingDatabase = true
-                        viewModel.loadAvailable()
-                    },
+                    onClick = onAddNotebook,
                     enabled = state.hasKey,
                 ) {
                     Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -123,27 +119,11 @@ fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: Strin
         }
     }
 
-    if (addingDatabase) {
-        AddDatabaseSheet(
-            state = state,
-            configured = views.map { it.sourceId.replace("-", "") }.toSet(),
-            onRetry = viewModel::loadAvailable,
-            onDismiss = { addingDatabase = false },
-            onPick = {
-                addingDatabase = false
-                viewModel.startAdd(it)
-            },
-            onPickPage = {
-                addingDatabase = false
-                viewModel.startAddPage(it)
-            },
-        )
-    }
     state.draft?.let { draft ->
         DatabaseEditorSheet(
             draft = draft,
             onChange = viewModel::editDraft,
-            onLayout = viewModel::editLayout,
+            onCards = viewModel::editCards,
             onSave = viewModel::saveDraft,
             onCancel = viewModel::cancelDraft,
             onRemove = { viewModel.removeDatabase(draft.config.id) },
@@ -159,15 +139,9 @@ private fun DatabaseRow(
     onClick: () -> Unit,
     onMove: (Boolean) -> Unit,
 ) {
-    val filters = if (config.pageId != null) {
-        stringResource(R.string.notebook_subpages)
-    } else {
-        stringResource(R.string.notebook_all_notes)
-    }
     ListItem(
         leadingContent = { Icon(DatabaseIcons.icon(config.icon), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         headlineContent = { Text(config.name) },
-        supportingContent = { Text(filters) },
         trailingContent = {
             Row {
                 IconButton(onClick = { onMove(true) }, enabled = canMoveUp) {
@@ -182,80 +156,12 @@ private fun DatabaseRow(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddDatabaseSheet(
-    state: ViewsUiState,
-    configured: Set<String>,
-    onRetry: () -> Unit,
-    onDismiss: () -> Unit,
-    onPick: (be.wimvandonck.noter.data.model.PageRef) -> Unit,
-    onPickPage: (be.wimvandonck.noter.data.model.PageRef) -> Unit,
-) {
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
-            Text(
-                stringResource(R.string.add_database),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-            )
-            val list = state.available
-            when {
-                list == null -> Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-                state.availableError != null -> Column(Modifier.padding(horizontal = 24.dp)) {
-                    Text(stringResource(R.string.key_failed, state.availableError), color = MaterialTheme.colorScheme.error)
-                    TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
-                }
-                list.isEmpty() && state.availablePages.isEmpty() -> Text(
-                    stringResource(R.string.no_databases_found),
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                else -> Column(Modifier.verticalScroll(rememberScrollState())) {
-                    if (list.isNotEmpty()) SheetSection(stringResource(R.string.browse_databases))
-                    list.forEach { db ->
-                        val added = db.id.replace("-", "") in configured
-                        // A database can be more than one notebook (each with its own filters and sort).
-                        ListItem(
-                            headlineContent = { Text(db.title.ifBlank { stringResource(R.string.untitled) }) },
-                            supportingContent = if (added) ({ Text(stringResource(R.string.already_added)) }) else null,
-                            leadingContent = { Icon(painterResource(R.drawable.ic_database), contentDescription = null) },
-                            modifier = Modifier.clickable { onPick(db) },
-                        )
-                    }
-                    if (state.availablePages.isNotEmpty()) SheetSection(stringResource(R.string.notebook_pages))
-                    state.availablePages.forEach { page ->
-                        ListItem(
-                            headlineContent = { Text(page.title.ifBlank { stringResource(R.string.untitled) }) },
-                            supportingContent = { Text(stringResource(R.string.notebook_subpages)) },
-                            leadingContent = { Icon(Icons.Rounded.Description, contentDescription = null) },
-                            modifier = Modifier.clickable { onPickPage(page) },
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SheetSection(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 4.dp),
-    )
-}
-
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun DatabaseEditorSheet(
     draft: DatabaseDraft,
     onChange: ((DatabaseConfig) -> DatabaseConfig) -> Unit,
-    onLayout: ((PropertyLayout?) -> PropertyLayout) -> Unit,
+    onCards: ((CardLayout) -> CardLayout) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
     onRemove: () -> Unit,
@@ -284,20 +190,10 @@ private fun DatabaseEditorSheet(
             )
             Text(stringResource(R.string.database_icon), style = MaterialTheme.typography.titleSmall)
             IconPicker(draft.config.icon) { name -> onChange { it.copy(icon = name) } }
-            // Filters and sort are set in the notebook itself (Filters, Sort); here only what it shows.
-            Text(
-                if (draft.config.pageId != null) {
-                    stringResource(R.string.notebook_subpages)
-                } else {
-                    stringResource(R.string.notebook_all_notes)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             if (draft.schemaError != null) {
-                Text(stringResource(R.string.key_failed, draft.schemaError), color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.key_failed, errorText(draft.schemaError)), color = MaterialTheme.colorScheme.error)
             }
-            CardOptions(draft, onLayout)
+            CardOptions(draft, onCards)
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (!draft.isNew) {
@@ -328,32 +224,27 @@ private fun DatabaseEditorSheet(
 }
 
 /**
- * What the cards in the overview show for this database: the header image, the start of the
- * content, and up to three properties.
+ * What this notebook's cards in the overview show: the header image, the start of the content,
+ * and up to three properties.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CardOptions(draft: DatabaseDraft, onLayout: ((PropertyLayout?) -> PropertyLayout) -> Unit) {
-    val layout = draft.layout
+private fun CardOptions(draft: DatabaseDraft, onCards: ((CardLayout) -> CardLayout) -> Unit) {
+    val cards = draft.cards
     Text(stringResource(R.string.cards_title), style = MaterialTheme.typography.titleSmall)
-    Text(
-        stringResource(R.string.cards_help),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    SwitchRow(stringResource(R.string.card_cover), layout?.coverOnCard == true) { on -> onLayout { PropertyLayouts.setCoverOnCard(it, on) } }
-    SwitchRow(stringResource(R.string.card_content), PropertyLayouts.showsContent(layout)) { on -> onLayout { PropertyLayouts.setContentOnCard(it, on) } }
+    SwitchRow(stringResource(R.string.card_cover), cards.cover) { on -> onCards { it.copy(cover = on) } }
+    SwitchRow(stringResource(R.string.card_content), cards.content) { on -> onCards { it.copy(content = on) } }
     val properties = draft.schema?.properties.orEmpty().filter { it.type != "title" }
     if (properties.isNotEmpty()) {
         Text(stringResource(R.string.cards_properties, PropertyLayouts.MAX_ON_CARD), style = MaterialTheme.typography.bodyLarge)
-        val onCard = layout?.onCard.orEmpty()
+        val onCard = cards.properties
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             properties.forEach { property ->
                 val selected = property.name in onCard
                 FilterChip(
                     selected = selected,
                     enabled = selected || onCard.size < PropertyLayouts.MAX_ON_CARD,
-                    onClick = { onLayout { PropertyLayouts.toggleOnCard(it, property.name) } },
+                    onClick = { onCards { PropertyLayouts.toggleOnCard(it, property.name) } },
                     label = { Text(property.name) },
                 )
             }

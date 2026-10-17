@@ -268,6 +268,11 @@ class NoteViewModel(
     /** Sets the page's icon to [emoji], or removes it when that is null. */
     fun setIcon(emoji: String?) = viewModelScope.launch { repository.setIcon(pageId, emoji) }
 
+    /** Makes a new page inside this one and opens it. */
+    fun createSubpage(onCreated: (String) -> Unit) = viewModelScope.launch {
+        onCreated(repository.createPage(repository.resolve(pageId)))
+    }
+
     /**
      * The sync button: hands over edits that are still waiting, sends everything and gets the
      * note's latest version from Notion. The editor shows it unless the user typed meanwhile.

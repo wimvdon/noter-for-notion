@@ -128,4 +128,11 @@ class ChipFilterTest {
         assertEquals(listOf("0", "1", "2", "5", "10"), ChipFilter.chips(PropertySchema(name = "Score", type = "formula"), scores, today).map { it.key })
         assertEquals(listOf("Week 2", "week 9", "Week 10"), listOf("Week 10", "week 9", "Week 2").sortedWith(ChipFilter.NATURAL))
     }
+
+    @Test
+    fun `a property has values once a note has one, no date doesn't count`() {
+        assertEquals(false, ChipFilter.anyValue(listOf(FilterChip("A", "A", count = 0), FilterChip(ChipFilter.NO_DATE, "", count = 3))))
+        assertEquals(true, ChipFilter.anyValue(listOf(FilterChip("A", "A", count = 1))))
+        assertEquals(false, ChipFilter.anyValue(emptyList()))
+    }
 }

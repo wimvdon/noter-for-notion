@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.StickyNote2
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Description
@@ -51,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import be.wimvandonck.noter.R
+import be.wimvandonck.noter.data.NotesRepository
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.PageIcon
 import be.wimvandonck.noter.data.model.WorkspaceItem
@@ -62,18 +64,41 @@ import be.wimvandonck.noter.ui.theme.SkeletonLine
 import java.util.Locale
 
 /**
- * Search, a destination of its own in the navigation bar ([bottomBar]): the notes on this phone whose title matches (at once, also
+ * Search, a destination of its own in the navigation bar ([bottomBar]), with + ([newButton]): the notes on this phone whose title matches (at once, also
  * offline), then the pages and databases Notion finds. Before anything is typed, Notion's most
  * recently edited pages and databases. A database opens its notes (and can become a notebook); a
  * page opens in the editor.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     viewModel: MainViewModel,
     onOpenNote: (String) -> Unit,
     onOpenDatabase: (String) -> Unit,
     bottomBar: @Composable () -> Unit,
+    newButton: @Composable () -> Unit,
+) {
+    SearchContent(viewModel, onOpenNote, onOpenDatabase, onPick = null, onBack = null, bottomBar, newButton)
+}
+
+/**
+ * Search to add a notebook (from Manage notebooks): only databases and pages on their own; tapping
+ * one gives its key (a page's: its notebook key, see NotesRepository.pageNotebookKey) and title.
+ */
+@Composable
+fun PickNotebookScreen(viewModel: MainViewModel, onBack: () -> Unit, onPick: (key: String, title: String) -> Unit) {
+    SearchContent(viewModel, onOpenNote = {}, onOpenDatabase = {}, onPick = onPick, onBack = onBack, bottomBar = {}, newButton = {})
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchContent(
+    viewModel: MainViewModel,
+    onOpenNote: (String) -> Unit,
+    onOpenDatabase: (String) -> Unit,
+    onPick: ((key: String, title: String) -> Unit)?,
+    onBack: (() -> Unit)?,
+    bottomBar: @Composable () -> Unit,
+    newButton: @Composable () -> Unit,
 ) {
     val state by viewModel.browse.collectAsStateWithLifecycle()
     val focus = remember { FocusRequester() }
@@ -83,21 +108,28 @@ fun SearchScreen(
     }
     Scaffold(
         bottomBar = bottomBar,
+        floatingActionButton = newButton,
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    Icon(
-                        Icons.Rounded.Search,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 16.dp, end = 4.dp),
-                    )
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
+                        }
+                    } else {
+                        Icon(
+                            Icons.Rounded.Search,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 16.dp, end = 4.dp),
+                        )
+                    }
                 },
                 title = {
                     TextField(
                         value = state.query,
                         onValueChange = viewModel::search,
-                        placeholder = { Text(stringResource(R.string.browse_search)) },
+                        placeholder = { Text(stringResource(if (onPick != null) R.string.add_database else R.string.browse_search)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         colors = TextFieldDefaults.colors(
@@ -124,11 +156,21 @@ fun SearchScreen(
             onRefresh = { viewModel.search(state.query) },
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
-            val items = state.items
+            // Picking a notebook: databases and pages on their own, not notes.
+            val items = if (onPick == null) state.items else state.items?.filter { it.isDatabase || it.note?.databaseId == NotesRepository.PAGES }
+            val notes = if (onPick == null) state.notes else emptyList()
             val error = state.error
             when {
-                state.notes.isNotEmpty() || !items.isNullOrEmpty() ->
-                    Results(state.notes, items.orEmpty(), searching = state.loading, onOpenNote, { viewModel.openItem(it, onOpenNote) }, onOpenDatabase)
+                notes.isNotEmpty() || !items.isNullOrEmpty() -> Results(
+                    notes,
+                    items.orEmpty(),
+                    searching = state.loading,
+                    onOpenNote = onOpenNote,
+                    onOpenPage = { item ->
+                        if (onPick != null) onPick(NotesRepository.pageNotebookKey(item.id), item.title) else viewModel.openItem(item, onOpenNote)
+                    },
+                    onOpenDatabase = { id -> if (onPick != null) onPick(id, items.orEmpty().firstOrNull { it.id == id }?.title.orEmpty()) else onOpenDatabase(id) },
+                )
                 items == null && error == null -> LoadingRows()
                 error != null -> LoadFailed(error) { viewModel.search(state.query) }
                 state.query.isBlank() -> EmptyState(

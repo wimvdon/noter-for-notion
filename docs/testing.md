@@ -37,13 +37,14 @@ python3 -m unittest discover -s scripts/tests
 | `data/SyncStressTest` | Random editing (typing, Enter, ticking, changing kinds, indenting, outdenting, deleting) while a slow fake Notion that keeps the blocks, nested ones too, answers: Notion ends with exactly the note on the phone, also when it can't insert at the start |
 | `data/store/CacheStoreTest` | On-phone copies survive a restart |
 | `logic/NoteOrderingTest`, `logic/ChipFilterTest` | Pins, custom order, filters (checkbox, date ranges, relations, created by, formulas, numbers in order of their value) |
+| `data/api/NotionErrorsTest` | Which errors the screens say in the user's language |
 | `logic/NotebooksTest` | A notebook's notes: filters per property, sorts, a new notebook's first chip row, the order of the chip rows, old notebooks that followed a Notion view |
 | `logic/ColumnsTest` | Columns: how far their blocks are indented, and that blocks stay in their column |
 | `ui/main/PresetForTest` | The value a new note gets from the selected filter |
-| `logic/DestinationsTest`, `data/notion/WorkspaceCodecTest` | The destinations (Pinned, Notebooks, Search), which notebook Notebooks shows, a removed notebook; Browse's list from Notion's search, data sources and the data source a page belongs to |
+| `logic/DestinationsTest`, `data/notion/WorkspaceCodecTest` | The destinations (Pinned, Notebooks, Search), which notebook Notebooks shows, a removed notebook; Browse's list from Notion's search, data sources (a database whose data sources are listed is left out) and the data source a page belongs to |
 | `data/icons/IconCatalogTest` | Reading the icon file, icon search, old icon keys, and that the bundled file has every suggested icon |
 | `logic/NoteTargetsTest` | The databases "New note" offers on Pinned and Browse |
-| `logic/PropertyLayoutsTest` | Which properties are shown, collapsed and on the card, and in which order; header image and content on cards |
+| `logic/PropertyLayoutsTest` | Which properties are shown, collapsed and on the card, and in which order; header image and content on cards; cards per notebook, starting from the database's |
 | `logic/NotePreviewsTest` | Which previews are downloaded, and the preview text |
 | `logic/NotionDatesTest` | Dates as Notion sends them |
 | `BackupRulesTest` | Only the settings file is backed up |

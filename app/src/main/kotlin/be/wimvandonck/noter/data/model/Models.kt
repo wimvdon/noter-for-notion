@@ -31,6 +31,11 @@ data class DatabaseConfig(
      * in the repository, see NotesRepository.pageNotebookKey).
      */
     val pageId: String? = null,
+    /**
+     * What this notebook's cards show (null: what the database's cards showed before cards were
+     * set per notebook, see PropertyLayouts.cards).
+     */
+    val cards: CardLayout? = null,
 ) {
     /** The database this view shows. */
     val sourceId: String get() = databaseId ?: id
@@ -93,6 +98,17 @@ data class ViewResult(
     val fetchedAt: String,
 )
 
+/** What a notebook's cards in the overview show. */
+@Serializable
+data class CardLayout(
+    /** The note's header image (Notion's cover) on top of its card. */
+    val cover: Boolean = false,
+    /** The start of the note's content on its card. */
+    val content: Boolean = true,
+    /** Properties shown on the card (at most three), in the database's order of properties. */
+    val properties: List<String> = emptyList(),
+)
+
 /**
  * How a database's properties are shown, chosen by the user (kept on this phone, backed up). As in
  * Notion, every property is shown until the user hides it; ones added in Notion later come last.
@@ -103,11 +119,12 @@ data class PropertyLayout(
     val order: List<String> = emptyList(),
     /** Properties hidden in the note (folded away under "N more properties"). */
     val hidden: List<String> = emptyList(),
-    /** Properties shown on the note's card in the overview (at most three). */
+    /**
+     * What the cards show: stored here before cards were set per notebook ([CardLayout]); the
+     * overview fills these in from the notebook shown (PropertyLayouts.cardLayouts).
+     */
     val onCard: List<String> = emptyList(),
-    /** The note's header image (Notion's cover) on top of its card. */
     val coverOnCard: Boolean = false,
-    /** The start of the note's content on its card. */
     val contentOnCard: Boolean = true,
 )
 

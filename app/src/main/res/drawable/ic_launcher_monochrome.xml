@@ -7,15 +7,15 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Scaled to 78% around the middle, for padding inside the launcher's circle or squircle
+    <!-- Scaled to 64% around the middle, for padding inside the launcher's circle or squircle
          mask. The visible drawing spans 22..86 (the white gap around the front note doesn't show
          on the white background), so its middle is the canvas's middle, 54,54; the folded
          corner (bottom right) and the note behind (top left) balance each other. -->
     <group
         android:pivotX="54"
         android:pivotY="54"
-        android:scaleX="0.78"
-        android:scaleY="0.78">
+        android:scaleX="0.64"
+        android:scaleY="0.64">
         <!-- The note behind: its top and left edges (the rest is hidden behind the gap). -->
         <path
             android:fillColor="#FF000000"

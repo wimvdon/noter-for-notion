@@ -82,6 +82,9 @@ object ChipFilter {
         }
     }
 
+    /** True when some note has a value among [chips] ("No date" isn't one). */
+    fun anyValue(chips: List<FilterChip>): Boolean = chips.any { it.count > 0 && it.key != NO_DATE }
+
     /** Texts in the order people expect: ignoring case, and numbers by their value (2 before 10). */
     val NATURAL: Comparator<String> = Comparator { a, b ->
         val x = chunks(a.lowercase())

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import be.wimvandonck.noter.NoterApp
 import be.wimvandonck.noter.data.NotesRepository
+import be.wimvandonck.noter.data.api.NotionErrors
 import be.wimvandonck.noter.data.api.NotionException
 import be.wimvandonck.noter.data.model.ThemeMode
 import be.wimvandonck.noter.data.notion.TokenInfo
@@ -71,7 +72,7 @@ class SettingsViewModel(
                 repository.onForeground()
                 KeyStatus.Ok(info)
             } catch (e: NotionException) {
-                KeyStatus.Failed(e.message.orEmpty())
+                KeyStatus.Failed(NotionErrors.of(e))
             }
         }
     }

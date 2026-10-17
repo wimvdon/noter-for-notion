@@ -1,6 +1,7 @@
 package be.wimvandonck.noter.data
 
 import be.wimvandonck.noter.data.api.NotionClient
+import be.wimvandonck.noter.data.api.NotionErrors
 import be.wimvandonck.noter.data.api.NotionException
 import be.wimvandonck.noter.data.api.stringOrNull
 import be.wimvandonck.noter.data.model.Block
@@ -279,7 +280,7 @@ class NotesRepository(
         } catch (e: NotionException) {
             if (e.isOffline) _offline.value = true
             if (e.status == 401) _events.tryEmit(RepoEvent.KeyRejected)
-            setState(databaseId) { it.copy(refreshing = false, loaded = true, error = e.message) }
+            setState(databaseId) { it.copy(refreshing = false, loaded = true, error = NotionErrors.of(e)) }
         }
     }
 
@@ -351,7 +352,7 @@ class NotesRepository(
         } catch (e: NotionException) {
             if (e.isOffline) _offline.value = true
             if (e.status == 401) _events.tryEmit(RepoEvent.KeyRejected)
-            setState(key) { it.copy(refreshing = false, loaded = true, error = e.message) }
+            setState(key) { it.copy(refreshing = false, loaded = true, error = NotionErrors.of(e)) }
         }
     }
 
@@ -379,7 +380,7 @@ class NotesRepository(
         } catch (e: NotionException) {
             if (e.isTemporary || e.status == 401) throw e
             WorkspaceCodec.dataSources(client.getDatabase(key)).firstOrNull()?.id
-                ?: throw NotionException("This database has no data source", status = 404)
+                ?: throw NotionException("This database has no data source", status = 404, code = NotionErrors.NO_DATA_SOURCE)
         }
         lock.withLock {
             sources[key] = source
@@ -705,12 +706,12 @@ class NotesRepository(
                         // Notion won't make the page: don't keep a note here that can never be saved.
                         op is PendingOp.CreatePage -> {
                             dropLocal(op.pageId)
-                            _events.tryEmit(RepoEvent.CreateFailed(op.databaseId == PAGES && op.parentPageId == null, e.message.orEmpty()))
+                            _events.tryEmit(RepoEvent.CreateFailed(op.databaseId == PAGES && op.parentPageId == null, NotionErrors.of(e)))
                             true
                         }
                         else -> {
                             val title = findNote(_databases.value, op.pageId)?.title.orEmpty()
-                            _events.tryEmit(RepoEvent.SaveFailed(InlineMarkdown.stripped(title), e.message.orEmpty()))
+                            _events.tryEmit(RepoEvent.SaveFailed(InlineMarkdown.stripped(title), NotionErrors.of(e)))
                             true
                         }
                     }
@@ -1046,7 +1047,7 @@ class NotesRepository(
      * [query] a database's own pages (the notes) are left out; with one they are found too.
      */
     suspend fun browse(query: String): List<WorkspaceItem> = withContext(Dispatchers.IO) {
-        client.search(query.trim(), BROWSE_LIMIT).mapNotNull { WorkspaceCodec.parse(it, includeNotes = query.isNotBlank(), pagesKey = PAGES) }
+        WorkspaceCodec.parseAll(client.search(query.trim(), BROWSE_LIMIT), includeNotes = query.isNotBlank(), pagesKey = PAGES)
     }
 
     /** Makes [note] (from Browse) known here so the editor can open it. Returns its ID. */

@@ -12,6 +12,7 @@ import be.wimvandonck.noter.data.model.PageRef
 import be.wimvandonck.noter.data.model.DatabaseConfig
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.logic.Notebooks
+import be.wimvandonck.noter.logic.PropertyLayouts
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -71,7 +72,7 @@ class DatabaseViewModel(
             hasKey = key,
             currentTab = databaseId,
             pinnedIds = settings.pinned.toSet(),
-            propertyLayouts = settings.propertyLayouts,
+            propertyLayouts = PropertyLayouts.cardLayouts(settings.propertyLayouts, settings.databases),
             pendingCount = pending,
         )
         // Shown like a notebook that isn't saved: its quick filter, the custom order.

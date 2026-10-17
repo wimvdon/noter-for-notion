@@ -41,7 +41,7 @@
     <string name="trash_confirm">Naar prullenbak</string>
     <string name="empty_no_key">Voeg in Instellingen een persoonlijk toegangstoken toe om je notities te zien.</string>
     <string name="empty_no_key_action">Naar instellingen</string>
-    <string name="empty_home">Tik op de punaise bij een notitie om ze hier te zien.</string>
+    <string name="empty_home">Zet een notitie of pagina vast, vanuit een notebook of Zoeken, om ze hier te bewaren.</string>
     <string name="empty_database">Tik op + om er een te maken.</string>
     <string name="empty_filtered">Geen notities met deze filters</string>
     <string name="status_offline">Offline. Wijzigingen worden op deze telefoon bewaard en later verstuurd.</string>
@@ -113,11 +113,8 @@
     <string name="sync_all_saved">Alles is opgeslagen in Notion.</string>
     <string name="sync_now">Nu synchroniseren</string>
     <string name="section_views">Notebooks</string>
-    <string name="databases_help">Notebooks blijven op deze telefoon; Notion verandert niet.</string>
     <string name="add_database">Notebook toevoegen</string>
     <string name="edit_database">Notebook bewerken</string>
-    <string name="already_added">Al een notebook</string>
-    <string name="no_databases_found">Geen databases gevonden. Deel eerst een database met je integratie in Notion.</string>
     <string name="database_name">Naam</string>
     <string name="database_icon">Pictogram</string>
     <string name="remove_database">Verwijderen</string>
@@ -159,7 +156,6 @@
     <string name="action_outdent">Uitspringen (uit het blok halen waar het in staat)</string>
     <string name="chip_checked">%1$s</string>
     <string name="chip_unchecked">Niet %1$s</string>
-    <string name="cards_help">Geldt voor elk notebook van deze database.</string>
     <string name="cards_properties">Eigenschappen op de kaart (maximaal %1$d)</string>
     <string name="edit_view">Notebook bewerken</string>
     <string name="new_page">Nieuwe pagina</string>
@@ -181,21 +177,22 @@
     <string name="sort_title">Titel</string>
     <string name="sorted_by_hand">Nu in je eigen volgorde</string>
     <string name="undo">Ongedaan maken</string>
-    <string name="filter_no_values">Nog geen waarden</string>
-    <string name="notebook_all_notes">Alle notities van de database</string>
-    <string name="notebook_subpages">De subpagina’s van een pagina</string>
-    <string name="notebook_pages">Pagina’s</string>
     <string name="empty_error_title">Kon de notities niet laden</string>
     <string name="chip_overdue">Te laat</string>
     <string name="chip_today">Vandaag</string>
     <string name="chip_next_7_days">Komende 7 dagen</string>
     <string name="chip_later">Later</string>
     <string name="chip_no_date">Geen datum</string>
-    <string name="chip_rows_help">Tik op het oog om een filter een eigen rij chips boven de notities te geven. Sleep die aan het handvat om de volgorde te wijzigen.</string>
-    <string name="chip_row_shown">Rij chips voor %1$s</string>
     <string name="no_notebooks">Nog geen notebooks</string>
     <string name="sort_by">Sorteren: %1$s</string>
     <string name="sort_ascending">Oplopend</string>
     <string name="sort_descending">Aflopend</string>
     <string name="no_notebooks_body">Een notebook toont de notities van een Notion-database of de subpagina’s van een pagina.</string>
+    <string name="error_offline">Geen verbinding met Notion. Controleer je internet en probeer opnieuw.</string>
+    <string name="error_not_found">Notion vindt dit niet. Misschien is het verwijderd, of het is niet gedeeld met je verbinding.</string>
+    <string name="error_busy">Notion is druk. Probeer het zo meteen opnieuw.</string>
+    <string name="error_no_data_source">Deze database heeft geen gegevensbron die de app kan openen.</string>
+    <string name="clear_row">Niet meer filteren op %1$s</string>
+    <string name="chip_rows_shown">Getoond</string>
+    <string name="new_subpage">Nieuwe subpagina</string>
 </resources>

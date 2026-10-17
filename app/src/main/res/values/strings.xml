@@ -41,7 +41,7 @@
     <string name="trash_confirm">Move to trash</string>
     <string name="empty_no_key">Add a personal access token in Settings to see your notes.</string>
     <string name="empty_no_key_action">Open settings</string>
-    <string name="empty_home">Tap the pin on a note to see it here.</string>
+    <string name="empty_home">Pin any note or page, from a notebook or from Search, to keep it here.</string>
     <string name="empty_database">Tap + to add one.</string>
     <string name="empty_filtered">No notes match the filters</string>
     <string name="status_offline">Offline. Changes are saved on this phone and sent later.</string>
@@ -113,11 +113,8 @@
     <string name="sync_all_saved">Everything is saved in Notion.</string>
     <string name="sync_now">Sync now</string>
     <string name="section_views">Notebooks</string>
-    <string name="databases_help">Notebooks stay on this phone; Notion isn’t changed.</string>
     <string name="add_database">Add notebook</string>
     <string name="edit_database">Edit notebook</string>
-    <string name="already_added">Already a notebook</string>
-    <string name="no_databases_found">No databases found. Share a database with your integration in Notion first.</string>
     <string name="database_name">Name</string>
     <string name="database_icon">Icon</string>
     <string name="remove_database">Remove</string>
@@ -159,7 +156,6 @@
     <string name="action_outdent">Outdent (take out of the block it is in)</string>
     <string name="chip_checked">%1$s</string>
     <string name="chip_unchecked">Not %1$s</string>
-    <string name="cards_help">Applies to every notebook of this database.</string>
     <string name="cards_properties">Properties on the card (up to %1$d)</string>
     <string name="edit_view">Edit notebook</string>
     <string name="new_page">New page</string>
@@ -181,21 +177,22 @@
     <string name="sort_title">Title</string>
     <string name="sorted_by_hand">Now in your own order</string>
     <string name="undo">Undo</string>
-    <string name="filter_no_values">No values yet</string>
-    <string name="notebook_all_notes">All notes of the database</string>
-    <string name="notebook_subpages">The subpages of a page</string>
-    <string name="notebook_pages">Pages</string>
     <string name="empty_error_title">Couldn’t load the notes</string>
     <string name="chip_overdue">Overdue</string>
     <string name="chip_today">Today</string>
     <string name="chip_next_7_days">Next 7 days</string>
     <string name="chip_later">Later</string>
     <string name="chip_no_date">No date</string>
-    <string name="chip_rows_help">Tap the eye to give a filter its own row of chips above the notes. Drag those by the handle to change their order.</string>
-    <string name="chip_row_shown">Row of chips for %1$s</string>
     <string name="no_notebooks">No notebooks yet</string>
     <string name="sort_by">Sort: %1$s</string>
     <string name="sort_ascending">Ascending</string>
     <string name="sort_descending">Descending</string>
     <string name="no_notebooks_body">A notebook shows the notes of a Notion database or the subpages of a page.</string>
+    <string name="error_offline">No connection to Notion. Check your internet and try again.</string>
+    <string name="error_not_found">Notion can’t find this. It may have been deleted, or it isn’t shared with your connection.</string>
+    <string name="error_busy">Notion is busy. Try again in a moment.</string>
+    <string name="error_no_data_source">This database has no data source the app can open.</string>
+    <string name="clear_row">Stop filtering by %1$s</string>
+    <string name="chip_rows_shown">Shown</string>
+    <string name="new_subpage">New subpage</string>
 </resources>
