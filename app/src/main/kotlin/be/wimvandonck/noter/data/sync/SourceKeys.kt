@@ -2,6 +2,7 @@ package be.wimvandonck.noter.data.sync
 
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.store.AppSettings
+import be.wimvandonck.noter.logic.Notebooks
 
 /**
  * The app keeps a database's notes under the ID of its data source (a database can have several;
@@ -13,7 +14,7 @@ object SourceKeys {
     fun renameInSettings(settings: AppSettings, old: String, new: String): AppSettings {
         if (old == new) return settings
         return settings.copy(
-            databases = settings.databases.map { if (it.sourceId == old) it.copy(databaseId = new) else it },
+            databases = Notebooks.mapLeaves(settings.databases) { if (it.sourceId == old) it.copy(databaseId = new) else it },
             order = renameKey(settings.order, old, new),
             propertyLayouts = renameKey(settings.propertyLayouts, old, new),
         )

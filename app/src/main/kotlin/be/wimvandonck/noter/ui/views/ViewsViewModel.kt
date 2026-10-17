@@ -25,13 +25,17 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-/** The notebook being added or edited in the sheet. What its cards show is in [config] ([cards]). */
+/**
+ * The notebook being added or edited in the sheet. What its cards show is in [config] (for a
+ * notebook of several data sources: in each sub-notebook, with its properties in [childSchemas]).
+ */
 data class DatabaseDraft(
     val config: DatabaseConfig,
     val isNew: Boolean,
     val schema: DatabaseSchema? = null,
     /** An error from NotionErrors, while the database's properties couldn't be loaded. */
     val schemaError: String? = null,
+    val childSchemas: Map<String, DatabaseSchema> = emptyMap(),
 ) {
     val cards: CardLayout get() = config.cards ?: CardLayout()
 }
@@ -78,7 +82,39 @@ class ViewsViewModel(
             val known = repository.databases.value.values.flatMap { it.notes }.firstOrNull { it.id == pageId }?.title
             return startAddPage(PageRef(pageId, title ?: known.orEmpty()))
         }
-        startAdd(PageRef(databaseId, title ?: repository.databases.value[databaseId]?.schema?.title.orEmpty()))
+        viewModelScope.launch {
+            // A database of several data sources: a notebook with a sub-notebook per data source.
+            val info = repository.databaseInfo(databaseId)
+            if (info != null && info.sources.size > 1) {
+                startAddDatabase(info.id, title ?: info.title, info.sources)
+            } else {
+                startAdd(PageRef(databaseId, title ?: repository.databases.value[databaseId]?.schema?.title.orEmpty()))
+            }
+        }
+    }
+
+    /** A notebook of database [databaseId] with one sub-notebook per data source in [sources]. */
+    private fun startAddDatabase(databaseId: String, title: String, sources: List<PageRef>) {
+        val children = sources.map { source -> DatabaseConfig(id = "view-" + UUID.randomUUID(), name = source.title, databaseId = source.id) }
+        val config = DatabaseConfig(id = "view-" + UUID.randomUUID(), name = title, databaseId = databaseId, children = children)
+        draft.value = DatabaseDraft(config, isNew = true)
+        loadCards(config)
+        children.forEach { child ->
+            viewModelScope.launch {
+                try {
+                    val schema = repository.fetchSchema(child.sourceId)
+                    draft.update { d ->
+                        if (d?.config?.id != config.id) return@update d
+                        d.copy(
+                            childSchemas = d.childSchemas + (child.id to schema),
+                            config = Notebooks.update(listOf(d.config), child.id) { Notebooks.newNotebook(it, schema) }.single(),
+                        )
+                    }
+                } catch (e: NotionException) {
+                    draft.update { d -> if (d?.config?.id == config.id) d.copy(schemaError = NotionErrors.of(e)) else d }
+                }
+            }
+        }
     }
 
     /**
@@ -110,24 +146,43 @@ class ViewsViewModel(
     fun startEdit(config: DatabaseConfig) {
         draft.value = DatabaseDraft(config, isNew = false, schema = if (config.pageId != null) PAGE_SCHEMA else null)
         loadCards(config)
-        if (config.pageId == null) loadSchema(config.sourceId)
+        when {
+            config.children.isNotEmpty() -> config.children.forEach { child -> loadChildSchema(config.id, child) }
+            config.pageId == null -> loadSchema(config.sourceId)
+        }
     }
 
-    /** Opens the editor of view [id] (from "Edit notebook"). */
+    /** Opens the editor of notebook [id], or of the notebook sub-notebook [id] is in (from "Edit notebook"). */
     fun startEdit(id: String) = viewModelScope.launch {
-        repository.currentSettings().databases.firstOrNull { it.id == id }?.let(::startEdit)
+        Notebooks.topOf(repository.currentSettings().databases, id)?.let(::startEdit)
+    }
+
+    private fun loadChildSchema(notebookId: String, child: DatabaseConfig) = viewModelScope.launch {
+        try {
+            val schema = repository.fetchSchema(child.sourceId)
+            draft.update { d -> if (d?.config?.id == notebookId) d.copy(childSchemas = d.childSchemas + (child.id to schema)) else d }
+        } catch (e: NotionException) {
+            draft.update { d -> if (d?.config?.id == notebookId) d.copy(schemaError = NotionErrors.of(e)) else d }
+        }
     }
 
     /** A notebook without cards of its own starts from what its database's cards showed before. */
     private fun loadCards(config: DatabaseConfig) = viewModelScope.launch {
-        if (config.cards != null) return@launch
-        val cards = PropertyLayouts.cards(null, repository.currentSettings().propertyLayouts[config.sourceId])
-        draft.update { d -> if (d?.config?.id == config.id && d.config.cards == null) d.copy(config = d.config.copy(cards = cards)) else d }
+        val layouts = repository.currentSettings().propertyLayouts
+        draft.update { d ->
+            if (d?.config?.id != config.id) return@update d
+            val withCards = Notebooks.mapLeaves(listOf(d.config)) { leaf ->
+                if (leaf.cards != null) leaf else leaf.copy(cards = PropertyLayouts.cards(null, layouts[leaf.sourceId]))
+            }.single()
+            d.copy(config = withCards)
+        }
     }
 
-    /** Changes what this notebook's cards show. */
-    fun editCards(transform: (CardLayout) -> CardLayout) {
-        draft.update { it?.copy(config = it.config.copy(cards = transform(it.cards))) }
+    /** Changes what the cards of notebook or sub-notebook [id] show. */
+    fun editCards(id: String, transform: (CardLayout) -> CardLayout) {
+        draft.update { d ->
+            d?.copy(config = Notebooks.update(listOf(d.config), id) { it.copy(cards = transform(it.cards ?: CardLayout())) }.single())
+        }
     }
 
     private fun loadSchema(id: String) {

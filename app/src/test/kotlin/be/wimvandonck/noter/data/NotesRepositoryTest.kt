@@ -314,6 +314,23 @@ class NotesRepositoryTest {
     }
 
     @Test
+    fun `a database is asked about first, also when Notion answers for its ID as a data source`() = runBlocking {
+        notion.respond = { sent ->
+            when {
+                sent.path == "/databases/health" -> 200 to """{"object":"database","id":"health","data_sources":[{"id":"skin","name":"Skin"},{"id":"food","name":"Food"}]}"""
+                // Notion answering for a data source's ID with its database.
+                sent.path == "/databases/food" -> 200 to """{"object":"database","id":"health","data_sources":[{"id":"skin","name":"Skin"},{"id":"food","name":"Food"}]}"""
+                sent.path.startsWith("/data_sources/") -> 200 to FakeNotion.database("health")
+                else -> 200 to "{}"
+            }
+        }
+        val repo = repository()
+        assertEquals("skin", repo.resolveSource("health"))
+        assertEquals("food", repo.resolveSource("food"))
+        assertEquals(listOf("skin", "food"), repo.dataSourcesOf("health")?.map { it.id })
+    }
+
+    @Test
     fun `pages are made inside a page, and a refused top-level page is removed again`() = runBlocking {
         notion.respond = { sent ->
             when {

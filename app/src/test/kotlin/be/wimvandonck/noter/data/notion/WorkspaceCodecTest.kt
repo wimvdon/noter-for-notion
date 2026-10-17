@@ -1,5 +1,7 @@
 package be.wimvandonck.noter.data.notion
 
+import be.wimvandonck.noter.data.model.DatabaseInfo
+import be.wimvandonck.noter.data.model.PageRef
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
@@ -65,12 +67,26 @@ class WorkspaceCodecTest {
     }
 
     @Test
-    fun `a database whose data sources are listed is left out, they are listed instead`() {
-        val shell = obj("""{"object":"database","id":"db-1","title":[{"plain_text":"Health"}]}""")
-        val skin = obj("""{"object":"data_source","id":"ds1","title":[{"plain_text":"Skin"}],"parent":{"type":"database_id","database_id":"db1"}}""")
-        val food = obj("""{"object":"data_source","id":"ds2","title":[{"plain_text":"Food"}],"parent":{"type":"database_id","database_id":"db1"}}""")
-        val other = obj("""{"object":"database","id":"db9","title":[{"plain_text":"Books"}]}""")
-        val items = WorkspaceCodec.parseAll(listOf(shell, skin, food, other, page), includeNotes = false, pagesKey = "pages")
-        assertEquals(listOf("Skin", "Food", "Books", "Ideas"), items.map { it.title })
+    fun `a database with several data sources is listed once, an unreadable data source not at all`() {
+        val ds = { id: String, title: String, db: String ->
+            WorkspaceCodec.parse(obj("""{"object":"data_source","id":"$id","title":[{"plain_text":"$title"}],"parent":{"type":"database_id","database_id":"$db"}}"""), false, "pages")!!
+        }
+        // Health has Skin and Food; Notion's search also shows a "Health" data source that Health doesn't list.
+        val items = listOf(ds("ghost", "Health", "db-health"), ds("skin", "Skin", "db-health"), ds("notes", "Notes", "db-notes"), ds("food", "Food", "db-health"), ds("x", "Unknown", "db-x"))
+        assertEquals("db-health", items[1].databaseId)
+        val infos = mapOf(
+            "dbhealth" to DatabaseInfo("db-health", "Health", sources = listOf(PageRef("skin", "Skin"), PageRef("food", "Food"))),
+            "db-notes" to DatabaseInfo("db-notes", "Notes", sources = listOf(PageRef("notes", "Notes"))),
+        )
+        val grouped = WorkspaceCodec.group(items, infos)
+        assertEquals(listOf("db-health", "notes", "x"), grouped.map { it.id })
+        assertEquals(listOf("skin", "food"), grouped[0].sources.map { it.id })
+        assertEquals("Health", grouped[0].title)
+        // Nothing known yet: as Notion's search gives them.
+        assertEquals(items, WorkspaceCodec.group(items, emptyMap()))
+
+        val info = WorkspaceCodec.databaseInfo(obj("""{"object":"database","id":"db1","title":[{"plain_text":"Health"}],"data_sources":[{"id":"ds1","name":"Skin"}]}"""))!!
+        assertEquals("Health", info.title)
+        assertEquals(listOf(PageRef("ds1", "Skin")), info.sources)
     }
 }

@@ -7,6 +7,7 @@ import be.wimvandonck.noter.data.api.stringOrNull
 import be.wimvandonck.noter.data.model.Block
 import be.wimvandonck.noter.data.model.BlockType
 import be.wimvandonck.noter.data.model.DatabaseConfig
+import be.wimvandonck.noter.data.model.DatabaseInfo
 import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.NoteSummary
@@ -44,6 +45,7 @@ import be.wimvandonck.noter.data.sync.withProperty
 import be.wimvandonck.noter.logic.Columns
 import be.wimvandonck.noter.logic.KnownUsers
 import be.wimvandonck.noter.logic.NoteOrdering
+import be.wimvandonck.noter.logic.Notebooks
 import be.wimvandonck.noter.logic.NotePreviews
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -162,7 +164,7 @@ class NotesRepository(
             outboxLoaded.complete(Unit)
             loadDatabase(PAGES)
             // Databases opened from Browse stay loaded too; they are only a copy.
-            settings.settings.map { s -> s.databases.map { it.sourceId }.distinct() }.distinctUntilChanged().collect { ids ->
+            settings.settings.map { s -> Notebooks.leaves(s.databases).map { it.sourceId }.distinct() }.distinctUntilChanged().collect { ids ->
                 ids.forEach { loadDatabase(it) }
             }
         }
@@ -173,7 +175,7 @@ class NotesRepository(
         scope.launch {
             outboxLoaded.await()
             flush()
-            settings.current().databases.map { it.sourceId }.distinct().forEach { refresh(it, userAsked = false) }
+            Notebooks.leaves(settings.current().databases).map { it.sourceId }.distinct().forEach { refresh(it, userAsked = false) }
         }
     }
 
@@ -374,13 +376,21 @@ class NotesRepository(
             }
             sources[key]
         }?.let { return@withContext it }
-        val source = try {
+        // A database first: Notion may also answer for a database's ID as if it were a data source.
+        val fromDatabase = try {
+            val list = WorkspaceCodec.dataSources(client.getDatabase(key))
+            // A data source's own ID among them (in case Notion answers with its database): itself.
+            if (list.any { it.id.replace("-", "") == key.replace("-", "") }) key else list.firstOrNull()?.id
+        } catch (e: NotionException) {
+            if (e.isTemporary || e.status == 401) throw e
+            null
+        }
+        val source = fromDatabase ?: try {
             client.getDataSource(key)
             key
         } catch (e: NotionException) {
             if (e.isTemporary || e.status == 401) throw e
-            WorkspaceCodec.dataSources(client.getDatabase(key)).firstOrNull()?.id
-                ?: throw NotionException("This database has no data source", status = 404, code = NotionErrors.NO_DATA_SOURCE)
+            throw NotionException("This database has no data source", status = 404, code = NotionErrors.NO_DATA_SOURCE)
         }
         lock.withLock {
             sources[key] = source
@@ -394,12 +404,53 @@ class NotesRepository(
      * The data sources of [key] when it is a database with more than one (to choose from), else
      * null. Null too when Notion can't be reached.
      */
-    suspend fun dataSourcesOf(key: String): List<PageRef>? = withContext(Dispatchers.IO) {
-        try {
-            WorkspaceCodec.dataSources(client.getDatabase(key)).takeIf { it.size > 1 }
+    suspend fun dataSourcesOf(key: String): List<PageRef>? = databaseInfo(key)?.sources?.takeIf { it.size > 1 }
+
+    /** What Notion said about databases, by database ID without dashes (see [databaseInfo]). */
+    private val databaseInfos = mutableMapOf<String, DatabaseInfo>()
+    private var databaseInfosRead = false
+
+    /** Databases asked about since the app started (a list kept from before is asked again once). */
+    private val databasesAsked = mutableSetOf<String>()
+
+    /**
+     * Database [id]'s name and data sources: kept on this phone, asked again once per start of the
+     * app when [fresh]. Null when it isn't a database the connection can read, or Notion can't be
+     * reached and nothing is kept.
+     */
+    suspend fun databaseInfo(id: String, fresh: Boolean = true): DatabaseInfo? = withContext(Dispatchers.IO) {
+        val key = id.replace("-", "")
+        val known = lock.withLock {
+            if (!databaseInfosRead) {
+                databaseInfos.putAll(cache.databaseInfos())
+                databaseInfosRead = true
+            }
+            databaseInfos[key]
+        }
+        if (known != null && (!fresh || key in databasesAsked)) return@withContext known
+        if (!fresh) return@withContext null
+        val info = try {
+            WorkspaceCodec.databaseInfo(client.getDatabase(id))
         } catch (e: NotionException) {
+            if (e.isOffline || e.isTemporary) return@withContext known
             null
         }
+        lock.withLock {
+            databasesAsked += key
+            if (info == null) databaseInfos -= key else databaseInfos[key] = info
+            cache.saveDatabaseInfos(databaseInfos.toMap())
+        }
+        info
+    }
+
+    /**
+     * Search results grouped by their databases (see WorkspaceCodec.group), with what is kept on
+     * this phone, or, when [ask], after asking Notion about databases not asked about yet.
+     */
+    suspend fun groupByDatabase(items: List<WorkspaceItem>, ask: Boolean): List<WorkspaceItem> {
+        val ids = items.mapNotNull { it.databaseId }.distinctBy { it.replace("-", "") }
+        val infos = ids.mapNotNull { id -> databaseInfo(id, fresh = ask)?.let { id.replace("-", "") to it } }.toMap()
+        return WorkspaceCodec.group(items, infos)
     }
 
     /** Moves everything kept under database [old] to its data source [new] (see [SourceKeys]). */
@@ -1106,8 +1157,10 @@ class NotesRepository(
             val exists = s.databases.any { it.id == config.id }
             s.copy(databases = if (exists) s.databases.map { if (it.id == config.id) config else it } else s.databases + config)
         }
-        loadDatabase(config.sourceId)
-        scope.launch { refresh(config.sourceId, userAsked = _databases.value[config.sourceId]?.lastFullSyncMs == 0L) }
+        config.leaves.forEach { leaf ->
+            loadDatabase(leaf.sourceId)
+            scope.launch { refresh(leaf.sourceId, userAsked = _databases.value[leaf.sourceId]?.lastFullSyncMs == 0L) }
+        }
     }
 
     /** Removes a view from the navigation. The notes stay (as a copy, for Pinned and Browse). */
@@ -1127,6 +1180,8 @@ class NotesRepository(
     suspend fun clearData() = withContext(Dispatchers.IO) {
         lock.withLock {
             cache.clear()
+            databaseInfos.clear()
+            databasesAsked.clear()
             _outbox.value = emptyList()
             _databases.update { map -> map.mapValues { DatabaseState(loaded = true) } }
         }

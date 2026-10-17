@@ -3,6 +3,7 @@ package be.wimvandonck.noter.data.notion
 import be.wimvandonck.noter.data.api.arrayOrNull
 import be.wimvandonck.noter.data.api.objOrNull
 import be.wimvandonck.noter.data.api.stringOrNull
+import be.wimvandonck.noter.data.model.DatabaseInfo
 import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.NoteSummary
@@ -50,19 +51,44 @@ object WorkspaceCodec {
         )
     }
 
-    /**
-     * Search results as the Browse list. A database whose data sources are among the results is
-     * left out: it is only their container (opening it as a notebook doesn't work), and each of
-     * its data sources is listed on its own.
-     */
-    fun parseAll(results: List<JsonObject>, includeNotes: Boolean, pagesKey: String): List<WorkspaceItem> {
-        val containers = results.filter { it.stringOrNull("object") == "data_source" }
-            .mapNotNull { it.objOrNull("parent")?.stringOrNull("database_id")?.replace("-", "") }
-            .toSet()
-        return results
-            .filterNot { it.stringOrNull("object") == "database" && it.stringOrNull("id")?.replace("-", "") in containers }
-            .mapNotNull { parse(it, includeNotes, pagesKey) }
+    /** Search results as the Browse list (see [parse]). */
+    fun parseAll(results: List<JsonObject>, includeNotes: Boolean, pagesKey: String): List<WorkspaceItem> =
+        results.mapNotNull { parse(it, includeNotes, pagesKey) }
+
+    /** A database's name, icon and data sources, from `GET /databases/{id}`. */
+    fun databaseInfo(database: JsonObject): DatabaseInfo? {
+        val id = database.stringOrNull("id") ?: return null
+        return DatabaseInfo(id, InlineMarkdown.plainText(database.arrayOrNull("title")).trim(), IconCodec.parse(database.objOrNull("icon")), dataSources(database))
     }
+
+    /**
+     * The Browse list with what is known about the databases the data sources are in ([infos], by
+     * database ID): a data source its database doesn't list is left out (Notion's search can show
+     * one the connection can't read), and the data sources of a database with several are shown as
+     * that database, once, where the first of them was.
+     */
+    fun group(items: List<WorkspaceItem>, infos: Map<String, DatabaseInfo>): List<WorkspaceItem> {
+        val byPlainId = infos.mapKeys { plain(it.key) }
+        val shown = mutableSetOf<String>()
+        return items.mapNotNull { item ->
+            val info = item.databaseId?.let { byPlainId[plain(it)] } ?: return@mapNotNull item
+            when {
+                info.sources.none { plain(it.id) == plain(item.id) } -> null
+                info.sources.size == 1 -> item
+                !shown.add(plain(info.id)) -> null
+                else -> WorkspaceItem(
+                    id = info.id,
+                    isDatabase = true,
+                    title = info.title,
+                    icon = info.icon ?: item.icon,
+                    lastEditedTime = item.lastEditedTime,
+                    sources = info.sources,
+                )
+            }
+        }
+    }
+
+    private fun plain(id: String) = id.replace("-", "")
 
     /**
      * One search result. Pages of a database (the notes) are left out unless [includeNotes]: the
@@ -82,6 +108,7 @@ object WorkspaceCodec {
                 title = InlineMarkdown.plainText(json.arrayOrNull("title")).trim(),
                 icon = icon,
                 lastEditedTime = edited,
+                databaseId = json.objOrNull("parent")?.stringOrNull("database_id"),
             )
             "page" -> {
                 val database = parentDatabase(json)
