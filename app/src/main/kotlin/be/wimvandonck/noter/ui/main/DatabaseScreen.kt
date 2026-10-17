@@ -27,7 +27,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,23 +34,26 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import be.wimvandonck.noter.R
-import kotlinx.coroutines.launch
 
 /**
- * A database opened from Browse or from a link in a note: a child page with its notes and
- * filters. "Add view" makes it a view, with the filters selected now; once it is one, "Edit view"
- * opens its setup.
+ * A database opened from Search or from a link in a note: a child page with its notes and
+ * filters. "Add as notebook" sets it up as a notebook (choosing one of its Notion views); once it
+ * is one, "Edit notebook" opens its setup.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DatabaseScreen(databaseId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit, onEditView: (String) -> Unit) {
+fun DatabaseScreen(
+    databaseId: String,
+    onBack: () -> Unit,
+    onOpenNote: (String) -> Unit,
+    onEditView: (String) -> Unit,
+    onAddNotebook: (String) -> Unit,
+) {
     val viewModel: DatabaseViewModel = viewModel(key = "database-$databaseId", factory = DatabaseViewModel.factory(databaseId))
     val state by viewModel.state.collectAsStateWithLifecycle()
     val previews by viewModel.previews.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val untitled = stringResource(R.string.untitled)
-    val added = stringResource(R.string.view_added)
     val content = state.content
 
     Scaffold(
@@ -69,12 +71,7 @@ fun DatabaseScreen(databaseId: String, onBack: () -> Unit, onOpenNote: (String) 
                         // One view per database from here: once added, the button edits it.
                         val viewId = state.viewId
                         if (viewId == null) {
-                            TextButton(
-                                onClick = {
-                                    viewModel.addView(state.title.ifBlank { untitled })
-                                    scope.launch { snackbar.showSnackbar(added) }
-                                },
-                            ) {
+                            TextButton(onClick = { onAddNotebook(state.sourceId) }) {
                                 Icon(Icons.Rounded.BookmarkAdd, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text(stringResource(R.string.add_view))

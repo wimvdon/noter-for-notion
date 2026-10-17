@@ -55,7 +55,8 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         val stored = prefs[key]?.let { runCatching { json.decodeFromString(AppSettings.serializer(), it) }.getOrNull() }
             ?: AppSettings()
         val theme = prefs[darkKey]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM
-        return stored.copy(themeMode = theme, dynamicColor = prefs[dynamicKey] ?: false)
+        // Notebooks saved before quick filters are read in today's terms.
+        return stored.copy(databases = stored.databases.map { it.normalized() }, themeMode = theme, dynamicColor = prefs[dynamicKey] ?: false)
     }
 
     suspend fun current(): AppSettings = settings.first()

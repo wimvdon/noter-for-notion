@@ -41,17 +41,23 @@ class ChipFilterTest {
         assertEquals(1, ChipFilter.filter(withPeople, "Who", setOf("u2")).size)
     }
 
+    private fun notebook(selected: List<String>) =
+        be.wimvandonck.noter.data.model.DatabaseConfig("n", "N", databaseId = "db", quickFilters = listOf("Status"), selected = mapOf("Status" to selected))
+
+    private val schema = be.wimvandonck.noter.data.model.DatabaseSchema("db", "Tasks", listOf(status))
+
     @Test
-    fun `the database tab puts pinned notes first and applies the chips`() {
-        val content = NoteLists.database(notes, status, setOf("Todo"), pinned = listOf("d"), order = emptyList())
+    fun `a notebook puts pinned notes first and applies the chips`() {
+        val content = Notebooks.content(notes, schema, notebook(listOf("Todo")), null, pinned = listOf("d"), customOrder = emptyList())
         assertEquals(listOf("d"), content.pinned.map { it.id })
         assertEquals(listOf("a"), content.others.map { it.id })
     }
 
     @Test
     fun `a chip that no longer exists is ignored`() {
-        val content = NoteLists.database(notes, status, setOf("Gone"), pinned = emptyList(), order = emptyList())
+        val content = Notebooks.content(notes, schema, notebook(listOf("Gone")), null, pinned = emptyList(), customOrder = emptyList())
         assertEquals(4, content.others.size)
+        assertEquals(0, content.filterCount)
     }
 
     @Test

@@ -12,9 +12,20 @@ properties and content: the pages of databases and pages on their own.
   and Settings. The navigation bar at the bottom holds Pinned and the notebooks pinned to it, as
   many as fit: one item per 80dp of window width (five on a phone).
   - **Pinned**: the pinned notes of everything (databases and pages), filtered by source.
-  - **Notebooks**: a database in the navigation with its filter property and the filters that are
-    on when it opens (`DatabaseConfig`, kept under `AppSettings.databases`; the code still calls
-    them views, the screens say "notebook" in every language, as a name of the app's own).
+  - **Notebooks** (`DatabaseConfig`, kept under `AppSettings.databases`; the code still calls them
+    views, the screens say "notebook" in every language, as a name of the app's own): a database,
+    usually following one of its **Notion views** (`viewId`). Notion works out which notes the view
+    shows and in which order (`NotionClient.queryView`: its saved filter and sort, exactly as in
+    Notion); the answer is kept on the phone (`ViewResult`, `views.json`) and asked again with
+    each refresh of the database. On top of that, all on this phone (`logic/Notebooks.kt`): the
+    notebook's own filters per property (a note shows when it has one of the selected values of
+    every filtering property), and its sort: Notion's order, the custom order (dragged), last
+    edited, created, title or a date property. The chip row starts with **Filters** (the panel:
+    follow the Notion view or not, every property with its values and a "Chips" switch that puts
+    them in the row, Clear filters, Reset to Notion's view) and **Sort** (a menu, with Reverse
+    order); then the quick filters' chips. Dragging a note in another sort switches to the custom
+    order, starting from the order on screen, with an Undo snackbar. Nothing is written to Notion's
+    view. A view that Notion doesn't have any more shows all notes and the panel says so.
   Notes are cards in a staggered grid with a preview of their content; pinned notes come first
   under "Pinned". Long-press and drag moves a note within its section; a long press without
   moving opens its menu (pin, move to trash). Filters (Material filter chips) come from one
@@ -48,11 +59,15 @@ properties and content: the pages of databases and pages on their own.
   no previews are downloaded for that database) and up to three properties (else the card shows
   the filter property). All of it is kept per database in `AppSettings.propertyLayouts` (backed
   up), so it applies to every view of that database.
-- **Manage notebooks** (`ui/views/`): the notebooks in their order (up/down), each with a pin for the
-  navigation bar (`DatabaseConfig.inBar`; disabled when the bar is full); tapping one edits its
-  name, icon, bar pin, filter property and filters, and what the cards show; "Add view" picks a
-  database. Opens from the
-  drawer and from Settings.
+- **Manage notebooks** (`ui/views/`): the notebooks in their order (up/down), each with a pin for
+  the navigation bar (`DatabaseConfig.inBar`; disabled when the bar is full); tapping one edits
+  its name, icon, bar pin and what the cards show. "Add notebook" picks a database, then one of
+  its Notion views (`NotesRepository.viewsOf`: not forms, charts or dashboards) or all its notes;
+  the new notebook starts like the view (`Notebooks.fromView`): its quick filters (else what a
+  board is grouped by, else a status or select property), Notion's order, and, when the user
+  hasn't arranged them yet, the view's property order and hidden properties and its covers
+  (`Notebooks.layoutFromView`). Filters and sort are changed in the notebook itself. "Add as
+  notebook" on a database's page opens the same steps. Opens from the drawer and from Settings.
 - **View icons** (`data/icons/IconCatalog.kt`, `ui/common/IconPicker.kt`, `DatabaseIcons.kt`):
   the Material Symbols set (4 229 icons) from `assets/material_symbols.txt` (name, categories and
   SVG path data per icon, from RSS Reader), drawn as vectors and searchable by English name,
@@ -166,9 +181,9 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
 ### Where data lives
 | What | Where | Backed up |
 |---|---|---|
-| Views, pins, order, property layouts, theme | DataStore `backed_up_settings` | Yes |
+| Notebooks (with their filters and sort), pins, order, property layouts, theme | DataStore `backed_up_settings` | Yes |
 | Token and its kind | `EncryptedSharedPreferences` `notion_key_encrypted_prefs` | No |
-| Copies of notes, schemas, users; unsent changes | JSON files in `noBackupFilesDir/notion_cache` | No |
+| Copies of notes, schemas, users, what followed Notion views show; unsent changes | JSON files in `noBackupFilesDir/notion_cache` | No |
 | Images | Coil's cache in `cacheDir/images` | No |
 
 ## Structure

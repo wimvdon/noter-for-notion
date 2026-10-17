@@ -11,6 +11,9 @@ import be.wimvandonck.noter.data.NotesRepository
 import be.wimvandonck.noter.data.RepoEvent
 import be.wimvandonck.noter.data.api.NotionException
 import be.wimvandonck.noter.data.model.DatabaseConfig
+import be.wimvandonck.noter.data.model.NotebookSort
+import be.wimvandonck.noter.data.model.SortKind
+import be.wimvandonck.noter.data.model.ViewResult
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.NotionUser
@@ -22,14 +25,18 @@ import be.wimvandonck.noter.data.notion.TokenKind
 import be.wimvandonck.noter.data.store.AppSettings
 import be.wimvandonck.noter.logic.ChipFilter
 import be.wimvandonck.noter.logic.Destinations
+import be.wimvandonck.noter.logic.ChipGroup
 import be.wimvandonck.noter.logic.FilterChip
+import be.wimvandonck.noter.logic.Notebooks
 import be.wimvandonck.noter.logic.NoteLists
 import be.wimvandonck.noter.logic.NoteSearch
 import be.wimvandonck.noter.logic.NoteSource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,14 +61,15 @@ data class MainUiState(
     val canAddTopLevel: Boolean = false,
     val tabs: List<Tab> = emptyList(),
     val currentTab: String = Destinations.PINNED,
-    val chips: List<FilterChip> = emptyList(),
-    val selectedChips: Set<String> = emptySet(),
+    /** The filter chips above the notes, per property (on Pinned: one group, the sources). */
+    val chipGroups: List<ChipGroup> = emptyList(),
     val pinned: List<NoteSummary> = emptyList(),
     val others: List<NoteSummary> = emptyList(),
     val pinnedIds: Set<String> = emptySet(),
     /** Icons of the sources on Pinned, by database ID (the first view's icon). */
     val databaseIcons: Map<String, String> = emptyMap(),
-    val chipProperty: String? = null,
+    /** The property cards show when no properties were chosen for them (the first quick filter). */
+    val cardProperty: String? = null,
     /** How each database shows its properties, for the properties on the cards. */
     val propertyLayouts: Map<String, PropertyLayout> = emptyMap(),
     /** True while nothing is cached yet for this tab and the first download runs. */
@@ -70,16 +78,32 @@ data class MainUiState(
     val error: String? = null,
     val pendingCount: Int = 0,
     val offline: Boolean = false,
-    /** The database of the view shown (null on Pinned and Browse). */
+    /** The database shown (null on Pinned). */
     val databaseId: String? = null,
-    /** The database a relation filter links to (its pages' titles name the chips), else null. */
-    val chipRelationDatabase: String? = null,
     /** Titles of linked pages, by page ID, for relation filters. */
     val chipTitles: Map<String, String> = emptyMap(),
-    /** The views, for the navigation bar and "New note" on Pinned and Browse. */
+    /** The notebooks, for the navigation bar and "New note" on Pinned. */
     val views: List<DatabaseConfig> = emptyList(),
+    /** The notebook shown, with its filters and sort (null on Pinned and a database on its own). */
+    val notebook: DatabaseConfig? = null,
+    /** How many properties filter the notebook now. */
+    val filterCount: Int = 0,
+    /** Every property the notebook can filter by, with its values, for the Filters panel. */
+    val filterOptions: List<ChipGroup> = emptyList(),
+    /** The Notion view the notebook follows doesn't exist any more (all notes are shown). */
+    val viewMissing: Boolean = false,
 ) {
     val isHome: Boolean get() = currentTab == Destinations.PINNED
+
+    /** Related databases whose pages name relation chips. */
+    val chipRelationDatabases: Set<String>
+        get() = (chipGroups + filterOptions).mapNotNull { it.property?.takeIf { p -> p.type == "relation" }?.relationDatabaseId }.toSet()
+}
+
+/** Something the overview tells the user once. */
+sealed interface MainEvent {
+    /** Dragging a note switched the notebook from [previous] to the custom order (Undo restores it). */
+    data class SortedByHand(val notebookId: String, val previous: NotebookSort?) : MainEvent
 }
 
 /**
@@ -95,46 +119,56 @@ data class BrowseState(
 )
 
 /**
- * The note list of one database ([db]), filtered by [chipSchema] with [selected] filters, for a
- * view or a database opened from Browse.
+ * The notes of one database ([db]) as notebook [config] shows them: in its Notion view, filtered,
+ * sorted, its quick filters on top. Also for a database opened on its own (a notebook that isn't
+ * saved, see DatabaseViewModel).
  */
-internal fun databaseContent(
+internal fun notebookContent(
     base: MainUiState,
-    databaseId: String,
+    config: DatabaseConfig,
     db: DatabaseState?,
-    chipSchema: PropertySchema?,
-    selected: Set<String>,
+    viewResult: ViewResult?,
     settings: AppSettings,
+    viewMissing: Boolean = false,
 ): MainUiState {
-    val content = NoteLists.database(
-        db?.notes.orEmpty(),
-        chipSchema,
-        selected,
-        settings.pinned,
-        settings.order[databaseId].orEmpty(),
-    )
+    val notes = db?.notes.orEmpty()
+    val content = Notebooks.content(notes, db?.schema, config, viewResult, settings.pinned, settings.order[config.sourceId].orEmpty())
+    val inView = if (config.viewId != null && config.followView) Notebooks.inView(notes, viewResult) else notes
+    val selected = Notebooks.selection(config, db?.schema)
     return base.copy(
-        chips = content.chips,
-        selectedChips = selected,
+        chipGroups = content.groups,
         pinned = content.pinned,
         others = content.others,
-        chipProperty = chipSchema?.name,
-        chipRelationDatabase = chipSchema?.takeIf { it.type == "relation" }?.relationDatabaseId,
+        cardProperty = config.quickFilters.firstOrNull(),
         loading = db?.loaded != true,
         refreshing = db?.refreshing == true,
         error = db?.error,
-        databaseId = databaseId,
+        databaseId = config.sourceId,
+        filterCount = content.filterCount,
+        filterOptions = db?.schema?.properties.orEmpty().filter { it.isChipCandidate }.map { property ->
+            ChipGroup(property, ChipFilter.chips(property, inView), selected[property.name].orEmpty())
+        },
+        viewMissing = viewMissing,
     )
 }
 
-/** The filter property a database uses when it isn't a view: a view's choice, else status or select. */
+/** The filter property a database opened on its own uses: a notebook's first quick filter, else status or select. */
 internal fun defaultChipProperty(databaseId: String, settings: AppSettings, db: DatabaseState?): PropertySchema? {
     val schema = db?.schema ?: return null
-    val chosen = settings.databases.firstOrNull { it.sourceId == databaseId && it.chipProperty != null }?.chipProperty
+    val chosen = settings.databases.firstOrNull { it.sourceId == databaseId && it.quickFilters.isNotEmpty() }?.quickFilters?.first()
     return chosen?.let { schema.property(it) }
         ?: schema.properties.firstOrNull { it.type == "status" }
         ?: schema.properties.firstOrNull { it.type == "select" }
 }
+
+/** The values selected in [groups] that a new note gets (the first of each property, where it can). */
+internal fun presets(groups: List<ChipGroup>, selected: Map<String, Set<String>>): List<NoteProperty> =
+    groups.mapNotNull { group ->
+        val property = group.property ?: return@mapNotNull null
+        val key = selected[property.name]?.firstOrNull() ?: return@mapNotNull null
+        val chip = group.chips.firstOrNull { it.key == key } ?: return@mapNotNull null
+        presetFor(property, chip)
+    }
 
 /** A filter property's value for a new note made while filter [key] is selected. */
 internal fun presetFor(schema: PropertySchema, chip: FilterChip, today: LocalDate = LocalDate.now()): NoteProperty? {
@@ -167,25 +201,31 @@ class MainViewModel(
 
     private val currentTab = MutableStateFlow(Destinations.PINNED)
 
-    /** Filters the user picked per destination since the app started (else a view's own). */
-    private val selectedChips = MutableStateFlow<Map<String, Set<String>>>(emptyMap())
+    /** Sources picked on Pinned since the app started (a notebook keeps its own filters). */
+    private val pinnedChips = MutableStateFlow<Set<String>>(emptySet())
 
     val events: Flow<RepoEvent> = repository.events
+
+    private val _mainEvents = MutableSharedFlow<MainEvent>(extraBufferCapacity = 4)
+    val mainEvents: SharedFlow<MainEvent> = _mainEvents
 
     private data class Status(val pending: Int, val offline: Boolean, val hasKey: Boolean, val kind: TokenKind?)
 
     private val status = combine(repository.pendingCount, repository.offline, hasKey, tokenKind, ::Status)
 
+    private val views = combine(repository.viewResults, repository.missingViews) { results, missing -> results to missing }
+
     val state: StateFlow<MainUiState> = combine(
         repository.settingsFlow(),
         repository.databases,
         currentTab,
-        selectedChips,
+        combine(pinnedChips, views) { chips, v -> chips to v },
         status,
-    ) { settings, databases, tab, chipsByTab, (pending, offline, key, kind) ->
-        val views = settings.databases
-        val tabKey = Destinations.valid(tab, views)
-        val tabs = listOf(Tab(Destinations.PINNED, "", null)) + views.map { Tab(it.id, it.name, it.icon) }
+    ) { settings, databases, tab, (chips, viewState), (pending, offline, key, kind) ->
+        val (viewResults, missingViews) = viewState
+        val notebooks = settings.databases
+        val tabKey = Destinations.valid(tab, notebooks)
+        val tabs = listOf(Tab(Destinations.PINNED, "", null)) + notebooks.map { Tab(it.id, it.name, it.icon) }
         val base = MainUiState(
             ready = true,
             hasKey = key,
@@ -193,35 +233,35 @@ class MainViewModel(
             tabs = tabs,
             currentTab = tabKey,
             pinnedIds = settings.pinned.toSet(),
-            databaseIcons = views.reversed().associate { it.sourceId to it.icon },
+            databaseIcons = notebooks.reversed().associate { it.sourceId to it.icon },
             propertyLayouts = settings.propertyLayouts,
             pendingCount = pending,
             offline = offline,
-            views = views,
+            views = notebooks,
         )
         when (tabKey) {
             Destinations.PINNED -> {
-                val selected = chipsByTab[tabKey].orEmpty()
                 val content = NoteLists.home(
                     sources(settings, databases),
                     databases.mapValues { it.value.notes },
                     settings.pinned,
                     settings.order[AppSettings.HOME].orEmpty(),
-                    selected,
+                    chips,
                 )
                 base.copy(
-                    chips = content.chips,
-                    selectedChips = selected,
+                    chipGroups = if (content.chips.isEmpty()) emptyList() else listOf(ChipGroup(null, content.chips, chips)),
                     pinned = content.pinned,
                     loading = databases.values.any { !it.loaded } && content.pinned.isEmpty(),
                     refreshing = databases.values.any { it.refreshing },
                 )
             }
             else -> {
-                val view = views.first { it.id == tabKey }
-                val db = databases[view.sourceId]
-                val chipSchema = view.chipProperty?.let { db?.schema?.property(it) }
-                databaseContent(base, view.sourceId, db, chipSchema, Destinations.selectedFilters(view, chipsByTab[tabKey]), settings)
+                val notebook = notebooks.first { it.id == tabKey }
+                val missing = notebook.viewId != null && notebook.viewId in missingViews
+                // A view Notion doesn't have any more: all notes, until the notebook is set up again.
+                val shown = if (missing) notebook.copy(followView = false) else notebook
+                notebookContent(base, shown, databases[notebook.sourceId], viewResults[notebook.viewId], settings, missing)
+                    .copy(notebook = notebook)
             }
         }
     }.combine(chipTitles) { state, titles -> state.copy(chipTitles = titles) }
@@ -244,18 +284,48 @@ class MainViewModel(
         }
     }
 
-    fun toggleChip(key: String) {
-        val ui = state.value
-        val tab = ui.currentTab
-        selectedChips.update { map ->
-            val current = ui.selectedChips
-            map + (tab to if (key in current) current - key else current + key)
+    /** Changes the notebook shown, kept on this phone (Notion's view isn't changed). */
+    private fun updateNotebook(transform: (DatabaseConfig) -> DatabaseConfig) {
+        val id = state.value.notebook?.id ?: return
+        viewModelScope.launch {
+            repository.updateSettings { s -> s.copy(databases = s.databases.map { if (it.id == id) transform(it) else it }) }
+        }
+    }
+
+    /** A chip was tapped: a source on Pinned ([property] null), or a value of a notebook's property. */
+    fun toggleChip(property: String?, key: String) {
+        if (property == null) {
+            pinnedChips.update { if (key in it) it - key else it + key }
+        } else {
+            updateNotebook { it.copy(selected = Notebooks.toggle(it.selected, property, key)) }
         }
     }
 
     fun clearChips() {
-        val tab = state.value.currentTab
-        selectedChips.update { it + (tab to emptySet()) }
+        if (state.value.isHome) pinnedChips.value = emptySet() else updateNotebook { it.copy(selected = emptyMap()) }
+    }
+
+    /** Shows the property's values as chips above the notes, or not. */
+    fun setQuickFilter(property: String, shown: Boolean) =
+        updateNotebook { it.copy(quickFilters = if (shown) (it.quickFilters - property) + property else it.quickFilters - property) }
+
+    /** Follows the Notion view's filter (shows only its notes), or shows all notes of the database. */
+    fun setFollowView(follow: Boolean) {
+        updateNotebook { it.copy(followView = follow) }
+        val view = state.value.notebook?.viewId ?: return
+        if (follow) viewModelScope.launch { repository.refreshView(view) }
+    }
+
+    fun setSort(sort: NotebookSort?) = updateNotebook { it.copy(sort = sort) }
+
+    /** Back to what the Notion view shows: its filter and order, no filters of the notebook's own. */
+    fun resetToView() = updateNotebook { it.copy(followView = true, selected = emptyMap(), sort = null) }
+
+    /** Undo after dragging switched a notebook to the custom order. */
+    fun undoSortedByHand(event: MainEvent.SortedByHand) {
+        viewModelScope.launch {
+            repository.updateSettings { s -> s.copy(databases = s.databases.map { if (it.id == event.notebookId) it.copy(sort = event.previous) else it }) }
+        }
     }
 
     fun refresh() {
@@ -264,7 +334,10 @@ class MainViewModel(
             repository.flush()
             when {
                 ui.isHome -> repository.databases.value.keys.forEach { launch { repository.refresh(it, userAsked = true) } }
-                else -> ui.databaseId?.let { repository.refresh(it, userAsked = true) }
+                else -> {
+                    ui.databaseId?.let { repository.refresh(it, userAsked = true) }
+                    ui.notebook?.takeIf { it.followView }?.viewId?.let { repository.refreshView(it) }
+                }
             }
         }
     }
@@ -279,23 +352,49 @@ class MainViewModel(
 
     fun trash(id: String) = viewModelScope.launch { repository.trashNote(id) }
 
-    /** Saves the new order after the user moved notes (per database, and Pinned has its own). */
-    fun saveOrder(ids: List<String>) {
+    /**
+     * Saves the new order after the user dragged notes in [group] (the pinned ones or the others),
+     * per database; Pinned has its own. In a notebook sorted another way, dragging switches it to
+     * the custom order, starting from the order on screen.
+     */
+    fun saveOrder(group: List<String>) {
         val ui = state.value
         val key = if (ui.isHome) AppSettings.HOME else ui.databaseId ?: return
-        viewModelScope.launch { repository.saveOrder(key, ids) }
+        val notebook = ui.notebook
+        val switching = notebook != null && notebook.currentSort.kind != SortKind.CUSTOM
+        val ids = if (!switching) {
+            group
+        } else if (ui.pinned.any { it.id in group }) {
+            group + ui.others.map { it.id }
+        } else {
+            ui.pinned.map { it.id } + group
+        }
+        viewModelScope.launch {
+            repository.saveOrder(key, ids)
+            if (switching && notebook != null) {
+                repository.updateSettings { s ->
+                    s.copy(databases = s.databases.map { if (it.id == notebook.id) it.copy(sort = NotebookSort(SortKind.CUSTOM)) else it })
+                }
+                _mainEvents.tryEmit(MainEvent.SortedByHand(notebook.id, notebook.sort))
+            }
+        }
     }
 
     /**
-     * Creates a note in [databaseId] (the current view's when null) and calls [onCreated] with its
-     * ID. In a view with filters selected, the new note gets the first selected filter's value; on
+     * Creates a note in [databaseId] (the current notebook's when null) and calls [onCreated] with
+     * its ID. In a notebook with filters selected, the new note gets their values where it can; on
      * Pinned the new note is pinned so it shows up there.
      */
     fun createNote(databaseId: String? = null, onCreated: (String) -> Unit) {
         val ui = state.value
         val target = databaseId ?: ui.databaseId ?: return
         viewModelScope.launch {
-            val preset = if (target == ui.databaseId) presetFromChips(target, ui) else emptyList()
+            val notebook = ui.notebook
+            val preset = if (target == ui.databaseId && notebook != null) {
+                presets(ui.filterOptions, notebook.selected.mapValues { it.value.toSet() })
+            } else {
+                emptyList()
+            }
             val id = repository.createNote(target, preset) ?: return@launch
             if (ui.isHome) repository.togglePin(id)
             onCreated(id)
@@ -305,13 +404,6 @@ class MainViewModel(
     /** Makes a page on its own: inside page [parentPageId], or at the top of the workspace. */
     fun createPage(parentPageId: String?, onCreated: (String) -> Unit) {
         viewModelScope.launch { onCreated(repository.createPage(parentPageId)) }
-    }
-
-    private fun presetFromChips(databaseId: String, ui: MainUiState): List<NoteProperty> {
-        val chipKey = ui.selectedChips.firstOrNull() ?: return emptyList()
-        val schema = ui.chipProperty?.let { repository.databases.value[databaseId]?.schema?.property(it) } ?: return emptyList()
-        val chip = ui.chips.firstOrNull { it.key == chipKey } ?: return emptyList()
-        return listOfNotNull(presetFor(schema, chip))
     }
 
     // ---- Browse ----
