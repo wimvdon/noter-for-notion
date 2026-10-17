@@ -82,6 +82,11 @@
     <string name="type_h2">Heading 2</string>
     <string name="type_h3">Heading 3</string>
     <string name="type_h4">Heading 4</string>
+    <string name="page_icon">Page icon</string>
+    <string name="add_icon">Add icon</string>
+    <string name="change_icon">Change icon</string>
+    <string name="remove_icon">Remove</string>
+    <string name="page_icon_type">Type or paste an emoji</string>
     <string name="type_bulleted">Bulleted list</string>
     <string name="type_numbered">Numbered list</string>
     <string name="type_checkbox">To-do list</string>

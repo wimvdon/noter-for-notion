@@ -11,6 +11,7 @@ import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.NotionUser
 import be.wimvandonck.noter.data.model.PageContent
+import be.wimvandonck.noter.data.model.PageIcon
 import be.wimvandonck.noter.data.model.PageRef
 import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.model.WorkspaceItem
@@ -428,6 +429,21 @@ class NotesRepository(
         scheduleFlush()
     }
 
+    /** Sets the page's icon to [emoji] (removes it when null) here, and queues it for Notion. */
+    suspend fun setIcon(pageId: String, emoji: String?) = withContext(Dispatchers.IO) {
+        val id = resolve(pageId)
+        lock.withLock {
+            if (id in trashed) return@withLock
+            val databaseId = findNote(_databases.value, id)?.databaseId ?: return@withLock
+            val now = Instant.ofEpochMilli(clock()).toString()
+            val icon = emoji?.let { PageIcon(emoji = it) }
+            setState(databaseId) { db -> db.copy(notes = db.notes.map { if (it.id == id) it.copy(icon = icon, lastEditedTime = now) else it }) }
+            _databases.value[databaseId]?.let { saveDatabaseCache(databaseId, it) }
+            enqueue(PendingOp.SetIcon(id, emoji))
+        }
+        scheduleFlush()
+    }
+
     /** Moves the note to Notion's trash and removes it here. */
     suspend fun trashNote(pageId: String) = withContext(Dispatchers.IO) {
         val id = resolve(pageId)
@@ -666,6 +682,12 @@ class NotesRepository(
             true
         }
         is PendingOp.SaveContent -> sendContent(op.pageId)
+        is PendingOp.SetIcon -> {
+            val page = client.updatePageIcon(op.pageId, op.emoji)
+            val databaseId = findNote(_databases.value, op.pageId)?.databaseId
+            if (databaseId != null) PropertyCodec.parsePage(page, databaseId)?.let { replaceNote(databaseId, it) }
+            true
+        }
         is PendingOp.TrashPage -> {
             client.trashPage(op.pageId)
             true
@@ -675,10 +697,11 @@ class NotesRepository(
     private suspend fun create(op: PendingOp.CreatePage): Boolean {
         val note = findNote(_databases.value, op.pageId) ?: return true
         val sent = note.properties
+        val sentEmoji = note.icon?.emoji
         val page = if (op.databaseId == PAGES) {
-            client.createPageIn(op.parentPageId, PropertyCodec.toCreateRequest(sent))
+            client.createPageIn(op.parentPageId, PropertyCodec.toCreateRequest(sent), sentEmoji)
         } else {
-            client.createPage(resolveSource(op.databaseId), PropertyCodec.toCreateRequest(sent), children = emptyList())
+            client.createPage(resolveSource(op.databaseId), PropertyCodec.toCreateRequest(sent), children = emptyList(), emoji = sentEmoji)
         }
         val newId = page.stringOrNull("id") ?: throw NotionException("Notion did not return a page ID", status = 500)
         val created = PropertyCodec.parsePage(page, op.databaseId) ?: note.copy(id = newId)
@@ -701,6 +724,10 @@ class NotesRepository(
                     merged = merged.withProperty(prop)
                     _outbox.value = Outbox.add(_outbox.value, PendingOp.SetProperty(newId, prop))
                 }
+            }
+            if (current.icon?.emoji != sentEmoji) {
+                merged = merged.copy(icon = current.icon)
+                _outbox.value = Outbox.add(_outbox.value, PendingOp.SetIcon(newId, current.icon?.emoji))
             }
             setState(op.databaseId) { db -> db.copy(notes = db.notes.map { if (it.id == oldId) merged else it }) }
             _databases.value[op.databaseId]?.let { saveDatabaseCache(op.databaseId, it) }
