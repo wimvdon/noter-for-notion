@@ -11,7 +11,8 @@ properties and content: the pages of databases and pages on their own.
   inside Notebooks, as scrollable tabs under the top app bar (in the order of Manage notebooks);
   tapping Notebooks shows the notebook seen last. The top app bar has the sync button, a
   notebook's **Filters** and **Sort** buttons, and a ⋮ menu with Edit notebook (in a notebook),
-  Manage notebooks and Settings. Back from Notebooks or Search goes to Pinned first.
+  Manage notebooks and Settings. The top app bar scrolls away with the notes and comes back on
+  the first scroll up (and on another notebook); the tabs stay. Back from Notebooks or Search goes to Pinned first.
   - **Pinned**: the pinned notes of everything (databases and pages), filtered by source. Any
     page can be pinned, also one that isn't in a notebook; a note made with + on Pinned is pinned.
   - **Notebooks** (`DatabaseConfig`, kept under `AppSettings.databases`; the code still calls them
@@ -22,8 +23,8 @@ properties and content: the pages of databases and pages on their own.
     last edited, created, title or a date property. **Filters** (a dot on the button while
     filters are on) opens the panel: the properties it can filter by, arranged like a note's
     properties with `PropertyArranger` ("Shown" ones have a row of chips above the notes, in
-    that order; dragged past the "Hidden" line, or the eye, it loses its row), then every
-    property with its values to filter by (also the hidden ones); Clear
+    that order; dragged past the "Hidden" line, or the eye, it loses its row), each with its
+    values to filter by right below it (`PropertyArranger`'s `below`; also the hidden ones); Clear
     filters. **Sort** is a menu: tapping the current sort again turns it around, an arrow shows
     which way. Above the notes, one row of chips per quick filter (`DatabaseConfig.quickFilters`),
     each starting with the property's name and, while something in it is selected, ending in ×;

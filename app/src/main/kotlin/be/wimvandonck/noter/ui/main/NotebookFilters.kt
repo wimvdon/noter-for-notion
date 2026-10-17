@@ -38,9 +38,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.heading
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.FilterChip
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.ui.res.stringResource
@@ -136,8 +133,8 @@ private fun sortLabel(sort: NotebookSort): String = when (sort.kind) {
 
 /**
  * The notebook's Filters panel: which properties have a row of chips above the notes, arranged
- * like a note's properties (drag by the handle, past the "Hidden" line, or the eye), then every
- * property with its values to filter by, and Clear filters. Everything is kept on this phone.
+ * like a note's properties (drag by the handle, past the "Hidden" line, or the eye), each with its
+ * values to filter by below it, and Clear filters. Everything is kept on this phone.
  */
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -162,40 +159,40 @@ internal fun NotebookFiltersSheet(
                 Text(stringResource(R.string.filters), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                 if (state.filterCount > 0) TextButton(onClick = onClear) { Text(stringResource(R.string.empty_clear_filters)) }
             }
+            // One list: each property with a handle, its name and an eye (its row of chips above the
+            // notes), and below it the values to filter by (also while its row is hidden).
+            val groups = state.filterOptions.mapNotNull { group -> group.property?.let { it.name to group } }.toMap()
             PropertyArranger(
                 names = candidates,
                 layout = PropertyLayout(order = rows + others, hidden = others),
                 onArrange = { shown, _ -> actions.onQuickFilters(shown) },
                 onDone = null,
                 shownTitle = stringResource(R.string.chip_rows_shown),
-            )
-            // The values to filter by, for every property (also those without a row of chips).
-            state.filterOptions.forEach { group ->
-                val property = group.property ?: return@forEach
-                HorizontalDivider(Modifier.padding(top = 16.dp, bottom = 12.dp, end = 12.dp))
-                Text(
-                    property.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(bottom = 8.dp).semantics { heading() },
-                )
-                if (group.chips.isEmpty()) {
-                    Text(
-                        stringResource(R.string.filter_no_values),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    FlowRow(Modifier.padding(end = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        group.chips.forEach { chip ->
-                            FilterChip(
-                                selected = chip.key in group.selected,
-                                onClick = { onToggle(property.name, chip.key) },
-                                label = { ChipText(chipLabel(chip, property.name, state), chip.count) },
-                            )
+                below = { name ->
+                    val group = groups[name] ?: return@PropertyArranger
+                    if (group.chips.isEmpty()) {
+                        Text(
+                            stringResource(R.string.filter_no_values),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 32.dp, bottom = 12.dp),
+                        )
+                    } else {
+                        FlowRow(
+                            Modifier.padding(start = 32.dp, end = 12.dp, bottom = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            group.chips.forEach { chip ->
+                                FilterChip(
+                                    selected = chip.key in group.selected,
+                                    onClick = { onToggle(name, chip.key) },
+                                    label = { ChipText(chipLabel(chip, name, state), chip.count) },
+                                )
+                            }
                         }
                     }
-                }
-            }
+                },
+            )
         }
     }
 }

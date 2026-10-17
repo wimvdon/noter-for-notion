@@ -218,14 +218,17 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   Search. The notebooks are peers within Notebooks: a primary scrollable tab row under the top
   app bar, leading-icon tabs with the notebook's icon. A notebook of several data sources has a
   secondary scrollable tab row below it, one tab per data source (a sub-notebook). The top app bar's ⋮ menu has Edit
-  notebook, Manage notebooks and Settings; there is no drawer.
+  notebook, Manage notebooks and Settings; there is no drawer. On Pinned and Notebooks the top
+  app bar scrolls away with the notes and comes back on the first scroll up (`enterAlways`); the
+  tab rows stay, in the same `surface` color as the bar.
 - Filters and sort: icon buttons in a notebook's top app bar. Filters shows a small badge dot
   while filters are on; Sort opens a menu with a check on the current sort and an arrow (up:
   ascending, down: descending) that tapping the current sort again turns around. Each quick
   filter has a row of chips of its own above the notes, starting with the property's name (Label
   Large, `onSurfaceVariant`) and, while something in it is selected, ending in an × icon button
   outside the scrolling chips. The Filters panel is the property arranger: "Shown" and "Hidden"
-  sections, a drag handle and an eye on each property. A chip's count of notes sits in a small
+  sections, a drag handle and an eye on each property, and its values to filter by (filter chips)
+  right below it, so it is one list. A chip's count of notes sits in a small
   `surfaceContainerHighest` pill after its label.
 - Search, a destination: a search icon and the query field in the app bar, then "Notes on this phone", "Databases" and "Pages" headers (Title
   Small, primary). A database opened from Search is a child page with an "Add as notebook" text
