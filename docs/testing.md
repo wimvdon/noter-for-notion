@@ -40,6 +40,7 @@ python3 -m unittest discover -s scripts/tests
 | `data/api/NotionErrorsTest` | Which errors the screens say in the user's language |
 | `logic/NewOptionsTest` | When the picker of a select or multi-select offers to add what was typed (not for an existing name in any case, nor with a comma) |
 | `logic/SchemaOptionsTest` | An option a note has (added on the phone or in Notion) joins its property's options once, so every picker shows it |
+| `logic/NotebookStructureTest` | Notebooks following Notion: a data source moved into another database becomes a sub-notebook (keeping its settings), a second data source, a database left with one, a sub-notebook moved away, a second notebook of the same data source, unknown parts and page notebooks untouched |
 | `logic/NotebooksTest` | Sub-notebooks (leaves, changing one in place, names on Pinned); a notebook's notes: filters per property, sorts, a new notebook's first chip row, the order of the chip rows, old notebooks that followed a Notion view |
 | `logic/ColumnsTest` | Columns: how far their blocks are indented, and that blocks stay in their column |
 | `ui/main/PresetForTest` | The value a new note gets from the selected filter |

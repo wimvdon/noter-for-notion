@@ -96,6 +96,8 @@ data class MainUiState(
     val filterCount: Int = 0,
     /** Every property the notebook can filter by, with its values, for the Filters panel. */
     val filterOptions: List<ChipGroup> = emptyList(),
+    /** Notion can't find the notebook's data source (deleted, in the trash, or no access). */
+    val sourceMissing: Boolean = false,
 ) {
     val isHome: Boolean get() = currentTab == Destinations.PINNED
 
@@ -215,9 +217,9 @@ class MainViewModel(
     private val _mainEvents = MutableSharedFlow<MainEvent>(extraBufferCapacity = 4)
     val mainEvents: SharedFlow<MainEvent> = _mainEvents
 
-    private data class Status(val pending: Int, val offline: Boolean, val hasKey: Boolean, val kind: TokenKind?)
+    private data class Status(val pending: Int, val offline: Boolean, val hasKey: Boolean, val kind: TokenKind?, val missing: Set<String>)
 
-    private val status = combine(repository.pendingCount, repository.offline, hasKey, tokenKind, ::Status)
+    private val status = combine(repository.pendingCount, repository.offline, hasKey, tokenKind, repository.missingSources, ::Status)
 
     val state: StateFlow<MainUiState> = combine(
         repository.settingsFlow(),
@@ -225,7 +227,7 @@ class MainViewModel(
         currentTab,
         combine(pinnedChips, repository.viewResults, subTab) { chips, orders, subs -> Triple(chips, orders, subs) },
         status,
-    ) { settings, databases, tab, (chips, pageOrders, subs), (pending, offline, key, kind) ->
+    ) { settings, databases, tab, (chips, pageOrders, subs), (pending, offline, key, kind, missing) ->
         val notebooks = settings.databases
         val tabKey = Destinations.valid(tab, notebooks, settings.navigation)
         val tabs = notebooks.map { Tab(it.id, it.name, it.icon) }
@@ -270,7 +272,7 @@ class MainViewModel(
                     subTabs = top.children.map { Tab(it.id, it.name, null) },
                 )
                 notebookContent(withCards, notebook, databases[notebook.sourceId], pageOrder, settings)
-                    .copy(notebook = notebook)
+                    .copy(notebook = notebook, sourceMissing = notebook.sourceId.replace("-", "") in missing)
             }
         }
     }.combine(chipTitles) { state, titles -> state.copy(chipTitles = titles) }
@@ -303,6 +305,12 @@ class MainViewModel(
     /** Shows sub-notebook [childId] of notebook [notebookId]. */
     fun selectSubTab(notebookId: String, childId: String) {
         subTab.update { it + (notebookId to childId) }
+    }
+
+    /** Removes the notebook (or sub-notebook) shown, whose data source Notion can't find. */
+    fun removeMissingNotebook() {
+        val id = state.value.notebook?.id ?: return
+        viewModelScope.launch { repository.removeDatabase(id) }
     }
 
     /** The navigation bar's first destination (where back goes before leaving the app). */
@@ -359,6 +367,8 @@ class MainViewModel(
                 ui.isHome -> repository.databases.value.keys.forEach { launch { repository.refresh(it, userAsked = true) } }
                 else -> ui.databaseId?.let { repository.refresh(it, userAsked = true) }
             }
+            // Also picks up data sources moved between databases in Notion.
+            repository.reconcileNotebooks()
         }
     }
 

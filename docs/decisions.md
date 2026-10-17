@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: Notebooks follow data sources moved in Notion
+
+The owner moved a database (Development) into another one (Notities) as a data source, and the app kept two notebooks. The app now asks Notion where each notebook's data source is (the data source's parent database) and which data sources that database has, when the app opens (at most every 15 minutes) and on pull-to-refresh: one request per data source and per database. The notebooks are then brought in line: the moved data source becomes a sub-notebook of the database's notebook and keeps its filters, sort and cards. A second notebook of the same data source (other filters) is left alone, since that may be on purpose. A data source Notion can't find (deleted, in the trash, or no access) isn't removed by itself, since it may only be a lost permission: its notebook says so, with a button to remove it and one to retry. Rejected: checking on every refresh (more requests for something that rarely changes).
+
 ## 2026-10-17: Pickers show new options at once
 
 The owner opened a note and didn't see options made recently until going back and refreshing: the options a picker offers came from the database's properties as last downloaded (a full refresh). Now an option any note on the phone has is added to them straight away (also one just added on the phone, before it reaches Notion), and opening a note downloads its database's properties again in the background (one request), so options added in Notion show too. Rejected: downloading the properties each time a picker opens (a wait on every tap).

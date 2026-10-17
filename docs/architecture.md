@@ -40,6 +40,17 @@ properties and content: the pages of databases and pages on their own.
     data source, shown as secondary tabs below the notebook tabs. Each sub-notebook is a notebook
     of its own (filters, sort, cards, its notes); `Notebooks.leaves`, `update` and `named` treat
     them as such, and on Pinned and for + they are named "Notebook · Sub-notebook".
+  - **Following Notion's structure** (`NotesRepository.reconcileNotebooks`,
+    `logic/NotebookStructure.kt`): opening the app (at most every 15 minutes) and pull-to-refresh
+    ask Notion which database each notebook's data source is in and which data sources each of
+    those databases has. A data source moved into another database becomes a sub-notebook of that
+    database's notebook (keeping its filters, sort and cards); a database that got a second data
+    source gets sub-notebooks; one left with a single data source becomes a plain notebook again;
+    a sub-notebook whose data source moved to another database becomes a notebook of its own. A
+    second notebook of the same data source stays on its own. Nothing changes while offline.
+  - **A data source Notion can't find** (`NotesRepository.missingSources`: a 404, or in the
+    trash): the notebook shows "Notion can't find this data source" with Remove notebook (or
+    Remove from this notebook, for a sub-notebook) and Retry, instead of its notes.
   - **A page's notebook** (`DatabaseConfig.pageId`, kept under the key
     `NotesRepository.pageNotebookKey`): its notes are the page's subpages (the child pages directly
     on it), "Page order" is their order on the page (`ViewResult`, `views.json`), and a new

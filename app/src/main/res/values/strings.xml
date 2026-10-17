@@ -202,4 +202,8 @@
     <string name="navigation_search_last">Always last</string>
     <string name="search_or_add">Search or add</string>
     <string name="add_option">Add “%1$s”</string>
+    <string name="source_missing_title">Notion can\'t find this data source</string>
+    <string name="source_missing_body">It may have been deleted or moved to the trash, or the connection no longer has access to it.</string>
+    <string name="source_missing_remove">Remove notebook</string>
+    <string name="source_missing_remove_sub">Remove from this notebook</string>
 </resources>
