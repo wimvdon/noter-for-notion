@@ -122,6 +122,8 @@ class NoteViewModel(
             }
             val fresh = repository.fetchContent(pageId)
             downloading.value = false
+            // Options added in Notion (or on another phone) since show in the pickers.
+            launch { repository.refreshSchemaOf(pageId) }
             when {
                 fresh != null && !editedSinceOpen -> setLoaded(fresh.blocks)
                 cached == null && fresh == null -> {
