@@ -12,7 +12,7 @@ properties and content: the pages of databases and pages on their own.
   at the bottom holds Pinned, Browse and the views pinned to it, as many as fit: one item per
   80dp of window width (five on a phone).
   - **Pinned**: the pinned notes of everything (databases and pages), filtered by source.
-  - **Browse** (`BrowsePane.kt`): the databases and pages shared with the integration, from
+  - **Browse** (`BrowsePane.kt`): the databases and pages the token can see, from
     Notion's search, most recently edited first, with a search field. Without a search a
     database's own pages are left out (they are one tap further); a search finds them too.
   - **Views**: a database in the navigation with its filter property and the filters that are on
@@ -55,8 +55,16 @@ properties and content: the pages of databases and pages on their own.
   SVG path data per icon, from RSS Reader), drawn as vectors and searchable by English name,
   category and a few related words. Views store the icon's name; the 29 keys from before are
   mapped to their Material Symbols names.
-- **Settings** (`ui/settings/`): Connection (API key, sync status), Views (a link to Manage
-  views), Appearance; built from the shared `SettingsKit.kt`.
+- **Settings** (`ui/settings/`): Connection (a personal access token, with the steps to make one,
+  and sync status), Views (a link to Manage views), Appearance; built from the shared
+  `SettingsKit.kt`.
+- **Token kind** (`data/notion/TokenCodec.kt`): Notion's `GET /users/me` says whether the token
+  is a personal access token (a bot owned by a person) or an internal connection's (owned by the
+  workspace). It is kept with the token (`ApiKeyStore.kind`; keys saved before are checked once
+  at start). With a connection's token, Settings warns that the app only sees the pages shared
+  with it, and "New page at the top of your workspace" isn't offered (Notion refuses it). A
+  personal access token can't list the workspace's people, so person properties offer the people
+  in the notes here and the token's owner (`logic/KnownUsers.kt`).
 - **New note** on Pinned and Browse asks which database (`logic/NoteTargets.kt`): the views'
   databases, then (on Browse) the other databases listed there. A note made on Pinned is pinned.
 - **Empty lists** use the shared `ui/theme/EmptyState.kt`: an icon in a circle, a title, one sentence and, where it helps, a button (Clear filters, Retry). Without an API key the whole screen says "Connect to Notion" with an "Open settings" button, the same words as Time Tracker for Notion (`DESIGN.md`, "Empty and setup states").
@@ -157,7 +165,7 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
 | What | Where | Backed up |
 |---|---|---|
 | Views, pins, order, property layouts, theme | DataStore `backed_up_settings` | Yes |
-| API key | `EncryptedSharedPreferences` `notion_key_encrypted_prefs` | No |
+| Token and its kind | `EncryptedSharedPreferences` `notion_key_encrypted_prefs` | No |
 | Copies of notes, schemas, users; unsent changes | JSON files in `noBackupFilesDir/notion_cache` | No |
 | Images | Coil's cache in `cacheDir/images` | No |
 

@@ -18,6 +18,7 @@ import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.model.WorkspaceItem
+import be.wimvandonck.noter.data.notion.TokenKind
 import be.wimvandonck.noter.data.store.AppSettings
 import be.wimvandonck.noter.logic.ChipFilter
 import be.wimvandonck.noter.logic.Destinations
@@ -46,6 +47,11 @@ data class Tab(val key: String, val name: String, val icon: String?) {
 data class MainUiState(
     val ready: Boolean = false,
     val hasKey: Boolean = false,
+    /**
+     * Pages can be added at the top of the workspace: only with a personal access token (Notion
+     * refuses it to an internal connection).
+     */
+    val canAddTopLevel: Boolean = false,
     val tabs: List<Tab> = emptyList(),
     val currentTab: String = Destinations.PINNED,
     val chips: List<FilterChip> = emptyList(),
@@ -143,7 +149,11 @@ internal fun presetFor(schema: PropertySchema, chip: FilterChip, today: LocalDat
     return NoteProperty(schema.name, schema.type, value)
 }
 
-class MainViewModel(private val repository: NotesRepository, hasKey: StateFlow<Boolean>) : ViewModel() {
+class MainViewModel(
+    private val repository: NotesRepository,
+    hasKey: StateFlow<Boolean>,
+    tokenKind: StateFlow<TokenKind?>,
+) : ViewModel() {
     private val chipTitles = MutableStateFlow<Map<String, String>>(emptyMap())
 
     /** Loads the titles of a related database's pages, for the chips of a relation filter. */
@@ -159,9 +169,9 @@ class MainViewModel(private val repository: NotesRepository, hasKey: StateFlow<B
 
     val events: Flow<RepoEvent> = repository.events
 
-    private val status = combine(repository.pendingCount, repository.offline, hasKey) { pending, offline, key ->
-        Triple(pending, offline, key)
-    }
+    private data class Status(val pending: Int, val offline: Boolean, val hasKey: Boolean, val kind: TokenKind?)
+
+    private val status = combine(repository.pendingCount, repository.offline, hasKey, tokenKind, ::Status)
 
     val state: StateFlow<MainUiState> = combine(
         repository.settingsFlow(),
@@ -169,7 +179,7 @@ class MainViewModel(private val repository: NotesRepository, hasKey: StateFlow<B
         currentTab,
         selectedChips,
         status,
-    ) { settings, databases, tab, chipsByTab, (pending, offline, key) ->
+    ) { settings, databases, tab, chipsByTab, (pending, offline, key, kind) ->
         val views = settings.databases
         val tabKey = Destinations.valid(tab, views)
         val tabs = listOf(Tab(Destinations.PINNED, "", null), Tab(Destinations.BROWSE, "", null)) +
@@ -177,6 +187,7 @@ class MainViewModel(private val repository: NotesRepository, hasKey: StateFlow<B
         val base = MainUiState(
             ready = true,
             hasKey = key,
+            canAddTopLevel = kind == TokenKind.PERSONAL,
             tabs = tabs,
             currentTab = tabKey,
             pinnedIds = settings.pinned.toSet(),
@@ -337,7 +348,7 @@ class MainViewModel(private val repository: NotesRepository, hasKey: StateFlow<B
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as NoterApp
-                MainViewModel(app.repository, app.apiKeyStore.hasKey)
+                MainViewModel(app.repository, app.apiKeyStore.hasKey, app.apiKeyStore.kind)
             }
         }
     }

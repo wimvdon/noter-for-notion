@@ -1,7 +1,7 @@
 # Noter for Notion
 
 A note app for Android in the style of Google Keep, with your notes kept in **Notion**.
-**Browse** lists the pages and databases you shared with the app; a database you use often becomes
+**Browse** lists your pages and databases; a database you use often becomes
 a **view** in the navigation (with its filters); **Pinned** shows the notes you pinned from all of
 them.
 
@@ -22,13 +22,16 @@ What the app sends and stores: [`PRIVACY.md`](PRIVACY.md). Rules for Claude Code
 ## Getting started
 
 1. Install the app (see below) and open it.
-2. In Notion, go to <https://www.notion.so/my-integrations>, create an **internal integration** and
-   copy its secret (the API key).
-3. In Notion, open each page or database you want in the app, tap **⋯ › Connections** and add
-   the integration (sharing a page also shares the pages and databases inside it).
-4. In the app: **Settings › Connection**, paste the key and tap **Test and save**. Then open
+2. In Notion, open <https://www.notion.so/developers/tokens> and make a **personal access token**:
+   give it a name, turn on **Notion API**, choose your workspace and an expiry date, and copy it.
+   It acts as you, so the app sees the pages you see; there is nothing to share with it.
+3. In the app: **Settings › Connection**, paste the token and tap **Test and save**. Then open
    **Browse**, tap a database and tap the bookmark icon to add it to the navigation (or
    **Settings › Views › Add view**).
+
+When the token expires, make a new one and paste it in the same place. An older **internal
+integration** key works too, but then the app only sees the pages you shared with that
+integration and can't add pages at the top of your workspace; Settings says so.
 
 ---
 

@@ -318,15 +318,18 @@ fun MainScreen(
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 if (state.isBrowse) {
                     SheetHeader(stringResource(R.string.new_page))
-                    ListItem(
-                        headlineContent = { Text(stringResource(R.string.new_page_top_level)) },
-                        supportingContent = { Text(stringResource(R.string.new_page_top_level_help)) },
-                        leadingContent = { Icon(Icons.Rounded.Workspaces, contentDescription = null) },
-                        modifier = Modifier.clickable {
-                            choosingDatabase = false
-                            viewModel.createPage(null, onOpenNote)
-                        },
-                    )
+                    // Notion only lets a personal access token add pages at the top of the workspace.
+                    if (state.canAddTopLevel) {
+                        ListItem(
+                            headlineContent = { Text(stringResource(R.string.new_page_top_level)) },
+                            supportingContent = { Text(stringResource(R.string.new_page_top_level_help)) },
+                            leadingContent = { Icon(Icons.Rounded.Workspaces, contentDescription = null) },
+                            modifier = Modifier.clickable {
+                                choosingDatabase = false
+                                viewModel.createPage(null, onOpenNote)
+                            },
+                        )
+                    }
                     browse.items.orEmpty().filter { !it.isDatabase && it.note?.databaseId == NotesRepository.PAGES }.forEach { page ->
                         ListItem(
                             headlineContent = { Text(stringResource(R.string.new_page_inside, page.title.ifBlank { stringResource(R.string.untitled) })) },

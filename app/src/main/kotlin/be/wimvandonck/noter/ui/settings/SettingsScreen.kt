@@ -2,6 +2,8 @@ package be.wimvandonck.noter.ui.settings
 
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.ViewList
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.material.icons.rounded.Visibility
@@ -22,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,6 +47,8 @@ import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import be.wimvandonck.noter.R
 import be.wimvandonck.noter.data.model.ThemeMode
+import be.wimvandonck.noter.data.notion.TokenKind
+import be.wimvandonck.noter.ui.theme.AppShapes
 import be.wimvandonck.noter.ui.theme.AppearanceSettings
 import be.wimvandonck.noter.ui.theme.SettingItem
 import be.wimvandonck.noter.ui.theme.SettingsBlock
@@ -115,10 +121,17 @@ private fun ConnectionSettings(state: SettingsUiState, viewModel: SettingsViewMo
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+    // How to make a personal access token, step by step (Notion's form changes rarely).
+    listOf(R.string.connection_step_1, R.string.connection_step_2, R.string.connection_step_3).forEachIndexed { index, step ->
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("${index + 1}.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(step), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        }
+    }
     TextButton(onClick = {
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, INTEGRATIONS_URL.toUri())) }
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, TOKENS_URL.toUri())) }
     }) {
-        Text(stringResource(R.string.connection_open_integrations))
+        Text(stringResource(R.string.connection_open_tokens))
         Spacer(Modifier.width(8.dp))
         Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
     }
@@ -126,7 +139,6 @@ private fun ConnectionSettings(state: SettingsUiState, viewModel: SettingsViewMo
         value = key,
         onValueChange = { key = it },
         label = { Text(stringResource(R.string.api_key)) },
-        placeholder = { Text(stringResource(R.string.api_key_placeholder)) },
         singleLine = true,
         visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -141,11 +153,15 @@ private fun ConnectionSettings(state: SettingsUiState, viewModel: SettingsViewMo
         modifier = Modifier.fillMaxWidth(),
     )
     when (val status = state.keyStatus) {
-        is KeyStatus.Ok -> StatusText(stringResource(R.string.key_ok, status.botName), error = false)
+        is KeyStatus.Ok -> if (status.info.kind == TokenKind.PERSONAL) {
+            StatusText(stringResource(R.string.key_ok, status.info.name), error = false)
+        }
         is KeyStatus.Failed -> StatusText(stringResource(R.string.key_failed, status.message), error = true)
         KeyStatus.Removed -> StatusText(stringResource(R.string.key_removed), error = false)
         else -> Unit
     }
+    // An internal connection's token works, but sees less: say what, and what to do about it.
+    if (state.hasKey && state.tokenKind == TokenKind.CONNECTION) ConnectionTokenWarning()
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Button(onClick = { viewModel.saveKey(key) }, enabled = key.isNotBlank() && state.keyStatus != KeyStatus.Testing) {
             if (state.keyStatus == KeyStatus.Testing) {
@@ -177,6 +193,24 @@ private fun ConnectionSettings(state: SettingsUiState, viewModel: SettingsViewMo
     }
 }
 
+/** Shown while the saved token is an internal connection's: what it can't do, and the fix. */
+@Composable
+private fun ConnectionTokenWarning() {
+    Surface(
+        shape = AppShapes.Item,
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+    ) {
+        Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(Icons.Rounded.Info, contentDescription = null)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(stringResource(R.string.connection_token_title), style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.connection_token_body), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
 @Composable
 private fun StatusText(text: String, error: Boolean) {
     Text(
@@ -186,5 +220,6 @@ private fun StatusText(text: String, error: Boolean) {
     )
 }
 
-private const val INTEGRATIONS_URL = "https://www.notion.so/profile/integrations"
+/** Notion's page for making personal access tokens (its Developer portal). */
+private const val TOKENS_URL = "https://www.notion.so/developers/tokens"
 private const val PRIVACY_URL = "https://github.com/wimvdon/noter-for-notion/blob/main/PRIVACY.md"
