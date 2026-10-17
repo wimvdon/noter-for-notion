@@ -216,7 +216,7 @@ class ViewsViewModel(
         viewModelScope.launch { repository.removeDatabase(id) }
     }
 
-    fun moveDatabase(id: String, up: Boolean) = viewModelScope.launch { repository.moveDatabase(id, up) }
+    fun moveDatabase(id: String, to: Int) = viewModelScope.launch { repository.moveDatabase(id, to) }
 
     companion object {
         /** A page's notebook: its notes (subpages) have only a title. */

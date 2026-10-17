@@ -31,11 +31,10 @@ object Destinations {
         return (chosen + Section.PINNED + Section.NOTEBOOKS).distinct() + Section.SEARCH
     }
 
-    /** The order to save after moving [section] one place up or down; Search can't move. */
-    fun moved(saved: List<String>, section: Section, up: Boolean): List<String> {
+    /** The order to save after moving [section] to place [to] in the bar; Search can't move. */
+    fun moved(saved: List<String>, section: Section, to: Int): List<String> {
         val movable = bar(saved).dropLast(1).toMutableList()
         val from = movable.indexOf(section)
-        val to = if (up) from - 1 else from + 1
         if (from >= 0 && to in movable.indices) movable.add(to, movable.removeAt(from))
         return movable.map { it.name }
     }

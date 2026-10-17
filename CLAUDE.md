@@ -45,7 +45,8 @@ Secrets, keystores (`*.jks`, `*.keystore`), `keystore.properties`, passwords or 
   Kotlin classes without Android types (no `Context`, `View`, Compose) so it runs on the JVM.
   Composables only display state and forward clicks.
 - **All user-visible text goes in `app/src/main/res/values/strings.xml`**, never hard-coded.
-  Add the translation to **every** `values-xx/strings.xml` (currently: `values-nl`).
+  Add the translation to **every** `values-xx/strings.xml` (currently: `nl`, `fr`, `de`, `es`, `it`),
+  using the shared wording in `DESIGN.md`.
 - **Stored data and backup:** settings the user would want on a new phone go in the DataStore
   `backed_up_settings` (Android backs it up); sign-in tokens, keys and device-only state go in
   another file (never backed up). See `docs/architecture.md`, "Backup".

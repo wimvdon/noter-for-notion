@@ -6,8 +6,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -59,6 +57,8 @@ import be.wimvandonck.noter.data.model.ThemeMode
 import be.wimvandonck.noter.data.notion.TokenKind
 import be.wimvandonck.noter.ui.theme.AppShapes
 import be.wimvandonck.noter.ui.theme.AppearanceSettings
+import be.wimvandonck.noter.ui.theme.DragHandle
+import be.wimvandonck.noter.ui.theme.ReorderableColumn
 import be.wimvandonck.noter.ui.theme.SettingItem
 import be.wimvandonck.noter.ui.theme.SettingsBlock
 import be.wimvandonck.noter.ui.theme.SettingsSection
@@ -126,15 +126,18 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpenViews
 }
 
 /**
- * The navigation bar's order: arrows to move Pinned and Notebooks; the first is where the app
- * opens. Search is locked at the end (it opens the keyboard).
+ * The navigation bar's order: drag Pinned and Notebooks; the first is where the app opens.
+ * Search is locked at the end (it opens the keyboard).
  */
 @Composable
-private fun NavigationBarSettings(saved: List<String>, onMove: (Destinations.Section, up: Boolean) -> Unit) {
+private fun NavigationBarSettings(saved: List<String>, onMove: (Destinations.Section, to: Int) -> Unit) {
     val bar = Destinations.bar(saved)
-    // The destinations that move: all but Search, the last.
-    val movable = bar.lastIndex
-    bar.forEachIndexed { index, destination ->
+    ReorderableColumn(
+        items = bar,
+        key = { it },
+        onMove = { from, to -> onMove(bar[from], to) },
+        movable = { it != Destinations.Section.SEARCH },
+    ) { destination ->
         val (label, icon) = when (destination) {
             Destinations.Section.PINNED -> stringResource(R.string.tab_home) to Icons.Rounded.PushPin
             Destinations.Section.NOTEBOOKS -> stringResource(R.string.section_views) to Icons.AutoMirrored.Rounded.LibraryBooks
@@ -144,7 +147,7 @@ private fun NavigationBarSettings(saved: List<String>, onMove: (Destinations.Sec
             headlineContent = { Text(label) },
             supportingContent = when {
                 destination == Destinations.Section.SEARCH -> { { Text(stringResource(R.string.navigation_search_last)) } }
-                index == 0 -> { { Text(stringResource(R.string.navigation_start)) } }
+                bar.indexOf(destination) == 0 -> { { Text(stringResource(R.string.navigation_start)) } }
                 else -> null
             },
             leadingContent = { Icon(icon, contentDescription = null) },
@@ -152,14 +155,7 @@ private fun NavigationBarSettings(saved: List<String>, onMove: (Destinations.Sec
                 if (destination == Destinations.Section.SEARCH) {
                     Icon(Icons.Rounded.Lock, contentDescription = null, Modifier.padding(horizontal = 12.dp))
                 } else {
-                    Row {
-                        IconButton(enabled = index > 0, onClick = { onMove(destination, true) }) {
-                            Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = stringResource(R.string.action_move_up))
-                        }
-                        IconButton(enabled = index < movable - 1, onClick = { onMove(destination, false) }) {
-                            Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.action_move_down))
-                        }
-                    }
+                    DragHandle(handleModifier)
                 }
             },
         )

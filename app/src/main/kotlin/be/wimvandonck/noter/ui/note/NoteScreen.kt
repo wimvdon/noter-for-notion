@@ -136,6 +136,7 @@ import androidx.compose.material.icons.rounded.BookmarkAdd
 import be.wimvandonck.noter.data.NotesRepository
 import androidx.compose.ui.draw.clip
 import be.wimvandonck.noter.logic.PropertyLayouts
+import be.wimvandonck.noter.ui.theme.readableWidth
 import be.wimvandonck.noter.ui.theme.AppShapes
 import be.wimvandonck.noter.ui.theme.SkeletonLine
 import androidx.compose.material.icons.automirrored.rounded.ArrowRight
@@ -319,7 +320,7 @@ fun NoteScreen(
 
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding).readableWidth(),
             contentPadding = PaddingValues(start = 20.dp, end = 12.dp, bottom = 32.dp),
         ) {
             note.cover?.let { cover ->

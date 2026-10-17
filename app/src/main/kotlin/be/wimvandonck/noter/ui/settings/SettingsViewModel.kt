@@ -92,9 +92,9 @@ class SettingsViewModel(
 
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { repository.updateSettings { it.copy(dynamicColor = enabled) } }
 
-    /** Moves [section] one place in the navigation bar (Search stays last). */
-    fun moveDestination(section: Destinations.Section, up: Boolean) = viewModelScope.launch {
-        repository.updateSettings { it.copy(navigation = Destinations.moved(it.navigation, section, up)) }
+    /** Moves [section] to place [to] in the navigation bar (Search stays last). */
+    fun moveDestination(section: Destinations.Section, to: Int) = viewModelScope.launch {
+        repository.updateSettings { it.copy(navigation = Destinations.moved(it.navigation, section, to)) }
     }
 
     companion object {

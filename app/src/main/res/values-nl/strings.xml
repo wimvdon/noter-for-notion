@@ -31,6 +31,7 @@
     <string name="section_others">Overige</string>
     <string name="action_new_note">Nieuwe notitie</string>
     <string name="new_note_in">Nieuwe notitie in</string>
+    <string name="action_reorder">Volgorde wijzigen</string>
     <string name="action_move_up">Omhoog</string>
     <string name="action_move_down">Omlaag</string>
     <string name="action_pin">Vastzetten</string>

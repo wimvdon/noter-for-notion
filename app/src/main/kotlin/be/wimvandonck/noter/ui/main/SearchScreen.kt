@@ -59,6 +59,7 @@ import be.wimvandonck.noter.data.model.WorkspaceItem
 import be.wimvandonck.noter.data.notion.InlineMarkdown
 import be.wimvandonck.noter.logic.NotionDates
 import be.wimvandonck.noter.ui.common.PageIconView
+import be.wimvandonck.noter.ui.theme.readableWidth
 import be.wimvandonck.noter.ui.theme.EmptyState
 import be.wimvandonck.noter.ui.theme.SkeletonLine
 import java.util.Locale
@@ -197,7 +198,7 @@ private fun Results(
     // A page already listed among the notes isn't listed again under Notion's results.
     val (databases, pages) = items.filterNot { !it.isDatabase && it.id.replace("-", "") in noteIds }.partition { it.isDatabase }
     val locale = LocalConfiguration.current.locales[0]
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+    LazyColumn(Modifier.fillMaxSize().readableWidth(), contentPadding = PaddingValues(bottom = 24.dp)) {
         if (notes.isNotEmpty()) {
             item(key = "__notes") { Header(stringResource(R.string.search_notes)) }
             items(notes, key = { "n" + it.id }) { note ->

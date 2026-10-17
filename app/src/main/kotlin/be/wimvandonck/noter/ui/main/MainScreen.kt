@@ -133,6 +133,8 @@ import be.wimvandonck.noter.logic.NoteTargets
 import be.wimvandonck.noter.logic.Notebooks
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
+import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Workspaces
 import androidx.compose.material.icons.rounded.FilterAltOff
@@ -212,13 +214,23 @@ fun MainScreen(
                     Destinations.Section.PINNED -> NavigationBarItem(
                         selected = section == Destinations.Section.PINNED,
                         onClick = { viewModel.selectTab(Destinations.PINNED) },
-                        icon = { Icon(Icons.Rounded.PushPin, contentDescription = null) },
+                        icon = {
+                            Icon(
+                                if (section == Destinations.Section.PINNED) Icons.Rounded.PushPin else Icons.Outlined.PushPin,
+                                contentDescription = null,
+                            )
+                        },
                         label = { Text(stringResource(R.string.tab_home), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     )
                     Destinations.Section.NOTEBOOKS -> NavigationBarItem(
                         selected = section == Destinations.Section.NOTEBOOKS,
                         onClick = { viewModel.selectNotebooks() },
-                        icon = { Icon(Icons.AutoMirrored.Rounded.LibraryBooks, contentDescription = null) },
+                        icon = {
+                            Icon(
+                                if (section == Destinations.Section.NOTEBOOKS) Icons.AutoMirrored.Rounded.LibraryBooks else Icons.AutoMirrored.Outlined.LibraryBooks,
+                                contentDescription = null,
+                            )
+                        },
                         label = { Text(stringResource(R.string.section_views), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     )
                     Destinations.Section.SEARCH -> NavigationBarItem(

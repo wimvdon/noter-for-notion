@@ -49,10 +49,10 @@ class DestinationsTest {
 
     @Test
     fun `moving swaps Pinned and Notebooks, never past Search`() {
-        assertEquals(listOf("NOTEBOOKS", "PINNED"), Destinations.moved(emptyList(), Section.NOTEBOOKS, up = true))
-        assertEquals(listOf("NOTEBOOKS", "PINNED"), Destinations.moved(emptyList(), Section.PINNED, up = false))
-        assertEquals(listOf("PINNED", "NOTEBOOKS"), Destinations.moved(emptyList(), Section.NOTEBOOKS, up = false))
-        assertEquals(listOf("PINNED", "NOTEBOOKS"), Destinations.moved(emptyList(), Section.SEARCH, up = true))
+        assertEquals(listOf("NOTEBOOKS", "PINNED"), Destinations.moved(emptyList(), Section.NOTEBOOKS, to = 0))
+        assertEquals(listOf("NOTEBOOKS", "PINNED"), Destinations.moved(emptyList(), Section.PINNED, to = 1))
+        assertEquals(listOf("PINNED", "NOTEBOOKS"), Destinations.moved(emptyList(), Section.NOTEBOOKS, to = 2))
+        assertEquals(listOf("PINNED", "NOTEBOOKS"), Destinations.moved(emptyList(), Section.SEARCH, to = 0))
     }
 
     @Test
