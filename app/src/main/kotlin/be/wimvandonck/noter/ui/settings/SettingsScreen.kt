@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import be.wimvandonck.noter.R
+import be.wimvandonck.noter.ui.common.errorText
 import be.wimvandonck.noter.data.model.ThemeMode
 import be.wimvandonck.noter.data.notion.TokenKind
 import be.wimvandonck.noter.ui.theme.AppShapes
@@ -156,7 +157,7 @@ private fun ConnectionSettings(state: SettingsUiState, viewModel: SettingsViewMo
         is KeyStatus.Ok -> if (status.info.kind == TokenKind.PERSONAL) {
             StatusText(stringResource(R.string.key_ok, status.info.name), error = false)
         }
-        is KeyStatus.Failed -> StatusText(stringResource(R.string.key_failed, status.message), error = true)
+        is KeyStatus.Failed -> StatusText(stringResource(R.string.key_failed, errorText(status.message)), error = true)
         KeyStatus.Removed -> StatusText(stringResource(R.string.key_removed), error = false)
         else -> Unit
     }

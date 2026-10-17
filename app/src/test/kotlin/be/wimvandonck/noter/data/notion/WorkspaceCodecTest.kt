@@ -63,4 +63,14 @@ class WorkspaceCodecTest {
         val db = obj("""{"object":"database","id":"db1","data_sources":[{"id":"ds1","name":"Notes"},{"id":"ds2","name":"Archive"}]}""")
         assertEquals(listOf("ds1" to "Notes", "ds2" to "Archive"), WorkspaceCodec.dataSources(db).map { it.id to it.title })
     }
+
+    @Test
+    fun `a database whose data sources are listed is left out, they are listed instead`() {
+        val shell = obj("""{"object":"database","id":"db-1","title":[{"plain_text":"Health"}]}""")
+        val skin = obj("""{"object":"data_source","id":"ds1","title":[{"plain_text":"Skin"}],"parent":{"type":"database_id","database_id":"db1"}}""")
+        val food = obj("""{"object":"data_source","id":"ds2","title":[{"plain_text":"Food"}],"parent":{"type":"database_id","database_id":"db1"}}""")
+        val other = obj("""{"object":"database","id":"db9","title":[{"plain_text":"Books"}]}""")
+        val items = WorkspaceCodec.parseAll(listOf(shell, skin, food, other, page), includeNotes = false, pagesKey = "pages")
+        assertEquals(listOf("Skin", "Food", "Books", "Ideas"), items.map { it.title })
+    }
 }

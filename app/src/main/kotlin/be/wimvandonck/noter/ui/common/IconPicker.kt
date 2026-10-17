@@ -1,6 +1,10 @@
 package be.wimvandonck.noter.ui.common
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,6 +20,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -33,7 +39,8 @@ import be.wimvandonck.noter.data.icons.IconCatalog
 
 /**
  * Choose an icon from the whole Material Symbols set: a search field (English names and topics)
- * above a grid of matching icons, suggestions first when nothing is typed.
+ * above a grid of matching icons, suggestions first when nothing is typed. The grid sits in an
+ * outlined box of a fixed height, so fewer matches don't move what comes below.
  */
 @Composable
 fun IconPicker(selected: String?, onSelect: (String) -> Unit) {
@@ -50,17 +57,24 @@ fun IconPicker(selected: String?, onSelect: (String) -> Unit) {
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
+        Surface(
+            shape = MaterialTheme.shapes.medium,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            modifier = Modifier.fillMaxWidth().height(GRID_HEIGHT),
+        ) {
         if (results.isEmpty()) {
-            Text(
-                stringResource(R.string.icon_none_found),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.height(GRID_HEIGHT),
-            )
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    stringResource(R.string.icon_none_found),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(48.dp),
-                modifier = Modifier.fillMaxWidth().height(GRID_HEIGHT),
+                contentPadding = PaddingValues(4.dp),
+                modifier = Modifier.fillMaxSize(),
             ) {
                 items(results, key = { it.name }) { option ->
                     IconToggleButton(
@@ -77,6 +91,7 @@ fun IconPicker(selected: String?, onSelect: (String) -> Unit) {
                     }
                 }
             }
+        }
         }
     }
 }

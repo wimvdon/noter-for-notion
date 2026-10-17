@@ -29,6 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import be.wimvandonck.noter.ui.main.DatabaseScreen
 import be.wimvandonck.noter.ui.main.MainScreen
 import be.wimvandonck.noter.ui.main.MainViewModel
+import be.wimvandonck.noter.ui.main.PickNotebookScreen
 import be.wimvandonck.noter.ui.note.NoteScreen
 import be.wimvandonck.noter.ui.settings.SettingsScreen
 import be.wimvandonck.noter.ui.settings.SettingsViewModel
@@ -72,7 +73,7 @@ private class ScreenOwner(
  */
 @Composable
 fun AppNavigation() {
-    // Entries: "main", "settings", "views", "note:<page id>" or "database:<database id>".
+    // Entries: "main", "settings", "views", "pick-notebook", "note:<page id>" or "database:<database id>".
     var stack by rememberSaveable { mutableStateOf(listOf(MAIN)) }
     val mainViewModel: MainViewModel = viewModel(factory = MainViewModel.Factory)
     val stores: ScreenStores = viewModel()
@@ -128,11 +129,35 @@ fun AppNavigation() {
                         onBack = ::pop,
                         onOpenViews = { push(VIEWS) },
                     )
-                    top == VIEWS || top.startsWith(EDIT_VIEW) || top.startsWith(ADD_NOTEBOOK) -> ViewsScreen(
-                        viewModel = viewModel(factory = ViewsViewModel.Factory),
-                        onBack = ::pop,
-                        editViewId = top.removePrefix(EDIT_VIEW).takeIf { top.startsWith(EDIT_VIEW) },
-                        addDatabaseId = top.removePrefix(ADD_NOTEBOOK).takeIf { top.startsWith(ADD_NOTEBOOK) },
+                    top == VIEWS || top.startsWith(EDIT_VIEW) || top.startsWith(ADD_NOTEBOOK) -> {
+                        // "add-notebook:<key>" from a database's page or a page, with "\n<title>" from the picker.
+                        val adding = top.removePrefix(ADD_NOTEBOOK).takeIf { top.startsWith(ADD_NOTEBOOK) }
+                        ViewsScreen(
+                            viewModel = viewModel(factory = ViewsViewModel.Factory),
+                            onBack = ::pop,
+                            onAddNotebook = { push(PICK_NOTEBOOK) },
+                            editViewId = top.removePrefix(EDIT_VIEW).takeIf { top.startsWith(EDIT_VIEW) },
+                            addDatabaseId = adding?.substringBefore('\n'),
+                            addTitle = adding?.takeIf { '\n' in it }?.substringAfter('\n'),
+                        )
+                    }
+                    top == PICK_NOTEBOOK -> PickNotebookScreen(
+                        viewModel = mainViewModel,
+                        onBack = {
+                            mainViewModel.resetSearch()
+                            pop()
+                        },
+                        onPick = { key, title ->
+                            mainViewModel.resetSearch()
+                            // Manage notebooks again, with the new notebook's setup open.
+                            val kept = stack.dropLastWhile { it == PICK_NOTEBOOK || it == VIEWS }
+                            val closed = stack.drop(kept.size)
+                            stack = kept + (ADD_NOTEBOOK + key + "\n" + title)
+                            scope.launch {
+                                delay(CLEAR_DELAY_MS)
+                                closed.filterNot { it in stack }.forEach(stores::clear)
+                            }
+                        },
                     )
                     top.startsWith(NOTE) -> NoteScreen(
                         pageId = top.removePrefix(NOTE),
@@ -161,6 +186,9 @@ private const val VIEWS = "views"
 
 /** Manage notebooks with one notebook's setup open. */
 private const val EDIT_VIEW = "views:"
+
+/** Search for a database or page to add as a notebook. */
+private const val PICK_NOTEBOOK = "pick-notebook"
 
 /** Manage notebooks, or adding a notebook of a database or page. */
 private const val ADD_NOTEBOOK = "add-notebook:"

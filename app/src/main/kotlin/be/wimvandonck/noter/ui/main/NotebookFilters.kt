@@ -1,15 +1,11 @@
 package be.wimvandonck.noter.ui.main
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,21 +17,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.SwapVert
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -43,34 +33,19 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import be.wimvandonck.noter.R
 import be.wimvandonck.noter.data.model.NotebookSort
+import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.data.model.SortKind
-import be.wimvandonck.noter.logic.ChipGroup
 import be.wimvandonck.noter.logic.Notebooks
+import be.wimvandonck.noter.ui.note.PropertyArranger
 
 /** What the Filters panel and the Sort menu change in the notebook shown. */
 class NotebookActions(
@@ -155,209 +130,42 @@ private fun sortLabel(sort: NotebookSort): String = when (sort.kind) {
 }
 
 /**
- * The notebook's Filters panel: every property it can filter by, with its values. The eye gives a
- * property a row of chips above the notes; those come first, in the order of the rows, and are
- * dragged by their handle to change it. Everything is kept on this phone.
+ * The notebook's Filters panel: which properties have a row of chips above the notes, arranged
+ * like a note's properties (drag by the handle, past the "Hidden" line, or the eye), and Clear
+ * filters. Everything is kept on this phone.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun NotebookFiltersSheet(
     state: MainUiState,
     actions: NotebookActions,
-    onToggle: (property: String, key: String) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val notebook = state.notebook ?: return
-    val groups = state.filterOptions.mapNotNull { group -> group.property?.let { it.name to group } }.toMap()
-    val (rows, others) = Notebooks.chipRows(groups.keys.toList(), notebook.quickFilters)
-    // A working copy of the rows' order, so a dragged property moves at once.
-    val order = remember { mutableStateListOf<String>() }
-    var dragging by remember { mutableStateOf<String?>(null) }
-    var dragOffset by remember { mutableFloatStateOf(0f) }
-    val heights = remember { mutableStateMapOf<String, Int>() }
-    if (dragging == null && order.toList() != rows) {
-        order.clear()
-        order.addAll(rows)
-    }
-    val spacing = with(LocalDensity.current) { SECTION_SPACING.toPx() }
-    val haptics = LocalHapticFeedback.current
-
-    fun move(name: String, by: Int): Boolean {
-        val from = order.indexOf(name)
-        val to = from + by
-        if (from < 0 || to !in order.indices) return false
-        order.add(to, order.removeAt(from))
-        return true
-    }
-
+    val candidates = state.filterOptions.mapNotNull { it.property?.name }
+    val (rows, others) = Notebooks.chipRows(candidates, notebook.quickFilters)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(
             Modifier
                 .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(start = 24.dp, end = 12.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(SECTION_SPACING),
         ) {
             Row(Modifier.padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.filters), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                 if (state.filterCount > 0) TextButton(onClick = onClear) { Text(stringResource(R.string.empty_clear_filters)) }
             }
-            Text(
-                stringResource(R.string.chip_rows_help),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(end = 12.dp),
+            PropertyArranger(
+                names = candidates,
+                layout = PropertyLayout(order = rows + others, hidden = others),
+                onArrange = { shown, _ -> actions.onQuickFilters(shown) },
+                onDone = null,
+                shownTitle = stringResource(R.string.chip_rows_shown),
             )
-            (order + others).forEach { name ->
-                val group = groups[name] ?: return@forEach
-                key(name) {
-                    val inRow = name in order
-                    val isDragging = dragging == name
-                    FilterSection(
-                        group = group,
-                        state = state,
-                        inRow = inRow,
-                        onToggle = onToggle,
-                        onEye = { actions.onQuickFilters(if (inRow) order - name else order + name) },
-                        handle = if (!inRow) {
-                            null
-                        } else {
-                            { DragHandle(Modifier.pointerInput(name) {
-                                detectDragGestures(
-                                    onDragStart = {
-                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        dragging = name
-                                        dragOffset = 0f
-                                    },
-                                    onDrag = { change, amount ->
-                                        change.consume()
-                                        dragOffset += amount.y
-                                        // Past half of the neighbour: change places with it, and keep the
-                                        // section under the finger (the sections differ in height).
-                                        val i = order.indexOf(name)
-                                        val below = order.getOrNull(i + 1)?.let { heights[it] }
-                                        val above = order.getOrNull(i - 1)?.let { heights[it] }
-                                        if (below != null && dragOffset > (below + spacing) / 2 && move(name, 1)) dragOffset -= below + spacing
-                                        if (above != null && dragOffset < -(above + spacing) / 2 && move(name, -1)) dragOffset += above + spacing
-                                    },
-                                    onDragEnd = {
-                                        dragging = null
-                                        dragOffset = 0f
-                                        actions.onQuickFilters(order.toList())
-                                    },
-                                    onDragCancel = {
-                                        dragging = null
-                                        dragOffset = 0f
-                                    },
-                                )
-                            }) }
-                        },
-                        onMove = { by -> if (move(name, by)) actions.onQuickFilters(order.toList()) },
-                        modifier = Modifier
-                            .onSizeChanged { heights[name] = it.height }
-                            .zIndex(if (isDragging) 1f else 0f)
-                            .graphicsLayer {
-                                if (isDragging) {
-                                    translationY = dragOffset
-                                    shadowElevation = 8f
-                                }
-                            },
-                    )
-                }
-            }
         }
     }
 }
-
-/**
- * One property in the Filters panel: its name, the eye (a row of chips above the notes or not)
- * and, for a row, the drag handle; then its values to filter by.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun FilterSection(
-    group: ChipGroup,
-    state: MainUiState,
-    inRow: Boolean,
-    onToggle: (property: String, key: String) -> Unit,
-    onEye: () -> Unit,
-    handle: (@Composable () -> Unit)?,
-    onMove: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val property = group.property ?: return
-    val moveUp = stringResource(R.string.action_move_up)
-    val moveDown = stringResource(R.string.action_move_down)
-    Column(
-        modifier
-            .fillMaxWidth()
-            // Opaque, so a dragged section covers the ones it passes.
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .semantics {
-                if (inRow) {
-                    customActions = listOf(
-                        CustomAccessibilityAction(moveUp) { onMove(-1); true },
-                        CustomAccessibilityAction(moveDown) { onMove(1); true },
-                    )
-                }
-            },
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        HorizontalDivider(Modifier.padding(end = 12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                property.name,
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).semantics { heading() },
-            )
-            IconToggleButton(checked = inRow, onCheckedChange = { onEye() }) {
-                Icon(
-                    if (inRow) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
-                    contentDescription = stringResource(R.string.chip_row_shown, property.name),
-                    tint = if (inRow) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (handle != null) {
-                handle()
-            } else {
-                Spacer(Modifier.width(48.dp))
-            }
-        }
-        if (group.chips.isEmpty()) {
-            Text(
-                stringResource(R.string.filter_no_values),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            FlowRow(Modifier.padding(end = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                group.chips.forEach { chip ->
-                    FilterChip(
-                        selected = chip.key in group.selected,
-                        onClick = { onToggle(property.name, chip.key) },
-                        label = { ChipText(chipLabel(chip, property.name, state), chip.count) },
-                    )
-                }
-            }
-        }
-    }
-}
-
-/** The handle a row of chips is dragged by ([modifier] has the drag gesture). */
-@Composable
-private fun DragHandle(modifier: Modifier) {
-    Icon(
-        Icons.Rounded.DragIndicator,
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.padding(12.dp),
-    )
-}
-
-private val SECTION_SPACING = 12.dp
 
 /**
  * A chip's words with how many notes have it, the count set apart in a quieter color (so the

@@ -202,7 +202,7 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   white text lines, with a white gap between the notes. Gradient `#FFC94D` → `#F5A623` →
   `#E8710A` (amber) from top left to bottom right, on the white background; the folded corner
   shows the paler back of the paper. Themed layer: the same shapes with thin gaps, text lines
-  cut out. Both layers are drawn at 78% of their first size, centred on the visible drawing (the
+  cut out. Both layers are drawn at 64% of their first size, centred on the visible drawing (the
   folded corner and the note behind balance each other), so the notes keep clear padding inside
   round and squircle launcher masks (owner's request).
 - View icons: the whole Material Symbols set (outlined, rounded), searchable by English name and
@@ -222,8 +222,9 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   while filters are on; Sort opens a menu with a check on the current sort and an arrow (up:
   ascending, down: descending) that tapping the current sort again turns around. Each quick
   filter has a row of chips of its own above the notes, starting with the property's name (Label
-  Large, `onSurfaceVariant`). In the Filters panel each property has an eye and, when it has a
-  row, a drag handle on the right. A chip's count of notes sits in a small
+  Large, `onSurfaceVariant`) and, while something in it is selected, ending in an × icon button
+  outside the scrolling chips. The Filters panel is the property arranger: "Shown" and "Hidden"
+  sections, a drag handle and an eye on each property. A chip's count of notes sits in a small
   `surfaceContainerHighest` pill after its label.
 - Search, a destination: a search icon and the query field in the app bar, then "Notes on this phone", "Databases" and "Pages" headers (Title
   Small, primary). A database opened from Search is a child page with an "Add as notebook" text

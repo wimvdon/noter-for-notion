@@ -12,19 +12,21 @@ properties and content: the pages of databases and pages on their own.
   tapping Notebooks shows the notebook seen last. The top app bar has the sync button, a
   notebook's **Filters** and **Sort** buttons, and a ⋮ menu with Edit notebook (in a notebook),
   Manage notebooks and Settings. Back from Notebooks or Search goes to Pinned first.
-  - **Pinned**: the pinned notes of everything (databases and pages), filtered by source.
+  - **Pinned**: the pinned notes of everything (databases and pages), filtered by source. Any
+    page can be pinned, also one that isn't in a notebook; a note made with + on Pinned is pinned.
   - **Notebooks** (`DatabaseConfig`, kept under `AppSettings.databases`; the code still calls them
     views, the screens say "notebook" in every language, as a name of the app's own): all notes of
     a database (its raw data source; Notion's views aren't used), set up on this phone
     (`logic/Notebooks.kt`): the notebook's own filters per property (a note shows when it has one
     of the selected values of every filtering property), and its sort: the custom order (dragged),
     last edited, created, title or a date property. **Filters** (a dot on the button while
-    filters are on) opens the panel: every property it can filter by, with its values; an eye
-    gives a property its own row of chips above the notes, and those come first and are dragged
-    by their handle to change the order of the rows; Clear filters. **Sort** is a menu: tapping
-    the current sort again turns it around, an arrow shows which way. Above the notes, one row of
-    chips per quick filter (`DatabaseConfig.quickFilters`, in order), each starting with the
-    property's name.
+    filters are on) opens the panel: the properties it can filter by, arranged like a note's
+    properties with `PropertyArranger` ("Shown" ones have a row of chips above the notes, in
+    that order; dragged past the "Hidden" line, or the eye, a property stops filtering); Clear
+    filters. **Sort** is a menu: tapping the current sort again turns it around, an arrow shows
+    which way. Above the notes, one row of chips per quick filter (`DatabaseConfig.quickFilters`),
+    each starting with the property's name and, while something in it is selected, ending in ×;
+    a row only shows once a note has a value for its property (`ChipFilter.anyValue`).
     Dragging a note in another sort switches to the custom order, starting from the order on
     screen, with an Undo snackbar. Notebooks that followed a Notion view before (`viewId` in old
     settings) now show all notes of their database, in the custom order.
@@ -33,7 +35,7 @@ properties and content: the pages of databases and pages on their own.
     on it), "Page order" is their order on the page (`ViewResult`, `views.json`), and a new
     note is a new subpage. Each refresh lists the page's blocks and downloads only the subpages
     that changed (`refreshSubpages`). It has nothing to filter by. Added from "Add notebook"
-    (Pages) or a page's ⋮ menu, "Add as notebook".
+    (a page in the search) or a page's ⋮ menu, "Add as notebook".
   Notes are cards in a staggered grid with a preview of their content; pinned notes come first
   under "Pinned". Long-press and drag moves a note within its section; a long press without
   moving opens its menu (pin, move to trash). While dragging, the card's place is worked out from
@@ -50,14 +52,18 @@ properties and content: the pages of databases and pages on their own.
   gets its value where it can (not for computed properties; a date only for Today).
 - **Search** (`SearchScreen.kt`, a destination in the navigation bar): the notes on this phone whose
   title has every word typed (`logic/NoteSearch.kt`, at once and offline), then the databases and
-  pages Notion's search finds; before anything is typed, Notion's most recently edited ones. It
-  replaces the Browse tab: browsing Notion is something to do now and then, not a place to stay.
+  pages Notion's search finds; before anything is typed, Notion's most recently edited ones. A
+  database whose data sources are in the results is left out (`WorkspaceCodec.parseAll`: it is
+  only their container); each data source is listed. The search starts afresh each time Search
+  is opened. + offers a new note as on Pinned (not pinned). "Add notebook" in Manage notebooks
+  opens the same search (`PickNotebookScreen`) with only databases and pages on their own.
 - **Database** (`DatabaseScreen.kt`): a database opened from Search or a link in a note, as a
   child page with its notes and filters; "Add as notebook" makes it a notebook, after which the
   button is "Edit notebook" and opens its setup (Manage notebooks), so it isn't added twice.
 - **New pages**: + on Pinned offers a note in one of the notebooks and, with a personal access
   token, a page at the top of the workspace (among the user's private pages; when Notion refuses,
-  the page is removed again and the app explains).
+  the page is removed again and the app explains); a page made there is pinned. A page's ⋮ menu
+  has "New subpage".
 - **Note** (`ui/note/`): header image, icon (tap it, or "Add icon", to choose an emoji in
   `PageIconSheet.kt`: common ones, any other typed with the keyboard (`logic/EmojiInput.kt`), or
   none; sent as `PendingOp.SetIcon`, or with the create for a new note), title, properties (`PropertyEditors.kt`), then the content as a
@@ -68,13 +74,15 @@ properties and content: the pages of databases and pages on their own.
   Notion, every property is shown until the user hides it; hidden ones are folded away under "N
   more properties". The tune button turns the properties into a list to arrange in place: drag a
   property by its handle to change the order, and below the "Hidden" line to hide it (the eye does
-  the same with one tap); "Done" goes back. What the cards in the overview show is set up with the
-  view (Manage views): the header image (off by default), the start of the content (on; when off,
-  no previews are downloaded for that database) and up to three properties (else the card shows
-  the filter property). All of it is kept per database in `AppSettings.propertyLayouts` (backed
-  up), so it applies to every view of that database.
+  the same with one tap); "Done" goes back. This is kept per database in
+  `AppSettings.propertyLayouts` (backed up). What the cards in the overview show is set up per
+  notebook (`DatabaseConfig.cards`, in Edit notebook): the header image (off by default), the
+  start of the content (on; when off, no previews are downloaded for it) and up to three
+  properties (else the card shows the filter property). A notebook from before starts from what
+  its database's cards showed (`PropertyLayouts.cards`); on Pinned a note's card follows the
+  first notebook of its database (`PropertyLayouts.cardLayouts`).
 - **Manage notebooks** (`ui/views/`): the notebooks in their order (up/down; the order of the
-  tabs); tapping one edits its name, icon and what the cards show. "Add notebook" picks a database (all its notes;
+  tabs); tapping one edits its name, icon and what the cards show. "Add notebook" opens Search to pick a database (all its notes;
   `Notebooks.newNotebook` gives it a status, else a select, property as its first row of chips,
   in the custom order) or a page (its subpages). Filters and sort are changed in the notebook
   itself. "Add as notebook" on a database's page opens the same step. Opens from the ⋮ menu
@@ -87,6 +95,9 @@ properties and content: the pages of databases and pages on their own.
 - **Settings** (`ui/settings/`): Connection (a personal access token, with the steps to make one,
   and sync status), Views (a link to Manage views), Appearance; built from the shared
   `SettingsKit.kt`.
+- **Errors** (`data/api/NotionErrors.kt`, `ui/common/ErrorText.kt`): the screens keep an error as
+  a key for the common cases (no connection, not found or not shared, Notion busy, token refused,
+  no data source), said in the user's language; other errors keep Notion's own (English) message.
 - **Token kind** (`data/notion/TokenCodec.kt`): Notion's `GET /users/me` says whether the token
   is a personal access token (a bot owned by a person) or an internal connection's (owned by the
   workspace). It is kept with the token (`ApiKeyStore.kind`; keys saved before are checked once

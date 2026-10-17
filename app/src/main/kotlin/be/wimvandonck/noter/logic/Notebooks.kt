@@ -83,10 +83,11 @@ object Notebooks {
             val keys = ChipFilter.chips(property, notes, today).map { it.key }.toSet()
             values.filter { it in keys }.toSet()
         }
+        // A row only shows once a note has a value for its property.
         val groups = config.quickFilters.mapNotNull { name ->
             val property = schema?.property(name) ?: return@mapNotNull null
             ChipGroup(property, ChipFilter.chips(property, notes, today), selected[name].orEmpty())
-        }
+        }.filter { ChipFilter.anyValue(it.chips) }
         val filtered = filter(notes, selected, today)
         val sort = config.currentSort
         val sortedNotes = sorted(filtered, sort, pageOrder?.ids.orEmpty(), customOrder)

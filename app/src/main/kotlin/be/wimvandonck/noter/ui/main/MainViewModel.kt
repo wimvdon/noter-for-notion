@@ -9,6 +9,7 @@ import be.wimvandonck.noter.NoterApp
 import be.wimvandonck.noter.data.DatabaseState
 import be.wimvandonck.noter.data.NotesRepository
 import be.wimvandonck.noter.data.RepoEvent
+import be.wimvandonck.noter.data.api.NotionErrors
 import be.wimvandonck.noter.data.api.NotionException
 import be.wimvandonck.noter.data.model.DatabaseConfig
 import be.wimvandonck.noter.data.model.NotebookSort
@@ -31,6 +32,7 @@ import be.wimvandonck.noter.logic.Notebooks
 import be.wimvandonck.noter.logic.NoteLists
 import be.wimvandonck.noter.logic.NoteSearch
 import be.wimvandonck.noter.logic.NoteSource
+import be.wimvandonck.noter.logic.PropertyLayouts
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -70,7 +72,7 @@ data class MainUiState(
     val databaseIcons: Map<String, String> = emptyMap(),
     /** The property cards show when no properties were chosen for them (the first quick filter). */
     val cardProperty: String? = null,
-    /** How each database shows its properties, for the properties on the cards. */
+    /** How each database shows its properties, with what its cards show (see PropertyLayouts.cardLayouts). */
     val propertyLayouts: Map<String, PropertyLayout> = emptyMap(),
     /** True while nothing is cached yet for this tab and the first download runs. */
     val loading: Boolean = false,
@@ -228,7 +230,7 @@ class MainViewModel(
             currentTab = tabKey,
             pinnedIds = settings.pinned.toSet(),
             databaseIcons = notebooks.reversed().associate { it.sourceId to it.icon },
-            propertyLayouts = settings.propertyLayouts,
+            propertyLayouts = PropertyLayouts.cardLayouts(settings.propertyLayouts, notebooks),
             pendingCount = pending,
             offline = offline,
             views = notebooks,
@@ -253,7 +255,8 @@ class MainViewModel(
             else -> {
                 val notebook = notebooks.first { it.id == tabKey }
                 val pageOrder = if (notebook.pageId != null) pageOrders[notebook.sourceId] else null
-                notebookContent(base, notebook, databases[notebook.sourceId], pageOrder, settings)
+                val withCards = base.copy(propertyLayouts = PropertyLayouts.cardLayouts(settings.propertyLayouts, notebooks, notebook))
+                notebookContent(withCards, notebook, databases[notebook.sourceId], pageOrder, settings)
                     .copy(notebook = notebook)
             }
         }
@@ -274,6 +277,8 @@ class MainViewModel(
 
     /** Shows Pinned, Search or a notebook (its key). */
     fun selectTab(key: String) {
+        // Search starts afresh each time it is opened.
+        if (currentTab.value == Destinations.SEARCH && key != Destinations.SEARCH) resetSearch()
         currentTab.value = key
         if (Destinations.section(key) == Destinations.Section.NOTEBOOKS && key != Destinations.NOTEBOOKS) lastNotebook = key
         viewModelScope.launch {
@@ -308,8 +313,15 @@ class MainViewModel(
         if (state.value.isHome) pinnedChips.value = emptySet() else updateNotebook { it.copy(selected = emptyMap()) }
     }
 
-    /** The properties with a row of chips above the notes, in this order. */
-    fun setQuickFilters(properties: List<String>) = updateNotebook { it.copy(quickFilters = properties) }
+    /**
+     * The properties with a row of chips above the notes, in this order. A hidden property doesn't
+     * filter any more (nothing would show why notes are missing).
+     */
+    fun setQuickFilters(properties: List<String>) =
+        updateNotebook { it.copy(quickFilters = properties, selected = it.selected.filterKeys { name -> name in properties }) }
+
+    /** The × at the end of a row of chips: [property] doesn't filter any more. */
+    fun clearRow(property: String) = updateNotebook { it.copy(selected = it.selected - property) }
 
     fun setSort(sort: NotebookSort?) = updateNotebook { it.copy(sort = sort) }
 
@@ -392,7 +404,13 @@ class MainViewModel(
 
     /** Makes a page on its own: inside page [parentPageId], or at the top of the workspace. */
     fun createPage(parentPageId: String?, onCreated: (String) -> Unit) {
-        viewModelScope.launch { onCreated(repository.createPage(parentPageId)) }
+        val home = state.value.isHome
+        viewModelScope.launch {
+            val id = repository.createPage(parentPageId)
+            // Made on Pinned: pinned, so it shows up there.
+            if (home) repository.togglePin(id)
+            onCreated(id)
+        }
     }
 
     // ---- Browse ----
@@ -405,6 +423,12 @@ class MainViewModel(
      * Searches the notes here at once, and Notion's pages and databases after a short pause in
      * typing (each letter isn't a request).
      */
+    /** Back to an empty search (when leaving Search). */
+    fun resetSearch() {
+        searchJob?.cancel()
+        _browse.value = BrowseState()
+    }
+
     fun search(query: String) {
         val notes = NoteSearch.matches(repository.databases.value.values.flatMap { it.notes }, query)
         _browse.update { it.copy(query = query, notes = notes, loading = true, error = null) }
@@ -415,7 +439,7 @@ class MainViewModel(
                 val items = repository.browse(query)
                 _browse.update { it.copy(items = items, loading = false) }
             } catch (e: NotionException) {
-                _browse.update { it.copy(loading = false, error = e.message.orEmpty()) }
+                _browse.update { it.copy(loading = false, error = NotionErrors.of(e)) }
             }
         }
     }

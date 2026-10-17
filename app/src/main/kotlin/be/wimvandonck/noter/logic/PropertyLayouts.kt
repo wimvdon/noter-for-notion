@@ -1,5 +1,7 @@
 package be.wimvandonck.noter.logic
 
+import be.wimvandonck.noter.data.model.CardLayout
+import be.wimvandonck.noter.data.model.DatabaseConfig
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.PropertyLayout
 
@@ -42,21 +44,32 @@ object PropertyLayouts {
         return if (name in shown) arranged(layout, shown - name, listOf(name) + hidden) else arranged(layout, shown + name, hidden - name)
     }
 
+    /**
+     * What [notebook]'s cards show: its own choice, else what its database's cards showed before
+     * cards were set per notebook ([layout]).
+     */
+    fun cards(notebook: DatabaseConfig?, layout: PropertyLayout?): CardLayout =
+        notebook?.cards ?: CardLayout(layout?.coverOnCard == true, layout?.contentOnCard != false, layout?.onCard.orEmpty())
+
     /** Puts [name] on the card or takes it off; nothing changes when the card already has [MAX_ON_CARD]. */
-    fun toggleOnCard(layout: PropertyLayout?, name: String): PropertyLayout {
-        val base = layout ?: PropertyLayout()
-        return when {
-            name in base.onCard -> base.copy(onCard = base.onCard - name)
-            base.onCard.size >= MAX_ON_CARD -> base
-            else -> base.copy(onCard = base.onCard + name)
-        }
+    fun toggleOnCard(cards: CardLayout, name: String): CardLayout = when {
+        name in cards.properties -> cards.copy(properties = cards.properties - name)
+        cards.properties.size >= MAX_ON_CARD -> cards
+        else -> cards.copy(properties = cards.properties + name)
     }
 
-    /** Shows the header image on the cards, or not. */
-    fun setCoverOnCard(layout: PropertyLayout?, shown: Boolean): PropertyLayout = (layout ?: PropertyLayout()).copy(coverOnCard = shown)
-
-    /** Shows the start of the content on the cards, or not. */
-    fun setContentOnCard(layout: PropertyLayout?, shown: Boolean): PropertyLayout = (layout ?: PropertyLayout()).copy(contentOnCard = shown)
+    /**
+     * Each database's layout with what its cards show filled in, for the overview: from [current]
+     * (the notebook shown) for its database, else from the first notebook of the database.
+     */
+    fun cardLayouts(layouts: Map<String, PropertyLayout>, notebooks: List<DatabaseConfig>, current: DatabaseConfig? = null): Map<String, PropertyLayout> {
+        val sources = layouts.keys + notebooks.map { it.sourceId }
+        return sources.associateWith { source ->
+            val notebook = current?.takeIf { it.sourceId == source } ?: notebooks.firstOrNull { it.sourceId == source }
+            val cards = cards(notebook, layouts[source])
+            (layouts[source] ?: PropertyLayout()).copy(coverOnCard = cards.cover, contentOnCard = cards.content, onCard = cards.properties)
+        }
+    }
 
     /** True when a card shows its note's header image (only when the note has one). */
     fun showsCover(layout: PropertyLayout?, cover: String?): Boolean = cover != null && layout?.coverOnCard == true

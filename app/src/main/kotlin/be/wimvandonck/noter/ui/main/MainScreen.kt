@@ -2,6 +2,7 @@ package be.wimvandonck.noter.ui.main
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.LeadingIconTab
@@ -117,6 +118,7 @@ import be.wimvandonck.noter.ui.common.PageIconView
 import be.wimvandonck.noter.ui.common.SMALL_PAGE_ICON
 import be.wimvandonck.noter.ui.common.OptionChip
 import be.wimvandonck.noter.ui.common.SyncButton
+import be.wimvandonck.noter.ui.common.errorText
 import be.wimvandonck.noter.logic.ChipFilter
 import be.wimvandonck.noter.logic.FilterChip as Chip
 import be.wimvandonck.noter.logic.Destinations
@@ -177,11 +179,11 @@ fun MainScreen(
                 is RepoEvent.SaveFailed -> resources.getString(
                     R.string.sync_failed,
                     event.noteTitle.ifBlank { resources.getString(R.string.untitled) },
-                    event.detail,
+                    errorText(resources, event.detail),
                 )
                 RepoEvent.KeyRejected -> resources.getString(R.string.sync_key_rejected)
                 is RepoEvent.CreateFailed ->
-                    if (event.topLevel) resources.getString(R.string.create_top_level_failed) else resources.getString(R.string.create_failed, event.detail)
+                    if (event.topLevel) resources.getString(R.string.create_top_level_failed) else resources.getString(R.string.create_failed, errorText(resources, event.detail))
             }
             snackbar.showSnackbar(text)
         }
@@ -214,12 +216,29 @@ fun MainScreen(
         }
     }
 
-    if (section == Destinations.Section.SEARCH) {
-        SearchScreen(viewModel = viewModel, onOpenNote = onOpenNote, onOpenDatabase = onOpenDatabase, bottomBar = navigationBar)
-        return
+    // A notebook adds to itself; Pinned and Search ask where (when there is a choice): a notebook,
+    // or a page at the top of the workspace (with a personal access token). On Pinned it is pinned.
+    val newButton: @Composable () -> Unit = {
+        val inNotebook = state.notebook != null
+        val noNotebook = section == Destinations.Section.NOTEBOOKS && state.notebook == null
+        if (state.hasKey && !noNotebook && (inNotebook || targets.isNotEmpty() || state.canAddTopLevel)) {
+            FloatingActionButton(
+                onClick = {
+                    when {
+                        inNotebook -> viewModel.createNote(onCreated = onOpenNote)
+                        targets.size == 1 && !state.canAddTopLevel -> viewModel.createNote(targets.first().databaseId, onOpenNote)
+                        else -> choosingDatabase = true
+                    }
+                },
+            ) {
+                Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.action_new_note))
+            }
+        }
     }
 
-    Scaffold(
+    if (section == Destinations.Section.SEARCH) {
+        SearchScreen(viewModel = viewModel, onOpenNote = onOpenNote, onOpenDatabase = onOpenDatabase, bottomBar = navigationBar, newButton = newButton)
+    } else Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
@@ -261,25 +280,7 @@ fun MainScreen(
             }
         },
         bottomBar = navigationBar,
-        floatingActionButton = {
-            // A notebook adds to itself; Pinned asks where (when there is a choice): a notebook, or
-            // a page at the top of the workspace (with a personal access token).
-            val inNotebook = state.notebook != null
-            val noNotebook = section == Destinations.Section.NOTEBOOKS && state.notebook == null
-            if (state.hasKey && !noNotebook && (inNotebook || targets.isNotEmpty() || state.canAddTopLevel)) {
-                FloatingActionButton(
-                    onClick = {
-                        when {
-                            inNotebook -> viewModel.createNote(onCreated = onOpenNote)
-                            targets.size == 1 && !state.canAddTopLevel -> viewModel.createNote(targets.first().databaseId, onOpenNote)
-                            else -> choosingDatabase = true
-                        }
-                    },
-                ) {
-                    Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.action_new_note))
-                }
-            }
-        },
+        floatingActionButton = newButton,
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
@@ -310,6 +311,7 @@ fun MainScreen(
                     onTogglePin = viewModel::togglePin,
                     onTrash = viewModel::trash,
                     onReordered = viewModel::saveOrder,
+                    onClearRow = viewModel::clearRow,
                 )
             }
         }
@@ -319,7 +321,6 @@ fun MainScreen(
         NotebookFiltersSheet(
             state = state,
             actions = notebookActions,
-            onToggle = { property, key -> viewModel.toggleChip(property, key) },
             onClear = viewModel::clearChips,
             onDismiss = { filtersOpen = false },
         )
@@ -432,6 +433,7 @@ internal fun NotesPane(
     onTogglePin: (String) -> Unit,
     onTrash: (String) -> Unit,
     onReordered: (List<String>) -> Unit,
+    onClearRow: ((property: String) -> Unit)? = null,
 ) {
     var confirmTrash by remember { mutableStateOf<NoteSummary?>(null) }
     LaunchedEffect(state.chipRelationDatabases) { state.chipRelationDatabases.forEach(onLoadChipTitles) }
@@ -440,7 +442,7 @@ internal fun NotesPane(
         onLoadPreviews((state.pinned + state.others).filter { PropertyLayouts.showsContent(state.propertyLayouts[it.databaseId]) })
     }
     Column(Modifier.fillMaxSize()) {
-        if (state.chipGroups.isNotEmpty()) ChipRows(state, onToggle = onToggleChip, onClear = onClearChips)
+        if (state.chipGroups.isNotEmpty()) ChipRows(state, onToggle = onToggleChip, onClear = onClearChips, onClearRow = onClearRow)
         PullToRefreshBox(
             isRefreshing = state.refreshing && !state.loading,
             onRefresh = onRefresh,
@@ -498,14 +500,19 @@ private fun ChipRows(
     state: MainUiState,
     onToggle: (property: String?, key: String) -> Unit,
     onClear: () -> Unit,
+    onClearRow: ((property: String) -> Unit)?,
 ) {
     val anySelected = state.chipGroups.any { it.selected.isNotEmpty() }
     val inNotebook = state.notebook != null
     Column(Modifier.padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         state.chipGroups.forEachIndexed { index, group ->
             val property = group.property
+            // A notebook's row with something selected ends in × (that row doesn't filter any more).
+            val clearRow = onClearRow?.takeIf { inNotebook && property != null && group.selected.isNotEmpty() }
+            Row(verticalAlignment = Alignment.CenterVertically) {
             LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(start = 16.dp, end = if (clearRow != null) 4.dp else 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -546,6 +553,12 @@ private fun ChipRows(
                         },
                     )
                 }
+            }
+            if (clearRow != null && property != null) {
+                IconButton(onClick = { clearRow(property.name) }, modifier = Modifier.padding(end = 4.dp)) {
+                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.clear_row, property.name))
+                }
+            }
             }
         }
     }
@@ -991,7 +1004,7 @@ private val SKELETON_HEIGHTS = listOf(120, 88, 96, 140, 72, 110, 88, 120)
 /** The empty state of a list that couldn't load: the reason and a Retry button. */
 @Composable
 internal fun LoadFailed(reason: String, onRetry: () -> Unit) {
-    EmptyState(Icons.Rounded.CloudOff, stringResource(R.string.empty_error_title), body = reason) {
+    EmptyState(Icons.Rounded.CloudOff, stringResource(R.string.empty_error_title), body = errorText(reason)) {
         Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
     }
 }

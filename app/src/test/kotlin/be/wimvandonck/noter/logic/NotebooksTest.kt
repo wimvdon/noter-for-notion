@@ -103,4 +103,13 @@ class NotebooksTest {
         assertEquals(mapOf("Status" to listOf("Todo")), old.selected)
         assertNull(old.chipProperty)
     }
+
+    @Test
+    fun `a row of chips only shows once a note has a value for it`() {
+        val config = DatabaseConfig("n", "N", databaseId = "db", quickFilters = listOf("Status", "Tag"))
+        val withoutTags = listOf(note("1", "Todo"), note("2", "Done"))
+        assertEquals(listOf("Status"), Notebooks.content(withoutTags, schema, config, null, emptyList(), emptyList()).groups.map { it.property?.name })
+        val tagged = withoutTags + note("3", tag = "Home")
+        assertEquals(listOf("Status", "Tag"), Notebooks.content(tagged, schema, config, null, emptyList(), emptyList()).groups.map { it.property?.name })
+    }
 }
