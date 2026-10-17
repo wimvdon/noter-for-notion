@@ -200,4 +200,6 @@
     <string name="section_navigation_bar">Navigation bar</string>
     <string name="navigation_start">Opens when the app starts</string>
     <string name="navigation_search_last">Always last</string>
+    <string name="search_or_add">Search or add</string>
+    <string name="add_option">Add “%1$s”</string>
 </resources>

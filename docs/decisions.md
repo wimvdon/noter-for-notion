@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: Adding options to select and multi-select properties
+
+The picker of a select or multi-select property has a "Search or add" field: a name that isn't an option yet can be added and is picked at once. Notion makes the option itself when the note is saved with a name it doesn't know (if the connection may edit the database), so it works offline and needs no extra request. Not for other properties: a status option can only be added by sending Notion the whole list of options, and an option missing from that list would be deleted from every note, which is too risky for a picker; people come from the workspace; a relation would need a new page in the other database (possible later). Names with a comma aren't offered (Notion doesn't allow them), nor a name that exists in another case.
+
 ## 2026-10-17: The navigation bar's order is a setting
 
 The owner wants to choose the order of the navigation bar, like in Tracker for Simkl (Settings › Bottom bar with up and down arrows). Pinned and Notebooks can swap; the first one is where the app opens and where back goes before leaving the app. Search is locked last: it opens the keyboard, so it should never be the start destination. The order is kept with the other settings (backed up). Rejected: switches to hide destinations (there are only three, and each is needed), and drag handles (two movable rows; arrows are what the Simkl app uses).
