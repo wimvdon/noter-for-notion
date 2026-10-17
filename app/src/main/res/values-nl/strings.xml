@@ -158,6 +158,8 @@
     <string name="chip_checked">%1$s</string>
     <string name="chip_unchecked">Niet %1$s</string>
     <string name="cards_properties">Eigenschappen op de kaart (maximaal %1$d)</string>
+    <string name="edit_named">“%1$s” bewerken</string>
+    <string name="sub_notebook_of">Onderdeel van %1$s</string>
     <string name="edit_view">Notebook bewerken</string>
     <string name="new_page">Nieuwe pagina</string>
     <string name="new_page_top_level">Bovenaan in je werkruimte</string>

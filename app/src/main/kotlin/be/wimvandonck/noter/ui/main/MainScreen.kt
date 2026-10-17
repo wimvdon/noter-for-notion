@@ -130,6 +130,7 @@ import be.wimvandonck.noter.logic.ChipFilter
 import be.wimvandonck.noter.logic.FilterChip as Chip
 import be.wimvandonck.noter.logic.Destinations
 import be.wimvandonck.noter.logic.NoteTargets
+import be.wimvandonck.noter.data.model.DatabaseConfig
 import be.wimvandonck.noter.logic.Notebooks
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
@@ -291,7 +292,8 @@ fun MainScreen(
                                 SyncButton(state.pendingCount, state.offline, syncing = false, onSync = viewModel::refresh, alwaysShown = false)
                                 if (state.hasKey) NotebookBarActions(state, notebookActions, onOpenFilters = { filtersOpen = true })
                                 OverflowMenu(
-                                    notebookId = state.notebook?.id,
+                                    notebook = state.notebook?.let { Notebooks.topOf(state.views, it.id) },
+                                    subNotebook = state.notebook?.let { Notebooks.subNotebookOf(state.views, it.id) },
                                     onEditNotebook = onEditNotebook,
                                     onManage = onOpenViews,
                                     onSettings = onOpenSettings,
@@ -434,22 +436,41 @@ fun MainScreen(
     }
 }
 
-/** The top app bar's ⋮ menu: Edit notebook (in a notebook), Manage notebooks, Settings. */
+/**
+ * The top app bar's ⋮ menu: Edit notebook (in a notebook; in a sub-notebook, Edit for the notebook
+ * and Edit for the sub-notebook on its own), Manage notebooks, Settings.
+ */
 @Composable
-private fun OverflowMenu(notebookId: String?, onEditNotebook: (String) -> Unit, onManage: () -> Unit, onSettings: () -> Unit) {
+private fun OverflowMenu(
+    notebook: DatabaseConfig?,
+    subNotebook: DatabaseConfig?,
+    onEditNotebook: (String) -> Unit,
+    onManage: () -> Unit,
+    onSettings: () -> Unit,
+) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) {
             Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more_options))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            if (notebookId != null) {
+            if (notebook != null) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.edit_view)) },
+                    text = { Text(if (subNotebook != null) stringResource(R.string.edit_named, notebook.name) else stringResource(R.string.edit_view)) },
                     leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
                     onClick = {
                         open = false
-                        onEditNotebook(notebookId)
+                        onEditNotebook(notebook.id)
+                    },
+                )
+            }
+            if (subNotebook != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.edit_named, subNotebook.name)) },
+                    leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
+                    onClick = {
+                        open = false
+                        onEditNotebook(subNotebook.id)
                     },
                 )
             }

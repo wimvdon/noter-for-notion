@@ -142,6 +142,10 @@ object Notebooks {
     fun topOf(notebooks: List<DatabaseConfig>, id: String): DatabaseConfig? =
         notebooks.firstOrNull { top -> top.id == id || top.children.any { it.id == id } }
 
+    /** Sub-notebook [id], or null when [id] is a notebook of its own (or unknown). */
+    fun subNotebookOf(notebooks: List<DatabaseConfig>, id: String): DatabaseConfig? =
+        notebooks.firstNotNullOfOrNull { top -> top.children.firstOrNull { it.id == id } }
+
     /**
      * The notebooks that show notes as places for a note to go or a source on Pinned: named
      * "Notebook · Sub-notebook" for a sub-notebook, with its notebook's icon.

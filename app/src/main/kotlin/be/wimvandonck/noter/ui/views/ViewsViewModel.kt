@@ -36,7 +36,12 @@ data class DatabaseDraft(
     /** An error from NotionErrors, while the database's properties couldn't be loaded. */
     val schemaError: String? = null,
     val childSchemas: Map<String, DatabaseSchema> = emptyMap(),
+    /** The sub-notebook edited on its own (from "Edit" in that sub-notebook), or null for the whole notebook. */
+    val focus: String? = null,
 ) {
+    /** The sub-notebook being edited on its own, if any. */
+    val focused: DatabaseConfig? get() = focus?.let { id -> config.children.firstOrNull { it.id == id } }
+
     val cards: CardLayout get() = config.cards ?: CardLayout()
 }
 
@@ -143,8 +148,8 @@ class ViewsViewModel(
         }
     }
 
-    fun startEdit(config: DatabaseConfig) {
-        draft.value = DatabaseDraft(config, isNew = false, schema = if (config.pageId != null) PAGE_SCHEMA else null)
+    fun startEdit(config: DatabaseConfig, focus: String? = null) {
+        draft.value = DatabaseDraft(config, isNew = false, schema = if (config.pageId != null) PAGE_SCHEMA else null, focus = focus)
         loadCards(config)
         when {
             config.children.isNotEmpty() -> config.children.forEach { child -> loadChildSchema(config.id, child) }
@@ -152,9 +157,10 @@ class ViewsViewModel(
         }
     }
 
-    /** Opens the editor of notebook [id], or of the notebook sub-notebook [id] is in (from "Edit notebook"). */
+    /** Opens the editor of notebook [id], or of sub-notebook [id] on its own (from "Edit" in a notebook). */
     fun startEdit(id: String) = viewModelScope.launch {
-        Notebooks.topOf(repository.currentSettings().databases, id)?.let(::startEdit)
+        val notebooks = repository.currentSettings().databases
+        Notebooks.topOf(notebooks, id)?.let { top -> startEdit(top, focus = Notebooks.subNotebookOf(notebooks, id)?.id) }
     }
 
     private fun loadChildSchema(notebookId: String, child: DatabaseConfig) = viewModelScope.launch {

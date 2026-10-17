@@ -10,7 +10,7 @@ properties and content: the pages of databases and pages on their own.
   (`logic/Destinations.kt`): **Pinned**, **Notebooks** and **Search**. The notebooks are peers
   inside Notebooks, as scrollable tabs under the top app bar (in the order of Manage notebooks);
   tapping Notebooks shows the notebook seen last. The top app bar has the sync button, a
-  notebook's **Filters** and **Sort** buttons, and a ⋮ menu with Edit notebook (in a notebook),
+  notebook's **Filters** and **Sort** buttons, and a ⋮ menu with Edit notebook (in a notebook; in a sub-notebook also Edit for that sub-notebook on its own),
   Manage notebooks and Settings. The header (app bar, tabs and rows of chips) scrolls away with
   the notes and comes back on the first scroll up, and on another notebook
   (`ui/main/QuickReturnHeader.kt`, offset in `logic/QuickReturn.kt`). The bar's order is a setting (`AppSettings.navigation`,

@@ -168,6 +168,29 @@ private fun DatabaseEditorSheet(
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            val focused = draft.focused
+            if (focused != null) {
+                // One sub-notebook on its own: only what belongs to it (its cards).
+                Text(stringResource(R.string.edit_named, focused.name), style = MaterialTheme.typography.titleLarge)
+                Text(
+                    stringResource(R.string.sub_notebook_of, draft.config.name),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (draft.schemaError != null) {
+                    Text(stringResource(R.string.key_failed, errorText(draft.schemaError)), color = MaterialTheme.colorScheme.error)
+                }
+                CardOptions(stringResource(R.string.cards_title), focused.cards ?: CardLayout(), draft.childSchemas[focused.id]) {
+                    onCards(focused.id, it)
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
+                    Button(onClick = onSave) { Text(stringResource(R.string.save)) }
+                }
+                return@Column
+            }
             Text(
                 stringResource(if (draft.isNew) R.string.add_database else R.string.edit_database),
                 style = MaterialTheme.typography.titleLarge,
