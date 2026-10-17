@@ -197,4 +197,7 @@
     <string name="new_subpage">New subpage</string>
     <string name="cards_of">Cards: %1$s</string>
     <string name="filter_no_values">No values yet</string>
+    <string name="section_navigation_bar">Navigation bar</string>
+    <string name="navigation_start">Opens when the app starts</string>
+    <string name="navigation_search_last">Always last</string>
 </resources>

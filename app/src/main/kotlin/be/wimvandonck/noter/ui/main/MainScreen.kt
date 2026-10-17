@@ -163,8 +163,8 @@ fun MainScreen(
     var choosingDatabase by remember { mutableStateOf(false) }
     var filtersOpen by remember { mutableStateOf(false) }
     val section = state.section
-    // Back from Notebooks or Search goes to Pinned, the start destination, before leaving the app.
-    BackHandler(enabled = state.ready && !state.isHome) { viewModel.selectTab(Destinations.PINNED) }
+    // Back goes to the navigation bar's first destination before leaving the app.
+    BackHandler(enabled = state.ready && section != state.bar.first()) { viewModel.selectStart() }
 
     val sortedByHand = stringResource(R.string.sorted_by_hand)
     val undo = stringResource(R.string.undo)
@@ -204,25 +204,30 @@ fun MainScreen(
     val targets = NoteTargets.of(Notebooks.named(state.views), null)
     val navigationBar: @Composable () -> Unit = {
         NavigationBar {
-            NavigationBarItem(
-                selected = section == Destinations.Section.PINNED,
-                onClick = { viewModel.selectTab(Destinations.PINNED) },
-                icon = { Icon(Icons.Rounded.PushPin, contentDescription = null) },
-                label = { Text(stringResource(R.string.tab_home), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-            )
-            NavigationBarItem(
-                selected = section == Destinations.Section.NOTEBOOKS,
-                onClick = { viewModel.selectNotebooks() },
-                icon = { Icon(Icons.AutoMirrored.Rounded.LibraryBooks, contentDescription = null) },
-                label = { Text(stringResource(R.string.section_views), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-            )
-            NavigationBarItem(
-                selected = section == Destinations.Section.SEARCH,
-                onClick = { viewModel.selectTab(Destinations.SEARCH) },
-                enabled = state.hasKey,
-                icon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                label = { Text(stringResource(R.string.action_search), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-            )
+            // In the user's order (Settings); Search is always last.
+            state.bar.forEach { destination ->
+                when (destination) {
+                    Destinations.Section.PINNED -> NavigationBarItem(
+                        selected = section == Destinations.Section.PINNED,
+                        onClick = { viewModel.selectTab(Destinations.PINNED) },
+                        icon = { Icon(Icons.Rounded.PushPin, contentDescription = null) },
+                        label = { Text(stringResource(R.string.tab_home), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    )
+                    Destinations.Section.NOTEBOOKS -> NavigationBarItem(
+                        selected = section == Destinations.Section.NOTEBOOKS,
+                        onClick = { viewModel.selectNotebooks() },
+                        icon = { Icon(Icons.AutoMirrored.Rounded.LibraryBooks, contentDescription = null) },
+                        label = { Text(stringResource(R.string.section_views), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    )
+                    Destinations.Section.SEARCH -> NavigationBarItem(
+                        selected = section == Destinations.Section.SEARCH,
+                        onClick = { viewModel.selectTab(Destinations.SEARCH) },
+                        enabled = state.hasKey,
+                        icon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                        label = { Text(stringResource(R.string.action_search), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    )
+                }
+            }
         }
     }
 

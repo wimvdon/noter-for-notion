@@ -14,6 +14,7 @@ import be.wimvandonck.noter.data.notion.TokenInfo
 import be.wimvandonck.noter.data.notion.TokenKind
 import be.wimvandonck.noter.data.store.ApiKeyStore
 import be.wimvandonck.noter.data.store.AppSettings
+import be.wimvandonck.noter.logic.Destinations
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -90,6 +91,11 @@ class SettingsViewModel(
     fun setTheme(mode: ThemeMode) = viewModelScope.launch { repository.updateSettings { it.copy(themeMode = mode) } }
 
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { repository.updateSettings { it.copy(dynamicColor = enabled) } }
+
+    /** Moves [section] one place in the navigation bar (Search stays last). */
+    fun moveDestination(section: Destinations.Section, up: Boolean) = viewModelScope.launch {
+        repository.updateSettings { it.copy(navigation = Destinations.moved(it.navigation, section, up)) }
+    }
 
     companion object {
         val Factory = viewModelFactory {

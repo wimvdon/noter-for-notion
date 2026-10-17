@@ -1,6 +1,14 @@
 package be.wimvandonck.noter.ui.settings
 
 import android.content.Intent
+import be.wimvandonck.noter.logic.Destinations
+import androidx.compose.material3.ListItem
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -84,6 +92,11 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpenViews
                 )
             }
         }
+        item(key = "navigation") {
+            SettingsSection(title = stringResource(R.string.section_navigation_bar)) {
+                NavigationBarSettings(state.settings.navigation, onMove = viewModel::moveDestination)
+            }
+        }
         item(key = "appearance") {
             val themes = listOf(ThemeMode.SYSTEM, ThemeMode.LIGHT, ThemeMode.DARK)
             val labels = listOf(stringResource(R.string.theme_system), stringResource(R.string.theme_light), stringResource(R.string.theme_dark))
@@ -110,6 +123,47 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpenViews
         }
     }
 
+}
+
+/**
+ * The navigation bar's order: arrows to move Pinned and Notebooks; the first is where the app
+ * opens. Search is locked at the end (it opens the keyboard).
+ */
+@Composable
+private fun NavigationBarSettings(saved: List<String>, onMove: (Destinations.Section, up: Boolean) -> Unit) {
+    val bar = Destinations.bar(saved)
+    // The destinations that move: all but Search, the last.
+    val movable = bar.lastIndex
+    bar.forEachIndexed { index, destination ->
+        val (label, icon) = when (destination) {
+            Destinations.Section.PINNED -> stringResource(R.string.tab_home) to Icons.Rounded.PushPin
+            Destinations.Section.NOTEBOOKS -> stringResource(R.string.section_views) to Icons.AutoMirrored.Rounded.LibraryBooks
+            Destinations.Section.SEARCH -> stringResource(R.string.action_search) to Icons.Rounded.Search
+        }
+        ListItem(
+            headlineContent = { Text(label) },
+            supportingContent = when {
+                destination == Destinations.Section.SEARCH -> { { Text(stringResource(R.string.navigation_search_last)) } }
+                index == 0 -> { { Text(stringResource(R.string.navigation_start)) } }
+                else -> null
+            },
+            leadingContent = { Icon(icon, contentDescription = null) },
+            trailingContent = {
+                if (destination == Destinations.Section.SEARCH) {
+                    Icon(Icons.Rounded.Lock, contentDescription = null, Modifier.padding(horizontal = 12.dp))
+                } else {
+                    Row {
+                        IconButton(enabled = index > 0, onClick = { onMove(destination, true) }) {
+                            Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = stringResource(R.string.action_move_up))
+                        }
+                        IconButton(enabled = index < movable - 1, onClick = { onMove(destination, false) }) {
+                            Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.action_move_down))
+                        }
+                    }
+                }
+            },
+        )
+    }
 }
 
 @Composable

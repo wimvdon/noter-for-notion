@@ -61,6 +61,8 @@ data class MainUiState(
     val canAddTopLevel: Boolean = false,
     /** The notebooks, as tabs under Notebooks. */
     val tabs: List<Tab> = emptyList(),
+    /** The navigation bar's destinations, in the user's order; the first is where the app opens. */
+    val bar: List<Destinations.Section> = Destinations.bar(emptyList()),
     /** The shown notebook's sub-notebooks (one per data source), as tabs below its own. */
     val subTabs: List<Tab> = emptyList(),
     /** Pinned, Search, a notebook's ID, or Notebooks without one (see Destinations). */
@@ -200,7 +202,7 @@ class MainViewModel(
         chipTitles.update { it + pages.associate { page -> page.id to page.title } }
     }
 
-    private val currentTab = MutableStateFlow(Destinations.PINNED)
+    private val currentTab = MutableStateFlow(Destinations.START)
 
     /** The sub-notebook shown per notebook (else its first). */
     private val subTab = MutableStateFlow<Map<String, String>>(emptyMap())
@@ -225,13 +227,14 @@ class MainViewModel(
         status,
     ) { settings, databases, tab, (chips, pageOrders, subs), (pending, offline, key, kind) ->
         val notebooks = settings.databases
-        val tabKey = Destinations.valid(tab, notebooks)
+        val tabKey = Destinations.valid(tab, notebooks, settings.navigation)
         val tabs = notebooks.map { Tab(it.id, it.name, it.icon) }
         val base = MainUiState(
             ready = true,
             hasKey = key,
             canAddTopLevel = kind == TokenKind.PERSONAL,
             tabs = tabs,
+            bar = Destinations.bar(settings.navigation),
             currentTab = tabKey,
             pinnedIds = settings.pinned.toSet(),
             databaseIcons = Notebooks.named(notebooks).reversed().associate { it.sourceId to it.icon },
@@ -300,6 +303,11 @@ class MainViewModel(
     /** Shows sub-notebook [childId] of notebook [notebookId]. */
     fun selectSubTab(notebookId: String, childId: String) {
         subTab.update { it + (notebookId to childId) }
+    }
+
+    /** The navigation bar's first destination (where back goes before leaving the app). */
+    fun selectStart() {
+        if (state.value.bar.first() == Destinations.Section.NOTEBOOKS) selectNotebooks() else selectTab(Destinations.PINNED)
     }
 
     /** Notebooks in the navigation bar: the notebook seen last, else the first. */

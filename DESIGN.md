@@ -215,7 +215,8 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   Medium), or else the filter property's options. "Pinned" and "Others" are Label Large headers spanning
   the grid. A dragged card lifts (shadow, 3% larger, `surfaceContainerHigh`).
 - Navigation: the navigation bar has the three top-level destinations, Pinned, Notebooks and
-  Search. The notebooks are peers within Notebooks: a primary scrollable tab row under the top
+  Search, in the order set in Settings › Navigation bar (arrows, as in Tracker for Simkl): the
+  first is where the app opens, Search is locked last because it opens the keyboard. The notebooks are peers within Notebooks: a primary scrollable tab row under the top
   app bar, leading-icon tabs with the notebook's icon. A notebook of several data sources has a
   secondary scrollable tab row below it, one tab per data source (a sub-notebook). The top app bar's ⋮ menu has Edit
   notebook, Manage notebooks and Settings; there is no drawer. On Pinned and Notebooks the whole

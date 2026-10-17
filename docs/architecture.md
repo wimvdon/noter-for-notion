@@ -13,7 +13,9 @@ properties and content: the pages of databases and pages on their own.
   notebook's **Filters** and **Sort** buttons, and a ⋮ menu with Edit notebook (in a notebook),
   Manage notebooks and Settings. The header (app bar, tabs and rows of chips) scrolls away with
   the notes and comes back on the first scroll up, and on another notebook
-  (`ui/main/QuickReturnHeader.kt`, offset in `logic/QuickReturn.kt`). Back from Notebooks or Search goes to Pinned first.
+  (`ui/main/QuickReturnHeader.kt`, offset in `logic/QuickReturn.kt`). The bar's order is a setting (`AppSettings.navigation`,
+  `Destinations.bar`): Pinned and Notebooks can swap, Search is always last; the app opens on the
+  first one (`Destinations.START`) and back goes there before leaving the app.
   - **Pinned**: the pinned notes of everything (databases and pages), filtered by source. Any
     page can be pinned, also one that isn't in a notebook; a note made with + on Pinned is pinned.
   - **Notebooks** (`DatabaseConfig`, kept under `AppSettings.databases`; the code still calls them
@@ -105,7 +107,9 @@ properties and content: the pages of databases and pages on their own.
   category and a few related words. Views store the icon's name; the 29 keys from before are
   mapped to their Material Symbols names.
 - **Settings** (`ui/settings/`): Connection (a personal access token, with the steps to make one,
-  and sync status), Views (a link to Manage views), Appearance; built from the shared
+  and sync status), Views (a link to Manage views), Navigation bar (the order of Pinned and
+  Notebooks with up and down arrows, the first marked as where the app opens; Search locked
+  last), Appearance; built from the shared
   `SettingsKit.kt`.
 - **Data sources** (`NotesRepository.resolveSource`): a key is asked about as a database first
   (its first data source), then as a data source, because Notion may answer for a database's ID

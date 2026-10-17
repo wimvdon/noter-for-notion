@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: The navigation bar's order is a setting
+
+The owner wants to choose the order of the navigation bar, like in Tracker for Simkl (Settings › Bottom bar with up and down arrows). Pinned and Notebooks can swap; the first one is where the app opens and where back goes before leaving the app. Search is locked last: it opens the keyboard, so it should never be the start destination. The order is kept with the other settings (backed up). Rejected: switches to hide destinations (there are only three, and each is needed), and drag handles (two movable rows; arrows are what the Simkl app uses).
+
 ## 2026-10-17: The whole header scrolls away
 
 The owner wants as much room for notes as possible: the tabs and the rows of chips now scroll away together with the top app bar, and come back on the first scroll up (quick return). This replaces keeping the tabs fixed (decided earlier today): a notebook is a scroll up away instead of always in view. Built as one header around the app bar, tabs and chips with a nested-scroll connection, because Material's `enterAlways` behaviour only moves the app bar itself; no new library.
