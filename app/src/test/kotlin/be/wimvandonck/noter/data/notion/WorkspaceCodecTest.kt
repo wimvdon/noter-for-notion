@@ -28,7 +28,7 @@ class WorkspaceCodecTest {
         val db = WorkspaceCodec.parse(database, includeNotes = false, pagesKey = "pages")!!
         assertTrue(db.isDatabase)
         assertEquals("Reading list", db.title)
-        assertEquals("📚", db.icon)
+        assertEquals("📚", db.icon?.emoji)
         val p = WorkspaceCodec.parse(page, includeNotes = false, pagesKey = "pages")!!
         assertEquals("Ideas", p.title)
         assertEquals("pages", p.note!!.databaseId)

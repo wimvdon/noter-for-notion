@@ -75,7 +75,7 @@ properties and content: the pages of databases and pages on their own.
 
 ### Data flow
 ```
-Notion API ── data/api/NotionClient (OkHttp, Notion-Version 2025-09-03, retries 429/5xx)
+Notion API ── data/api/NotionClient (OkHttp, Notion-Version 2026-03-11, retries 429/5xx)
      │
 data/NotesRepository ── single source for the screens
      │   reads:  on-phone copy first (data/store/CacheStore), then refresh (data/sync/SyncPolicy)
@@ -85,7 +85,7 @@ data/NotesRepository ── single source for the screens
 ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
 ```
 
-- **Blocks** (`data/notion/BlockCodec.kt`): paragraphs, headings (also toggle headings), bulleted,
+- **Blocks** (`data/notion/BlockCodec.kt`): paragraphs, headings 1 to 4 (also toggle headings), bulleted,
   numbered and to-do lists, toggles, quotes, callouts, code and dividers are editable. Other blocks
   are shown read-only and left untouched (`ui/note/ReadOnlyBlocks.kt`): images, tables (their rows
   cost one more request per table), equations, files, videos, PDFs, audio, bookmarks, embeds,
@@ -102,12 +102,18 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
   again (text and dividers; not images, tables or content nested deeper than the app shows).
   Columns (`logic/Columns.kt`) are downloaded too and shown one below the other, a thin line
   between columns, without indenting what is in them; a block in a column can be edited and
-  nested but not taken out of its column. What is nested in images, synced blocks and the like
+  nested but not taken out of its column. Tabs work the same way: each tab's name (Notion's text
+  line directly in the tab block, `BlockCodec.asTab`) is a label with its emoji, and the tab's
+  blocks follow it; the names themselves are edited in Notion. What is nested in images, synced blocks and the like
   stays in Notion; such a block says it has nested content. Previews in the overview download only the top level
   (`PageContent.nestedLoaded`), and opening the note gets the rest. Until it arrives, the blocks
   whose nested content is missing show a loading placeholder (`logic/NestedContent.kt`) and the
   note can't be edited, so an edit can't keep the incomplete copy on screen; when it can't be
   downloaded (offline), they say so and the sync button tries again.
+- **Page icons** (`data/notion/IconCodec.kt`, `ui/common/PageIconView.kt`): an emoji, an image
+  (uploaded, a link, or a custom emoji of the workspace; downloaded like the images in notes), or
+  one of Notion's own icons. Notion draws those from SVG files the app can't draw, so the app shows
+  the closest Material Symbol (`logic/PageIcons.kt`) in the icon's color.
 - **Inline styles** (`data/notion/InlineMarkdown.kt`): bold, italic, strikethrough, inline code and
   links are kept as Markdown in the editor and turned back into Notion rich text. Code blocks keep
   their text literally.

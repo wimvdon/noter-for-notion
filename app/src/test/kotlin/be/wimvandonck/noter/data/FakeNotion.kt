@@ -42,8 +42,8 @@ class FakeNotion(var respond: (Sent) -> Pair<Int, String> = { 200 to "{}" }) : A
             """{"object":"database","id":"$id","title":[{"plain_text":"Notes","text":{"content":"Notes"}}],
                "properties":{"Name":{"id":"title","name":"Name","type":"title","title":{}}}}"""
 
-        fun page(id: String, databaseId: String, title: String = "", archived: Boolean = false) =
-            """{"object":"page","id":"$id","archived":$archived,"url":"https://www.notion.so/$id",
+        fun page(id: String, databaseId: String, title: String = "", inTrash: Boolean = false) =
+            """{"object":"page","id":"$id","in_trash":$inTrash,"url":"https://www.notion.so/$id",
                "created_time":"2026-10-16T10:00:00.000Z","last_edited_time":"2026-10-16T10:00:00.000Z",
                "parent":{"type":"database_id","database_id":"$databaseId"},
                "properties":{"Name":{"id":"title","type":"title","title":[${if (title.isEmpty()) "" else """{"type":"text","plain_text":"$title","text":{"content":"$title"},"annotations":{}}"""}]}}}"""

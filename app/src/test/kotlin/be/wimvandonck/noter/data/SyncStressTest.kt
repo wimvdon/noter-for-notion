@@ -77,8 +77,9 @@ class SyncStressTest {
 
         fun append(parent: String?, body: JsonObject): String {
             val children = body["children"]!!.jsonArray.map { it.jsonObject }
-            val after = body["after"]?.jsonPrimitive?.content
-            val atStart = body["position"]?.jsonObject?.get("type")?.jsonPrimitive?.content == "start"
+            val position = body["position"]?.jsonObject
+            val after = position?.get("after_block")?.jsonObject?.get("id")?.jsonPrimitive?.content
+            val atStart = position?.get("type")?.jsonPrimitive?.content == "start"
             val added = children.map { child ->
                 val type = child["type"]!!.jsonPrimitive.content
                 val content = child[type]?.jsonObject
@@ -136,7 +137,8 @@ class SyncStressTest {
                     }
                     sent.path.endsWith("/children") && sent.method == "PATCH" -> {
                         val id = sent.path.removePrefix("/blocks/").removeSuffix("/children")
-                        if (body.containsKey("position") && !startSupported) {
+                        val atStart = body["position"]?.jsonObject?.get("type")?.jsonPrimitive?.content == "start"
+                        if (atStart && !startSupported) {
                             400 to """{"object":"error","status":400,"message":"position is not supported"}"""
                         } else {
                             200 to page.append(id.takeIf { it != "page-1" }, body)

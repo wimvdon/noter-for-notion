@@ -106,6 +106,8 @@ import be.wimvandonck.noter.logic.NotionDates
 import be.wimvandonck.noter.logic.PropertyLayouts
 import be.wimvandonck.noter.ui.common.DatabaseIcons
 import be.wimvandonck.noter.ui.common.NotionImage
+import be.wimvandonck.noter.ui.common.PageIconView
+import be.wimvandonck.noter.ui.common.SMALL_PAGE_ICON
 import be.wimvandonck.noter.ui.common.OptionChip
 import be.wimvandonck.noter.ui.common.SyncButton
 import be.wimvandonck.noter.ui.views.rememberWindowWidthDp
@@ -330,7 +332,7 @@ fun MainScreen(
                             headlineContent = { Text(stringResource(R.string.new_page_inside, page.title.ifBlank { stringResource(R.string.untitled) })) },
                             leadingContent = {
                                 Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                                    if (page.icon != null) Text(page.icon, style = MaterialTheme.typography.titleMedium) else Icon(Icons.Rounded.Description, contentDescription = null)
+                                    if (page.icon != null) PageIconView(page.icon, size = 24.dp) else Icon(Icons.Rounded.Description, contentDescription = null)
                                 }
                             },
                             modifier = Modifier.clickable {
@@ -346,8 +348,8 @@ fun MainScreen(
                         headlineContent = { Text(target.name.ifBlank { stringResource(R.string.untitled) }) },
                         leadingContent = {
                             Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                                if (target.emoji != null) {
-                                    Text(target.emoji, style = MaterialTheme.typography.titleMedium)
+                                if (target.pageIcon != null) {
+                                    PageIconView(target.pageIcon, size = 24.dp)
                                 } else {
                                     Icon(DatabaseIcons.icon(target.iconKey), contentDescription = null)
                                 }
@@ -774,7 +776,7 @@ private fun NoteCard(
                 ) {
                     if (title.isNotBlank() || note.icon != null) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            note.icon?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
+                            note.icon?.let { PageIconView(it, size = SMALL_PAGE_ICON) }
                             if (title.isNotBlank()) {
                                 Text(
                                     title,

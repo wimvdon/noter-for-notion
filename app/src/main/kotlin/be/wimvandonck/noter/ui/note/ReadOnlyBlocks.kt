@@ -225,6 +225,7 @@ private fun TableOfContents(headings: List<Block>) {
             val indent = when (heading.type) {
                 BlockType.HEADING_2 -> 16.dp
                 BlockType.HEADING_3 -> 32.dp
+                BlockType.HEADING_4 -> 48.dp
                 else -> 0.dp
             }
             Text(

@@ -59,7 +59,7 @@ object PropertyCodec {
             NoteProperty(name = name, type = type, value = parseValue(type, prop))
         }.sortedWith(compareBy<NoteProperty> { if (it.type == "title") 0 else 1 }.thenBy { it.name.lowercase() })
         val title = properties.firstOrNull { it.type == "title" }?.value as? PropertyValue.Text
-        val icon = page.objOrNull("icon")?.takeIf { it.stringOrNull("type") == "emoji" }?.stringOrNull("emoji")
+        val icon = IconCodec.parse(page.objOrNull("icon"))
         val cover = BlockCodec.fileLink(page.objOrNull("cover"))
         return NoteSummary(
             id = id,

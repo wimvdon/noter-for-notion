@@ -16,7 +16,7 @@ data class EditResult(
  * - Enter splits a block; in a list (bullets, numbers, to-dos) the new line is the same kind,
  *   otherwise it is text. Enter on an empty list item, quote, callout or toggle turns it into
  *   text. In a code block Enter is a new line inside the code.
- * - Markdown at the start of a text line changes its kind, as in Notion: `# `, `## `, `### `,
+ * - Markdown at the start of a text line changes its kind, as in Notion: `# `, `## `, `### `, `#### `,
  *   `- `, `* `, `1. `, `[] `, `[ ] `, `[x] `, `> ` (toggle), `" ` (quote), ```` ``` ```` (code)
  *   and `---` (divider).
  * - Backspace at the start turns a block into text, then moves it out of the block it is nested
@@ -275,6 +275,7 @@ class DocumentEditor(private val newKey: () -> String = { UUID.randomUUID().toSt
 
         /** (type, checked, prefix length) for Markdown typed at the start of a line. */
         fun shortcutFor(text: String): Triple<BlockType, Boolean, Int>? = when {
+            text.startsWith("#### ") -> Triple(BlockType.HEADING_4, false, 5)
             text.startsWith("### ") -> Triple(BlockType.HEADING_3, false, 4)
             text.startsWith("## ") -> Triple(BlockType.HEADING_2, false, 3)
             text.startsWith("# ") -> Triple(BlockType.HEADING_1, false, 2)
@@ -293,7 +294,7 @@ class DocumentEditor(private val newKey: () -> String = { UUID.randomUUID().toSt
         fun canNest(type: BlockType, toggleable: Boolean = false): Boolean = when (type) {
             BlockType.PARAGRAPH, BlockType.BULLETED, BlockType.NUMBERED, BlockType.TODO,
             BlockType.TOGGLE, BlockType.QUOTE, BlockType.CALLOUT -> true
-            BlockType.HEADING_1, BlockType.HEADING_2, BlockType.HEADING_3 -> toggleable
+            BlockType.HEADING_1, BlockType.HEADING_2, BlockType.HEADING_3, BlockType.HEADING_4 -> toggleable
             else -> false
         }
 

@@ -38,7 +38,7 @@ object WorkspaceCodec {
     fun parse(json: JsonObject, includeNotes: Boolean, pagesKey: String): WorkspaceItem? {
         if (PropertyCodec.isTrashed(json)) return null
         val id = json.stringOrNull("id") ?: return null
-        val icon = json.objOrNull("icon")?.takeIf { it.stringOrNull("type") == "emoji" }?.stringOrNull("emoji")
+        val icon = IconCodec.parse(json.objOrNull("icon"))
         val edited = json.stringOrNull("last_edited_time").orEmpty()
         return when (json.stringOrNull("object")) {
             // A data source is a database's table of notes; a database with several shows each.

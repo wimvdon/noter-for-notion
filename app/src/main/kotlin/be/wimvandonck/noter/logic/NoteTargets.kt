@@ -1,14 +1,15 @@
 package be.wimvandonck.noter.logic
 
 import be.wimvandonck.noter.data.model.DatabaseConfig
+import be.wimvandonck.noter.data.model.PageIcon
 import be.wimvandonck.noter.data.model.WorkspaceItem
 
-/** A database a new note can go in: from a view ([iconKey]) or from Browse ([emoji], Notion's icon). */
+/** A database a new note can go in: from a view ([iconKey]) or from Browse ([pageIcon], Notion's icon). */
 data class NoteTarget(
     val databaseId: String,
     val name: String,
     val iconKey: String? = null,
-    val emoji: String? = null,
+    val pageIcon: PageIcon? = null,
 )
 
 /** Where "New note" on Pinned and Browse can put a note. */
@@ -22,7 +23,7 @@ object NoteTargets {
         val known = fromViews.map { plain(it.databaseId) }.toMutableSet()
         val fromBrowse = browse.orEmpty()
             .filter { it.isDatabase && known.add(plain(it.id)) }
-            .map { NoteTarget(it.id, it.title, emoji = it.icon) }
+            .map { NoteTarget(it.id, it.title, pageIcon = it.icon) }
         return fromViews + fromBrowse
     }
 

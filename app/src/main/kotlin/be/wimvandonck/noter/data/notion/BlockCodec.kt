@@ -6,6 +6,7 @@ import be.wimvandonck.noter.data.api.objOrNull
 import be.wimvandonck.noter.data.api.stringOrNull
 import be.wimvandonck.noter.data.model.Block
 import be.wimvandonck.noter.data.model.BlockType
+import be.wimvandonck.noter.logic.Columns
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 
@@ -16,6 +17,7 @@ object BlockCodec {
         "heading_1" to BlockType.HEADING_1,
         "heading_2" to BlockType.HEADING_2,
         "heading_3" to BlockType.HEADING_3,
+        "heading_4" to BlockType.HEADING_4,
         "bulleted_list_item" to BlockType.BULLETED,
         "numbered_list_item" to BlockType.NUMBERED,
         "to_do" to BlockType.TODO,
@@ -55,9 +57,18 @@ object BlockCodec {
             hasChildren = hasChildren,
             toggleable = type.isHeading && body?.boolOrNull("is_toggleable") == true,
             language = if (type == BlockType.CODE) body?.stringOrNull("language") else null,
-            icon = if (type == BlockType.CALLOUT) body?.objOrNull("icon")?.stringOrNull("emoji") else null,
+            // A callout's emoji; a text line can have one too when it is a tab's name.
+            icon = if (type == BlockType.CALLOUT || type == BlockType.PARAGRAPH) body?.objOrNull("icon")?.stringOrNull("emoji") else null,
         )
     }
+
+    /**
+     * A text line directly in a tab block is a tab: its text is the tab's name and the tab's
+     * blocks are nested in it. It is shown as a label, not edited (Notion only allows text lines
+     * there, so it can't change kind or move).
+     */
+    fun asTab(block: Block): Block =
+        if (block.type == BlockType.PARAGRAPH) block.copy(type = BlockType.UNSUPPORTED, rawType = Columns.TAB) else block
 
     /** Notion's file blocks: the link is in "external" or, for uploads, in "file" with an expiry. */
     private val fileTypes = setOf("image", "video", "file", "pdf", "audio")

@@ -20,6 +20,22 @@ class BlockCodecTest {
     fun `reads headings and lists`() {
         assertEquals(BlockType.HEADING_2, parse("""{"id":"b","type":"heading_2","heading_2":{"rich_text":[]}}""")!!.type)
         assertEquals(BlockType.NUMBERED, parse("""{"id":"b","type":"numbered_list_item","numbered_list_item":{"rich_text":[]}}""")!!.type)
+        val h4 = parse("""{"id":"b","type":"heading_4","heading_4":{"rich_text":[]}}""")!!
+        assertEquals(BlockType.HEADING_4, h4.type)
+        assertEquals("heading_4", (BlockCodec.toCreateRequest(h4)["type"]))
+    }
+
+    @Test
+    fun `a text line in a tab block is a tab, shown with its name and emoji`() {
+        val line = parse("""{"id":"b","type":"paragraph","has_children":true,"paragraph":{"rich_text":[{"plain_text":"Ideas"}],"icon":{"type":"emoji","emoji":"💡"}}}""")!!
+        val tab = BlockCodec.asTab(line)
+        assertEquals(BlockType.UNSUPPORTED, tab.type)
+        assertEquals(be.wimvandonck.noter.logic.Columns.TAB, tab.rawType)
+        assertEquals("Ideas", tab.text)
+        assertEquals("💡", tab.icon)
+        // Only text lines are tabs; anything else stays what it is.
+        val todo = Block("k", type = BlockType.TODO)
+        assertEquals(todo, BlockCodec.asTab(todo))
     }
 
     @Test

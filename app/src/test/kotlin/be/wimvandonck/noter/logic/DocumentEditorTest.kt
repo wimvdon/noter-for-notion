@@ -60,6 +60,8 @@ class DocumentEditorTest {
         assertEquals(BlockType.HEADING_1, typed("# ").type)
         assertEquals(BlockType.HEADING_2, typed("## ").type)
         assertEquals(BlockType.HEADING_3, typed("### Hi").type)
+        assertEquals(BlockType.HEADING_4, typed("#### Hi").type)
+        assertEquals("Hi", typed("#### Hi").text)
         assertEquals("Hi", typed("### Hi").text)
         assertEquals(BlockType.BULLETED, typed("- ").type)
         assertEquals(BlockType.BULLETED, typed("* ").type)

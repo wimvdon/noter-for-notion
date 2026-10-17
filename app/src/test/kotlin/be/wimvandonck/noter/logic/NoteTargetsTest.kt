@@ -1,6 +1,7 @@
 package be.wimvandonck.noter.logic
 
 import be.wimvandonck.noter.data.model.DatabaseConfig
+import be.wimvandonck.noter.data.model.PageIcon
 import be.wimvandonck.noter.data.model.WorkspaceItem
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -15,7 +16,7 @@ class NoteTargetsTest {
         )
         val browse = listOf(
             WorkspaceItem("aaaa1111", isDatabase = true, title = "Tasks"),
-            WorkspaceItem("cccc", isDatabase = true, title = "Recipes", icon = "🍲"),
+            WorkspaceItem("cccc", isDatabase = true, title = "Recipes", icon = PageIcon(emoji = "🍲")),
             WorkspaceItem("page", isDatabase = false, title = "A page"),
         )
 
@@ -23,7 +24,7 @@ class NoteTargetsTest {
 
         assertEquals(listOf("Todo", "Ideas", "Recipes"), targets.map { it.name })
         assertEquals("checklist", targets.first().iconKey)
-        assertEquals("🍲", targets.last().emoji)
+        assertEquals("🍲", targets.last().pageIcon?.emoji)
     }
 
     @Test
