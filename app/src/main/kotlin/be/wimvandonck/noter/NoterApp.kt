@@ -47,6 +47,10 @@ class NoterApp : Application(), SingletonImageLoader.Factory {
             scope = scope,
         )
         repository.start()
+        // A key saved before the app told token kinds apart: ask Notion once what it is.
+        if (apiKeyStore.get().isNotBlank() && apiKeyStore.kind.value == null) {
+            scope.launch { runCatching { apiKeyStore.setKind(repository.tokenInfo().kind) } }
+        }
         // Read the icons in the background now, so the first screen doesn't wait for them.
         scope.launch(Dispatchers.Default) { iconCatalog }
     }

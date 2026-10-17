@@ -101,9 +101,8 @@ class NotionClient(
             throw lastError
         }
 
-    /** Checks [key] works; returns the integration's (bot's) name. */
-    suspend fun testKey(key: String): String =
-        call("GET", "/users/me", key = key).stringOrNull("name").orEmpty()
+    /** The token's own (bot) user, with [key] or the stored key: who it acts as (see TokenCodec). */
+    suspend fun me(key: String = apiKey()): JsonObject = call("GET", "/users/me", key = key)
 
     /**
      * Data sources shared with the integration, most recently edited first. A database usually has

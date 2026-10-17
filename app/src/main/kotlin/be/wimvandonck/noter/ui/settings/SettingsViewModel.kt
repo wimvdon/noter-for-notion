@@ -9,6 +9,8 @@ import be.wimvandonck.noter.NoterApp
 import be.wimvandonck.noter.data.NotesRepository
 import be.wimvandonck.noter.data.api.NotionException
 import be.wimvandonck.noter.data.model.ThemeMode
+import be.wimvandonck.noter.data.notion.TokenInfo
+import be.wimvandonck.noter.data.notion.TokenKind
 import be.wimvandonck.noter.data.store.ApiKeyStore
 import be.wimvandonck.noter.data.store.AppSettings
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +26,8 @@ sealed interface KeyStatus {
 
     data object Testing : KeyStatus
 
-    data class Ok(val botName: String) : KeyStatus
+    /** Notion accepted the token: who it acts as (a person, or a connection's name). */
+    data class Ok(val info: TokenInfo) : KeyStatus
 
     data class Failed(val message: String) : KeyStatus
 
@@ -34,6 +37,8 @@ sealed interface KeyStatus {
 data class SettingsUiState(
     val settings: AppSettings = AppSettings(),
     val hasKey: Boolean = false,
+    /** The stored token's kind (null: not known yet). */
+    val tokenKind: TokenKind? = null,
     val keyStatus: KeyStatus = KeyStatus.None,
     val pendingCount: Int = 0,
 )
@@ -47,10 +52,11 @@ class SettingsViewModel(
     val state: StateFlow<SettingsUiState> = combine(
         repository.settingsFlow(),
         keyStore.hasKey,
+        keyStore.kind,
         keyStatus,
         repository.pendingCount,
-    ) { settings, hasKey, status, pending ->
-        SettingsUiState(settings, hasKey, status, pending)
+    ) { settings, hasKey, kind, status, pending ->
+        SettingsUiState(settings, hasKey, kind, status, pending)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState(hasKey = keyStore.get().isNotBlank()))
 
     fun currentKey(): String = keyStore.get()
@@ -60,10 +66,10 @@ class SettingsViewModel(
         keyStatus.value = KeyStatus.Testing
         viewModelScope.launch {
             keyStatus.value = try {
-                val name = repository.testKey(trimmed)
-                keyStore.set(trimmed)
+                val info = repository.tokenInfo(trimmed)
+                keyStore.set(trimmed, info.kind)
                 repository.onForeground()
-                KeyStatus.Ok(name)
+                KeyStatus.Ok(info)
             } catch (e: NotionException) {
                 KeyStatus.Failed(e.message.orEmpty())
             }

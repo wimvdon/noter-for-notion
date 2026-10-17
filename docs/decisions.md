@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: Personal access tokens
+
+The app asked for an internal integration's key, which only sees the pages shared with it and can't add pages at the top of the workspace; the owner found "only available for some connections" a poor experience. Notion now has personal access tokens: they act as the person who made them, see everything that person sees, and can add private pages at the top of the workspace. Settings now walks through making one (with a button to Notion's token page), and the app asks Notion which kind of token it has (`GET /users/me`: a person owns a personal access token's bot, the workspace owns a connection's). With a connection's token, Settings says what it can't do and the top-of-workspace option isn't shown. A personal access token can't list the workspace's people, so person properties fall back to the people in the notes and the token's owner. Rejected: OAuth now (it needs a server for Notion's client secret; on hold) and refusing connection tokens (they still work for shared pages).
+
 ## 2026-10-17: Notion API 2026-03-11
 
 The owner asked whether the app uses Notion's newest API. It moves from 2025-09-03 to 2026-03-11, whose breaking changes the app meets with small changes: a page goes to the trash with `in_trash` (no more `archived`), and new blocks go after a block with `position: {type: after_block}` (no more `after`). With it the app reads heading 4 (editable, `#### `), tab blocks (shown like columns, see `logic/Columns.kt`) and every kind of page icon: Notion's own icons used to come as an SVG link and now come as a name and color, uploaded images and custom emoji as a link. Notion's own icons are SVG files, which the app can't draw without a new library; it shows the closest Material Symbol in the icon's color instead. Rejected: staying on 2025-09-03 (no heading 4 or tabs, and the `archived` field it still used was deprecated in 2024) and adding Coil's SVG decoder (a new dependency for a small gain).

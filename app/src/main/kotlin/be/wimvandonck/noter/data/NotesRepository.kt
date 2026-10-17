@@ -17,6 +17,8 @@ import be.wimvandonck.noter.data.model.WorkspaceItem
 import be.wimvandonck.noter.data.notion.BlockCodec
 import be.wimvandonck.noter.data.notion.InlineMarkdown
 import be.wimvandonck.noter.data.notion.PropertyCodec
+import be.wimvandonck.noter.data.notion.TokenCodec
+import be.wimvandonck.noter.data.notion.TokenInfo
 import be.wimvandonck.noter.data.notion.WorkspaceCodec
 import be.wimvandonck.noter.data.store.AppSettings
 import be.wimvandonck.noter.data.store.CacheStore
@@ -36,6 +38,7 @@ import be.wimvandonck.noter.data.sync.RefreshKind
 import be.wimvandonck.noter.data.sync.SyncPolicy
 import be.wimvandonck.noter.data.sync.withProperty
 import be.wimvandonck.noter.logic.Columns
+import be.wimvandonck.noter.logic.KnownUsers
 import be.wimvandonck.noter.logic.NoteOrdering
 import be.wimvandonck.noter.logic.NotePreviews
 import kotlinx.coroutines.CompletableDeferred
@@ -893,7 +896,10 @@ class NotesRepository(
 
     // ---- Lookups for property editors ------------------------------------------------------
 
-    /** People in the workspace, for person properties (cached for a day). */
+    /**
+     * People in the workspace, for person properties (cached for a day). A personal access token
+     * can't list them: then the people in the notes here and the token's owner ([KnownUsers]).
+     */
     suspend fun users(forceRefresh: Boolean = false): List<NotionUser> = withContext(Dispatchers.IO) {
         val cached = cache.users()
         if (!forceRefresh && cached != null && clock() - cached.fetchedMs < LOOKUP_TTL_MS) return@withContext cached.users
@@ -905,7 +911,8 @@ class NotesRepository(
             cache.saveUsers(UsersCache(users, clock()))
             users
         } catch (e: NotionException) {
-            cached?.users.orEmpty()
+            val owner = if (e.isTemporary) null else runCatching { TokenCodec.parse(client.me()).owner }.getOrNull()
+            KnownUsers.of(_databases.value.values.flatMap { it.notes }, owner, cached?.users.orEmpty())
         }
     }
 
@@ -980,7 +987,10 @@ class NotesRepository(
         }
     }
 
-    suspend fun testKey(key: String): String = withContext(Dispatchers.IO) { client.testKey(key) }
+    /** What kind of token [key] (the stored one when null) is, and who it acts as. */
+    suspend fun tokenInfo(key: String? = null): TokenInfo = withContext(Dispatchers.IO) {
+        TokenCodec.parse(if (key != null) client.me(key) else client.me())
+    }
 
     /** Adds or changes a view (a database in the navigation). */
     suspend fun saveDatabase(config: DatabaseConfig) {

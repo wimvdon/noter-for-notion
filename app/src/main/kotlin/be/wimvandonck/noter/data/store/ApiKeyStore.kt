@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import be.wimvandonck.noter.data.notion.TokenKind
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -49,14 +50,30 @@ class ApiKeyStore(private val context: Context) {
 
     fun get(): String = cached ?: (prefs.getString(KEY, "") ?: "").also { cached = it }
 
-    fun set(key: String) {
+    /** Stores [key]; [kind] is what Notion said it is (null: not known yet). */
+    fun set(key: String, kind: TokenKind? = null) {
         cached = key
-        prefs.edit { putString(KEY, key) }
+        prefs.edit {
+            putString(KEY, key)
+            if (kind != null) putString(KIND, kind.name) else remove(KIND)
+        }
         _hasKey.value = key.isNotBlank()
+        _kind.value = kind
+    }
+
+    private val _kind by lazy { MutableStateFlow(prefs.getString(KIND, null)?.let { runCatching { TokenKind.valueOf(it) }.getOrNull() }) }
+
+    /** The stored key's kind: a personal access token or a connection's (null: not known yet). */
+    val kind: StateFlow<TokenKind?> get() = _kind
+
+    fun setKind(kind: TokenKind) {
+        prefs.edit { putString(KIND, kind.name) }
+        _kind.value = kind
     }
 
     private companion object {
         const val TAG = "ApiKeyStore"
         const val KEY = "api_key"
+        const val KIND = "token_kind"
     }
 }
