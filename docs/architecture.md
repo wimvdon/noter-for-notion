@@ -90,7 +90,8 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
   are shown read-only and left untouched (`ui/note/ReadOnlyBlocks.kt`): images, tables (their rows
   cost one more request per table), equations, files, videos, PDFs, audio, bookmarks, embeds,
   linked pages and the table of contents; tapping one opens it in the browser or in Notion.
-  Anything else is a box with its kind and "(edit in Notion)".
+  Anything else is an outlined box with its kind, "Can't be shown or edited here" and an "Open in
+  Notion" button that opens the page at that block.
 - **Nested blocks** (inside a toggle, a list item, a quote, …): downloaded with the note (one
   request per block with nested content, up to 5 levels deep) and kept in the same flat list,
   each block with its `depth` and its Notion parent (`parentId`); the editor indents them 24dp per
@@ -103,7 +104,10 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
   between columns, without indenting what is in them; a block in a column can be edited and
   nested but not taken out of its column. What is nested in images, synced blocks and the like
   stays in Notion; such a block says it has nested content. Previews in the overview download only the top level
-  (`PageContent.nestedLoaded`), and opening the note gets the rest.
+  (`PageContent.nestedLoaded`), and opening the note gets the rest. Until it arrives, the blocks
+  whose nested content is missing show a loading placeholder (`logic/NestedContent.kt`) and the
+  note can't be edited, so an edit can't keep the incomplete copy on screen; when it can't be
+  downloaded (offline), they say so and the sync button tries again.
 - **Inline styles** (`data/notion/InlineMarkdown.kt`): bold, italic, strikethrough, inline code and
   links are kept as Markdown in the editor and turned back into Notion rich text. Code blocks keep
   their text literally.

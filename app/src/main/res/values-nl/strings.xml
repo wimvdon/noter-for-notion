@@ -71,7 +71,8 @@
     <string name="properties_title">Eigenschappen</string>
     <string name="properties_help">Getoonde eigenschappen staan boven de notitie, de andere zijn ingeklapt. Geldt voor elke notitie in deze database.</string>
     <string name="property_shown">%1$s tonen</string>
-    <string name="unsupported_block">%1$s (bewerken in Notion)</string>
+    <string name="unsupported_block">Kan hier niet getoond of bewerkt worden.</string>
+    <string name="nested_not_loaded">Niet geladen. Controleer je verbinding en tik op synchroniseren om het opnieuw te proberen.</string>
     <string name="block_image">Afbeelding</string>
     <string name="block_linked_page">Gekoppelde pagina</string>
     <string name="block_equation">Vergelijking</string>

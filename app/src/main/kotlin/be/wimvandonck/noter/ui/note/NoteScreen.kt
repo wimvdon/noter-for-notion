@@ -126,6 +126,9 @@ import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.logic.Columns
 import be.wimvandonck.noter.logic.DocumentEditor
+import be.wimvandonck.noter.logic.NestedContent
+import be.wimvandonck.noter.logic.ReadOnlyBlocks
+import androidx.compose.material.icons.rounded.CloudOff
 import be.wimvandonck.noter.logic.PropertyLayouts
 import be.wimvandonck.noter.ui.theme.AppShapes
 import be.wimvandonck.noter.ui.theme.SkeletonLine
@@ -367,6 +370,14 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
                             headings = headings,
                             onOpenPage = { id -> viewModel.openLinkedPage(id, onOpenNote) },
                             onOpenDatabase = onOpenDatabase,
+                            nested = state.nested,
+                            editable = state.editable,
+                            onOpenInNotion = block.notionId?.takeIf { !note.isLocal }?.let { blockId ->
+                                {
+                                    val link = ReadOnlyBlocks.blockUrl(note.id, blockId)
+                                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, link.toUri())) }
+                                }
+                            },
                         )
                     }
                 }
@@ -378,6 +389,7 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
                             .fillMaxWidth()
                             .height(160.dp)
                             .clickable(
+                                enabled = state.editable,
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
                                 onClickLabel = label,
@@ -388,6 +400,39 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
                 }
             }
         }
+    }
+}
+
+/**
+ * In place of nested blocks that aren't on the phone yet: a loading placeholder while they are
+ * downloaded, else a line saying they couldn't be loaded (the sync button tries again).
+ */
+@Composable
+private fun NestedPlaceholder(state: NestedContent.State) {
+    if (state == NestedContent.State.NOT_LOADED) {
+        Row(
+            Modifier.padding(vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Rounded.CloudOff, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                stringResource(R.string.nested_not_loaded),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
+    val loading = stringResource(R.string.loading)
+    Column(
+        Modifier
+            .padding(top = 6.dp, bottom = 6.dp, end = 8.dp)
+            .semantics(mergeDescendants = true) { contentDescription = loading },
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        SkeletonLine(Modifier.fillMaxWidth(0.85f))
+        SkeletonLine(Modifier.fillMaxWidth(0.55f))
     }
 }
 
@@ -544,13 +589,18 @@ private fun BlockRow(
     headings: List<Block>,
     onOpenPage: (String) -> Unit,
     onOpenDatabase: (String) -> Unit,
+    nested: NestedContent.State,
+    editable: Boolean,
+    onOpenInNotion: (() -> Unit)?,
 ) {
     when (block.type) {
         BlockType.UNSUPPORTED -> {
             when {
+                // Columns whose content hasn't arrived yet: a placeholder until it does.
+                NestedContent.isMissing(block) -> NestedPlaceholder(nested)
                 // Columns whose content is shown here: a column list only holds its columns, and a
-                // column starts with a thin line (after the first). Deeper ones say "edit in Notion".
-                block.hasChildren || !Columns.isContainer(block) -> ReadOnlyBlock(block, headings, onOpenPage, onOpenDatabase)
+                // column starts with a thin line (after the first). Deeper ones are opened in Notion.
+                block.hasChildren || !Columns.isContainer(block) -> ReadOnlyBlock(block, headings, onOpenPage, onOpenDatabase, onOpenInNotion)
                 block.rawType == Columns.COLUMN -> ColumnStart(first = previousRawType == Columns.LIST)
                 else -> Unit
             }
@@ -608,7 +658,7 @@ private fun BlockRow(
         verticalAlignment = if (block.type == BlockType.TODO) Alignment.CenterVertically else Alignment.Top,
     ) {
         when {
-            block.type == BlockType.TODO -> Checkbox(checked = block.checked, onCheckedChange = { onToggle() })
+            block.type == BlockType.TODO -> Checkbox(checked = block.checked, onCheckedChange = { onToggle() }, enabled = editable)
             block.type == BlockType.BULLETED -> Box(Modifier.width(28.dp).height(28.dp), contentAlignment = Alignment.Center) { Bullet() }
             block.type == BlockType.NUMBERED -> Box(Modifier.width(28.dp).padding(top = 2.dp), contentAlignment = Alignment.TopCenter) {
                 Text("${number ?: 1}.", style = baseStyle)
@@ -646,6 +696,7 @@ private fun BlockRow(
                     }
                 },
                 textStyle = style,
+                readOnly = !editable,
                 cursorBrush = SolidColor(colors.primary),
                 // Code is shown exactly as typed: no Markdown styling.
                 visualTransformation = if (block.type == BlockType.CODE) VisualTransformation.None else styling,
@@ -677,8 +728,11 @@ private fun BlockRow(
                     inner()
                 },
             )
-            // Nested blocks (inside a toggle, a callout, …) aren't shown here; say so.
-            if (block.hasChildren && !block.type.isListItem) {
+            // Nested blocks still on their way: a placeholder. Ones that stay in Notion (deeper than
+            // the app goes): say so.
+            if (NestedContent.isMissing(block)) {
+                NestedPlaceholder(nested)
+            } else if (block.hasChildren && !block.type.isListItem) {
                 Text(
                     stringResource(R.string.nested_content),
                     style = MaterialTheme.typography.labelMedium,
@@ -688,7 +742,7 @@ private fun BlockRow(
             }
         }
         // A checklist item can be removed with one tap, as in Google Keep.
-        if (block.type == BlockType.TODO) {
+        if (block.type == BlockType.TODO && editable) {
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Rounded.Close,
