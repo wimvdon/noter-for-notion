@@ -30,6 +30,11 @@ properties and content: the pages of databases and pages on their own.
     Dragging a note in another sort switches to the custom order, starting from the order on
     screen, with an Undo snackbar. Notebooks that followed a Notion view before (`viewId` in old
     settings) now show all notes of their database, in the custom order.
+  - **A notebook of several data sources** (`DatabaseConfig.children`): a Notion database with
+    more than one data source (`DatabaseInfo.sources`) is one notebook with a sub-notebook per
+    data source, shown as secondary tabs below the notebook tabs. Each sub-notebook is a notebook
+    of its own (filters, sort, cards, its notes); `Notebooks.leaves`, `update` and `named` treat
+    them as such, and on Pinned and for + they are named "Notebook · Sub-notebook".
   - **A page's notebook** (`DatabaseConfig.pageId`, kept under the key
     `NotesRepository.pageNotebookKey`): its notes are the page's subpages (the child pages directly
     on it), "Page order" is their order on the page (`ViewResult`, `views.json`), and a new
@@ -52,9 +57,13 @@ properties and content: the pages of databases and pages on their own.
   gets its value where it can (not for computed properties; a date only for Today).
 - **Search** (`SearchScreen.kt`, a destination in the navigation bar): the notes on this phone whose
   title has every word typed (`logic/NoteSearch.kt`, at once and offline), then the databases and
-  pages Notion's search finds; before anything is typed, Notion's most recently edited ones. A
-  database whose data sources are in the results is left out (`WorkspaceCodec.parseAll`: it is
-  only their container); each data source is listed. The search starts afresh each time Search
+  pages Notion's search finds; before anything is typed, Notion's most recently edited ones.
+  Notion's search lists data sources, not databases. Each data source names its database; the app
+  asks Notion about that database once (`NotesRepository.databaseInfo`, kept in
+  `databases.json`) and groups the results (`WorkspaceCodec.group`): a database of several data
+  sources is listed once, as the database; a data source its database doesn't list is left out
+  (the search can show one the connection can't read). The list shows at once with what is kept,
+  then again after asking. The search starts afresh each time Search
   is opened. + offers a new note as on Pinned (not pinned). "Add notebook" in Manage notebooks
   opens the same search (`PickNotebookScreen`) with only databases and pages on their own.
 - **Database** (`DatabaseScreen.kt`): a database opened from Search or a link in a note, as a
@@ -95,6 +104,9 @@ properties and content: the pages of databases and pages on their own.
 - **Settings** (`ui/settings/`): Connection (a personal access token, with the steps to make one,
   and sync status), Views (a link to Manage views), Appearance; built from the shared
   `SettingsKit.kt`.
+- **Data sources** (`NotesRepository.resolveSource`): a key is asked about as a database first
+  (its first data source), then as a data source, because Notion may answer for a database's ID
+  as if it were a data source. The answers are kept in `sources_v2.json`.
 - **Errors** (`data/api/NotionErrors.kt`, `ui/common/ErrorText.kt`): the screens keep an error as
   a key for the common cases (no connection, not found or not shared, Notion busy, token refused,
   no data source), said in the user's language; other errors keep Notion's own (English) message.

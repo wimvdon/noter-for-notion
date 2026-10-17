@@ -36,12 +36,22 @@ data class DatabaseConfig(
      * set per notebook, see PropertyLayouts.cards).
      */
     val cards: CardLayout? = null,
+    /**
+     * A database with several data sources: one sub-notebook per data source, each with its own
+     * filters, sort and cards (shown as tabs inside this notebook). Empty for a notebook of one
+     * data source or a page.
+     */
+    val children: List<DatabaseConfig> = emptyList(),
 ) {
+    /** The notebooks that show notes: the sub-notebooks, else this one. */
+    val leaves: List<DatabaseConfig> get() = children.ifEmpty { listOf(this) }
+
     /** The database this view shows. */
     val sourceId: String get() = databaseId ?: id
 
     /** The notebook in today's terms: a filter property from before becomes a quick filter. */
     fun normalized(): DatabaseConfig {
+        if (children.isNotEmpty()) return copy(children = children.map { it.normalized() })
         val old = chipProperty ?: return this
         return copy(
             chipProperty = null,
@@ -166,6 +176,19 @@ data class WorkspaceItem(
     val lastEditedTime: String = "",
     /** A page: the note as the editor needs it (in its database, or among the pages). */
     val note: NoteSummary? = null,
+    /** A data source: the database it is in. */
+    val databaseId: String? = null,
+    /** A database with several data sources ([id] is the database's): those data sources. */
+    val sources: List<PageRef> = emptyList(),
+)
+
+/** A database as Notion describes it: its name, icon and data sources (see WorkspaceCodec.group). */
+@Serializable
+data class DatabaseInfo(
+    val id: String,
+    val title: String,
+    val icon: PageIcon? = null,
+    val sources: List<PageRef> = emptyList(),
 )
 
 /** A linked page of a relation property, or a page of the related database. */

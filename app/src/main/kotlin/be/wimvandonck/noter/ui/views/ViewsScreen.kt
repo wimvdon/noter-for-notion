@@ -56,6 +56,7 @@ import be.wimvandonck.noter.R
 import be.wimvandonck.noter.data.model.DatabaseConfig
 import be.wimvandonck.noter.logic.PropertyLayouts
 import be.wimvandonck.noter.data.model.CardLayout
+import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.ui.common.DatabaseIcons
 import be.wimvandonck.noter.ui.common.IconPicker
 import be.wimvandonck.noter.ui.common.errorText
@@ -161,7 +162,7 @@ private fun DatabaseRow(
 private fun DatabaseEditorSheet(
     draft: DatabaseDraft,
     onChange: ((DatabaseConfig) -> DatabaseConfig) -> Unit,
-    onCards: ((CardLayout) -> CardLayout) -> Unit,
+    onCards: (id: String, ((CardLayout) -> CardLayout)) -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
     onRemove: () -> Unit,
@@ -193,7 +194,17 @@ private fun DatabaseEditorSheet(
             if (draft.schemaError != null) {
                 Text(stringResource(R.string.key_failed, errorText(draft.schemaError)), color = MaterialTheme.colorScheme.error)
             }
-            CardOptions(draft, onCards)
+            val children = draft.config.children
+            if (children.isEmpty()) {
+                CardOptions(stringResource(R.string.cards_title), draft.cards, draft.schema) { onCards(draft.config.id, it) }
+            } else {
+                // A notebook of several data sources: the cards of each sub-notebook.
+                children.forEach { child ->
+                    CardOptions(stringResource(R.string.cards_of, child.name), child.cards ?: CardLayout(), draft.childSchemas[child.id]) {
+                        onCards(child.id, it)
+                    }
+                }
+            }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (!draft.isNew) {
@@ -229,12 +240,11 @@ private fun DatabaseEditorSheet(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CardOptions(draft: DatabaseDraft, onCards: ((CardLayout) -> CardLayout) -> Unit) {
-    val cards = draft.cards
-    Text(stringResource(R.string.cards_title), style = MaterialTheme.typography.titleSmall)
+private fun CardOptions(title: String, cards: CardLayout, schema: DatabaseSchema?, onCards: ((CardLayout) -> CardLayout) -> Unit) {
+    Text(title, style = MaterialTheme.typography.titleSmall)
     SwitchRow(stringResource(R.string.card_cover), cards.cover) { on -> onCards { it.copy(cover = on) } }
     SwitchRow(stringResource(R.string.card_content), cards.content) { on -> onCards { it.copy(content = on) } }
-    val properties = draft.schema?.properties.orEmpty().filter { it.type != "title" }
+    val properties = schema?.properties.orEmpty().filter { it.type != "title" }
     if (properties.isNotEmpty()) {
         Text(stringResource(R.string.cards_properties, PropertyLayouts.MAX_ON_CARD), style = MaterialTheme.typography.bodyLarge)
         val onCard = cards.properties

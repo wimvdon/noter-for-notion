@@ -38,10 +38,10 @@ python3 -m unittest discover -s scripts/tests
 | `data/store/CacheStoreTest` | On-phone copies survive a restart |
 | `logic/NoteOrderingTest`, `logic/ChipFilterTest` | Pins, custom order, filters (checkbox, date ranges, relations, created by, formulas, numbers in order of their value) |
 | `data/api/NotionErrorsTest` | Which errors the screens say in the user's language |
-| `logic/NotebooksTest` | A notebook's notes: filters per property, sorts, a new notebook's first chip row, the order of the chip rows, old notebooks that followed a Notion view |
+| `logic/NotebooksTest` | Sub-notebooks (leaves, changing one in place, names on Pinned); a notebook's notes: filters per property, sorts, a new notebook's first chip row, the order of the chip rows, old notebooks that followed a Notion view |
 | `logic/ColumnsTest` | Columns: how far their blocks are indented, and that blocks stay in their column |
 | `ui/main/PresetForTest` | The value a new note gets from the selected filter |
-| `logic/DestinationsTest`, `data/notion/WorkspaceCodecTest` | The destinations (Pinned, Notebooks, Search), which notebook Notebooks shows, a removed notebook; Browse's list from Notion's search, data sources (a database whose data sources are listed is left out) and the data source a page belongs to |
+| `logic/DestinationsTest`, `data/notion/WorkspaceCodecTest` | The destinations (Pinned, Notebooks, Search), which notebook Notebooks shows, a removed notebook; Browse's list from Notion's search, data sources (grouped by their database; one the database doesn't list is left out) and the data source a page belongs to |
 | `data/icons/IconCatalogTest` | Reading the icon file, icon search, old icon keys, and that the bundled file has every suggested icon |
 | `logic/NoteTargetsTest` | The databases "New note" offers on Pinned and Browse |
 | `logic/PropertyLayoutsTest` | Which properties are shown, collapsed and on the card, and in which order; header image and content on cards; cards per notebook, starting from the database's |

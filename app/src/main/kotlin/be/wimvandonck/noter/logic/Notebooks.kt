@@ -121,5 +121,34 @@ object Notebooks {
     fun chipRows(candidates: List<String>, quickFilters: List<String>): Pair<List<String>, List<String>> =
         quickFilters.filter { it in candidates } to candidates.filterNot { it in quickFilters }
 
+    /** Every notebook that shows notes: sub-notebooks instead of their notebook. */
+    fun leaves(notebooks: List<DatabaseConfig>): List<DatabaseConfig> = notebooks.flatMap { it.leaves }
+
+    /** [notebooks] with [transform] applied to each one that shows notes (sub-notebooks included). */
+    fun mapLeaves(notebooks: List<DatabaseConfig>, transform: (DatabaseConfig) -> DatabaseConfig): List<DatabaseConfig> =
+        notebooks.map { top -> if (top.children.isEmpty()) transform(top) else top.copy(children = top.children.map(transform)) }
+
+    /** [notebooks] with notebook or sub-notebook [id] changed by [transform]. */
+    fun update(notebooks: List<DatabaseConfig>, id: String, transform: (DatabaseConfig) -> DatabaseConfig): List<DatabaseConfig> =
+        notebooks.map { top ->
+            when {
+                top.id == id -> transform(top)
+                top.children.any { it.id == id } -> top.copy(children = top.children.map { if (it.id == id) transform(it) else it })
+                else -> top
+            }
+        }
+
+    /** The notebook (top level) that is or holds notebook [id]. */
+    fun topOf(notebooks: List<DatabaseConfig>, id: String): DatabaseConfig? =
+        notebooks.firstOrNull { top -> top.id == id || top.children.any { it.id == id } }
+
+    /**
+     * The notebooks that show notes as places for a note to go or a source on Pinned: named
+     * "Notebook · Sub-notebook" for a sub-notebook, with its notebook's icon.
+     */
+    fun named(notebooks: List<DatabaseConfig>): List<DatabaseConfig> = notebooks.flatMap { top ->
+        if (top.children.isEmpty()) listOf(top) else top.children.map { it.copy(name = "${top.name} · ${it.name}", icon = top.icon) }
+    }
+
     private fun plain(id: String) = id.replace("-", "")
 }

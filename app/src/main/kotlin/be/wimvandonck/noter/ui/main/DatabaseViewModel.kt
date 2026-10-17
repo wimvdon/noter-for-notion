@@ -32,6 +32,8 @@ data class DatabaseUiState(
     val sources: List<PageRef>? = null,
     /** The data source shown. */
     val sourceId: String = "",
+    /** What "Add as notebook" adds: the database (several data sources) or the data source. */
+    val addKey: String = "",
 )
 
 /**
@@ -72,7 +74,7 @@ class DatabaseViewModel(
             hasKey = key,
             currentTab = databaseId,
             pinnedIds = settings.pinned.toSet(),
-            propertyLayouts = PropertyLayouts.cardLayouts(settings.propertyLayouts, settings.databases),
+            propertyLayouts = PropertyLayouts.cardLayouts(settings.propertyLayouts, Notebooks.leaves(settings.databases)),
             pendingCount = pending,
         )
         // Shown like a notebook that isn't saved: its quick filter, the custom order.
@@ -86,8 +88,10 @@ class DatabaseViewModel(
         DatabaseUiState(
             title = db?.schema?.title.orEmpty(),
             content = notebookContent(base, unsaved, db, null, settings),
-            viewCount = settings.databases.count { it.sourceId == databaseId },
-            viewId = settings.databases.firstOrNull { it.sourceId == databaseId }?.id,
+            viewCount = Notebooks.leaves(settings.databases).count { it.sourceId == databaseId },
+            viewId = Notebooks.leaves(settings.databases).firstOrNull { it.sourceId == databaseId }?.let { Notebooks.topOf(settings.databases, it.id)?.id },
+            // A database of several data sources becomes one notebook with a sub-notebook each.
+            addKey = if (list != null) openedId else databaseId,
             sources = list,
             sourceId = databaseId,
         )

@@ -7,6 +7,8 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.LeadingIconTab
 import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.SecondaryScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridItemInfo
@@ -123,6 +125,7 @@ import be.wimvandonck.noter.logic.ChipFilter
 import be.wimvandonck.noter.logic.FilterChip as Chip
 import be.wimvandonck.noter.logic.Destinations
 import be.wimvandonck.noter.logic.NoteTargets
+import be.wimvandonck.noter.logic.Notebooks
 import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
 import androidx.compose.material.icons.rounded.Key
@@ -191,7 +194,7 @@ fun MainScreen(
 
     val notebookActions = NotebookActions(onQuickFilters = viewModel::setQuickFilters, onSort = viewModel::setSort)
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-    val targets = NoteTargets.of(state.views, null)
+    val targets = NoteTargets.of(Notebooks.named(state.views), null)
     val navigationBar: @Composable () -> Unit = {
         NavigationBar {
             NavigationBarItem(
@@ -274,6 +277,19 @@ fun MainScreen(
                                 icon = { Icon(DatabaseIcons.icon(tab.icon), contentDescription = null, Modifier.size(18.dp)) },
                                 text = { Text(tab.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             )
+                        }
+                    }
+                    // A notebook of several data sources: one secondary tab per data source.
+                    if (state.subTabs.isNotEmpty()) {
+                        val current = state.subTabs.indexOfFirst { it.key == state.notebook?.id }.coerceAtLeast(0)
+                        SecondaryScrollableTabRow(selectedTabIndex = current, edgePadding = 16.dp) {
+                            state.subTabs.forEach { sub ->
+                                Tab(
+                                    selected = sub.key == state.notebook?.id,
+                                    onClick = { viewModel.selectSubTab(state.currentTab, sub.key) },
+                                    text = { Text(sub.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                )
+                            }
                         }
                     }
                 }

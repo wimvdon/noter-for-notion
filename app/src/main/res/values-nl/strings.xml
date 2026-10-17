@@ -195,4 +195,5 @@
     <string name="clear_row">Niet meer filteren op %1$s</string>
     <string name="chip_rows_shown">Getoond</string>
     <string name="new_subpage">Nieuwe subpagina</string>
+    <string name="cards_of">Kaarten: %1$s</string>
 </resources>

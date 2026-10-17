@@ -112,4 +112,29 @@ class NotebooksTest {
         val tagged = withoutTags + note("3", tag = "Home")
         assertEquals(listOf("Status", "Tag"), Notebooks.content(tagged, schema, config, null, emptyList(), emptyList()).groups.map { it.property?.name })
     }
+
+    @Test
+    fun `sub-notebooks show the notes, are changed in place and are named after their notebook`() {
+        val skin = DatabaseConfig("s", "Skin", databaseId = "ds-skin")
+        val food = DatabaseConfig("f", "Food", databaseId = "ds-food")
+        val health = DatabaseConfig("h", "Health", icon = "favorite", databaseId = "db-health", children = listOf(skin, food))
+        val books = DatabaseConfig("b", "Books", databaseId = "db-books")
+        val all = listOf(health, books)
+        assertEquals(listOf("s", "f", "b"), Notebooks.leaves(all).map { it.id })
+
+        val sorted = Notebooks.update(all, "f") { it.copy(sort = NotebookSort(SortKind.TITLE)) }
+        assertEquals(SortKind.TITLE, sorted[0].children[1].currentSort.kind)
+        assertEquals(SortKind.CUSTOM, sorted[0].children[0].currentSort.kind)
+        assertEquals("Shelf", Notebooks.update(all, "b") { it.copy(name = "Shelf") }[1].name)
+        assertEquals("h", Notebooks.topOf(all, "f")?.id)
+        assertEquals("b", Notebooks.topOf(all, "b")?.id)
+
+        val renamed = Notebooks.mapLeaves(all) { it.copy(databaseId = it.databaseId + "!") }
+        assertEquals("db-health", renamed[0].databaseId)
+        assertEquals(listOf("ds-skin!", "ds-food!", "db-books!"), Notebooks.leaves(renamed).map { it.databaseId })
+
+        val named = Notebooks.named(all)
+        assertEquals(listOf("Health · Skin", "Health · Food", "Books"), named.map { it.name })
+        assertEquals("favorite", named[0].icon)
+    }
 }

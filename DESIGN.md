@@ -216,7 +216,8 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   the grid. A dragged card lifts (shadow, 3% larger, `surfaceContainerHigh`).
 - Navigation: the navigation bar has the three top-level destinations, Pinned, Notebooks and
   Search. The notebooks are peers within Notebooks: a primary scrollable tab row under the top
-  app bar, leading-icon tabs with the notebook's icon. The top app bar's ⋮ menu has Edit
+  app bar, leading-icon tabs with the notebook's icon. A notebook of several data sources has a
+  secondary scrollable tab row below it, one tab per data source (a sub-notebook). The top app bar's ⋮ menu has Edit
   notebook, Manage notebooks and Settings; there is no drawer.
 - Filters and sort: icon buttons in a notebook's top app bar. Filters shows a small badge dot
   while filters are on; Sort opens a menu with a check on the current sort and an arrow (up:

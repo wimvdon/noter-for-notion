@@ -1,5 +1,6 @@
 package be.wimvandonck.noter.data.store
 
+import be.wimvandonck.noter.data.model.DatabaseInfo
 import be.wimvandonck.noter.data.model.ViewResult
 import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.NoteSummary
@@ -110,6 +111,13 @@ class CacheStore(private val dir: File) {
     fun savePages(databaseId: String, cache: PagesCache) =
         write("pages_${safe(databaseId)}.json", PagesCache.serializer(), cache)
 
+    /** Databases' names and data sources, by database ID, as Notion said when last asked. */
+    @Synchronized
+    fun databaseInfos(): Map<String, DatabaseInfo> = read(DATABASES, MapSerializer(String.serializer(), DatabaseInfo.serializer())).orEmpty()
+
+    @Synchronized
+    fun saveDatabaseInfos(infos: Map<String, DatabaseInfo>) = write(DATABASES, MapSerializer(String.serializer(), DatabaseInfo.serializer()), infos)
+
     /** Each page notebook's order of its subpages when last asked, by its key. */
     @Synchronized
     fun views(): Map<String, ViewResult> = read(VIEWS, MapSerializer(String.serializer(), ViewResult.serializer())).orEmpty()
@@ -126,7 +134,10 @@ class CacheStore(private val dir: File) {
     private companion object {
         const val OUTBOX = "outbox.json"
         const val USERS = "users.json"
-        const val SOURCES = "sources.json"
+        // v2: a database is asked about before a data source (see NotesRepository.resolveSource), so
+        // keys resolved the other way round before are asked about again.
+        const val SOURCES = "sources_v2.json"
         const val VIEWS = "views.json"
+        const val DATABASES = "databases.json"
     }
 }

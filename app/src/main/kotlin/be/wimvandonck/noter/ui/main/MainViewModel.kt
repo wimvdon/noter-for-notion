@@ -61,6 +61,8 @@ data class MainUiState(
     val canAddTopLevel: Boolean = false,
     /** The notebooks, as tabs under Notebooks. */
     val tabs: List<Tab> = emptyList(),
+    /** The shown notebook's sub-notebooks (one per data source), as tabs below its own. */
+    val subTabs: List<Tab> = emptyList(),
     /** Pinned, Search, a notebook's ID, or Notebooks without one (see Destinations). */
     val currentTab: String = Destinations.PINNED,
     /** The filter chips above the notes, per property (on Pinned: one group, the sources). */
@@ -154,7 +156,7 @@ internal fun notebookContent(
 /** The filter property a database opened on its own uses: a notebook's first quick filter, else status or select. */
 internal fun defaultChipProperty(databaseId: String, settings: AppSettings, db: DatabaseState?): PropertySchema? {
     val schema = db?.schema ?: return null
-    val chosen = settings.databases.firstOrNull { it.sourceId == databaseId && it.quickFilters.isNotEmpty() }?.quickFilters?.first()
+    val chosen = Notebooks.leaves(settings.databases).firstOrNull { it.sourceId == databaseId && it.quickFilters.isNotEmpty() }?.quickFilters?.first()
     return chosen?.let { schema.property(it) }
         ?: schema.properties.firstOrNull { it.type == "status" }
         ?: schema.properties.firstOrNull { it.type == "select" }
@@ -200,6 +202,9 @@ class MainViewModel(
 
     private val currentTab = MutableStateFlow(Destinations.PINNED)
 
+    /** The sub-notebook shown per notebook (else its first). */
+    private val subTab = MutableStateFlow<Map<String, String>>(emptyMap())
+
     /** Sources picked on Pinned since the app started (a notebook keeps its own filters). */
     private val pinnedChips = MutableStateFlow<Set<String>>(emptySet())
 
@@ -216,9 +221,9 @@ class MainViewModel(
         repository.settingsFlow(),
         repository.databases,
         currentTab,
-        combine(pinnedChips, repository.viewResults) { chips, orders -> chips to orders },
+        combine(pinnedChips, repository.viewResults, subTab) { chips, orders, subs -> Triple(chips, orders, subs) },
         status,
-    ) { settings, databases, tab, (chips, pageOrders), (pending, offline, key, kind) ->
+    ) { settings, databases, tab, (chips, pageOrders, subs), (pending, offline, key, kind) ->
         val notebooks = settings.databases
         val tabKey = Destinations.valid(tab, notebooks)
         val tabs = notebooks.map { Tab(it.id, it.name, it.icon) }
@@ -229,8 +234,8 @@ class MainViewModel(
             tabs = tabs,
             currentTab = tabKey,
             pinnedIds = settings.pinned.toSet(),
-            databaseIcons = notebooks.reversed().associate { it.sourceId to it.icon },
-            propertyLayouts = PropertyLayouts.cardLayouts(settings.propertyLayouts, notebooks),
+            databaseIcons = Notebooks.named(notebooks).reversed().associate { it.sourceId to it.icon },
+            propertyLayouts = PropertyLayouts.cardLayouts(settings.propertyLayouts, Notebooks.leaves(notebooks)),
             pendingCount = pending,
             offline = offline,
             views = notebooks,
@@ -253,9 +258,14 @@ class MainViewModel(
             }
             Destinations.SEARCH, Destinations.NOTEBOOKS -> base
             else -> {
-                val notebook = notebooks.first { it.id == tabKey }
+                val top = notebooks.first { it.id == tabKey }
+                // A notebook of several data sources shows one of them (a sub-notebook) at a time.
+                val notebook = top.children.firstOrNull { it.id == subs[top.id] } ?: top.children.firstOrNull() ?: top
                 val pageOrder = if (notebook.pageId != null) pageOrders[notebook.sourceId] else null
-                val withCards = base.copy(propertyLayouts = PropertyLayouts.cardLayouts(settings.propertyLayouts, notebooks, notebook))
+                val withCards = base.copy(
+                    propertyLayouts = PropertyLayouts.cardLayouts(settings.propertyLayouts, Notebooks.leaves(notebooks), notebook),
+                    subTabs = top.children.map { Tab(it.id, it.name, null) },
+                )
                 notebookContent(withCards, notebook, databases[notebook.sourceId], pageOrder, settings)
                     .copy(notebook = notebook)
             }
@@ -265,7 +275,7 @@ class MainViewModel(
 
     /** Every source of notes, named after its first view, else its database title ("" for the pages). */
     private fun sources(settings: AppSettings, databases: Map<String, DatabaseState>): List<NoteSource> {
-        val fromViews = settings.databases.distinctBy { it.sourceId }.map { NoteSource(it.sourceId, it.name) }
+        val fromViews = Notebooks.named(settings.databases).distinctBy { it.sourceId }.map { NoteSource(it.sourceId, it.name) }
         val others = databases.filterKeys { id -> fromViews.none { it.id == id } }.map { (id, db) ->
             NoteSource(id, if (id == NotesRepository.PAGES) "" else db.schema?.title.orEmpty())
         }
@@ -283,8 +293,13 @@ class MainViewModel(
         if (Destinations.section(key) == Destinations.Section.NOTEBOOKS && key != Destinations.NOTEBOOKS) lastNotebook = key
         viewModelScope.launch {
             val view = repository.currentSettings().databases.firstOrNull { it.id == key } ?: return@launch
-            repository.refresh(view.sourceId, userAsked = false)
+            view.leaves.forEach { repository.refresh(it.sourceId, userAsked = false) }
         }
+    }
+
+    /** Shows sub-notebook [childId] of notebook [notebookId]. */
+    fun selectSubTab(notebookId: String, childId: String) {
+        subTab.update { it + (notebookId to childId) }
     }
 
     /** Notebooks in the navigation bar: the notebook seen last, else the first. */
@@ -296,7 +311,7 @@ class MainViewModel(
     private fun updateNotebook(transform: (DatabaseConfig) -> DatabaseConfig) {
         val id = state.value.notebook?.id ?: return
         viewModelScope.launch {
-            repository.updateSettings { s -> s.copy(databases = s.databases.map { if (it.id == id) transform(it) else it }) }
+            repository.updateSettings { s -> s.copy(databases = Notebooks.update(s.databases, id, transform)) }
         }
     }
 
@@ -328,7 +343,7 @@ class MainViewModel(
     /** Undo after dragging switched a notebook to the custom order. */
     fun undoSortedByHand(event: MainEvent.SortedByHand) {
         viewModelScope.launch {
-            repository.updateSettings { s -> s.copy(databases = s.databases.map { if (it.id == event.notebookId) it.copy(sort = event.previous) else it }) }
+            repository.updateSettings { s -> s.copy(databases = Notebooks.update(s.databases, event.notebookId) { it.copy(sort = event.previous) }) }
         }
     }
 
@@ -374,7 +389,7 @@ class MainViewModel(
             repository.saveOrder(key, ids)
             if (switching && notebook != null) {
                 repository.updateSettings { s ->
-                    s.copy(databases = s.databases.map { if (it.id == notebook.id) it.copy(sort = NotebookSort(SortKind.CUSTOM)) else it })
+                    s.copy(databases = Notebooks.update(s.databases, notebook.id) { it.copy(sort = NotebookSort(SortKind.CUSTOM)) })
                 }
                 _mainEvents.tryEmit(MainEvent.SortedByHand(notebook.id, notebook.sort))
             }
@@ -436,8 +451,11 @@ class MainViewModel(
         searchJob = viewModelScope.launch {
             if (query.isNotBlank()) delay(SEARCH_PAUSE_MS)
             try {
-                val items = repository.browse(query)
-                _browse.update { it.copy(items = items, loading = false) }
+                val found = repository.browse(query)
+                // At once with what is known about the databases, then after asking Notion.
+                _browse.update { it.copy(items = repository.groupByDatabase(found, ask = false), loading = false) }
+                val grouped = repository.groupByDatabase(found, ask = true)
+                _browse.update { if (it.query == query) it.copy(items = grouped) else it }
             } catch (e: NotionException) {
                 _browse.update { it.copy(loading = false, error = NotionErrors.of(e)) }
             }

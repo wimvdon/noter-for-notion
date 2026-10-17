@@ -71,7 +71,7 @@ fun DatabaseScreen(
                         // One view per database from here: once added, the button edits it.
                         val viewId = state.viewId
                         if (viewId == null) {
-                            TextButton(onClick = { onAddNotebook(state.sourceId) }) {
+                            TextButton(onClick = { onAddNotebook(state.addKey) }) {
                                 Icon(Icons.Rounded.BookmarkAdd, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text(stringResource(R.string.add_view))
