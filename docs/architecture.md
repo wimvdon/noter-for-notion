@@ -22,7 +22,8 @@ properties and content: the pages of databases and pages on their own.
     last edited, created, title or a date property. **Filters** (a dot on the button while
     filters are on) opens the panel: the properties it can filter by, arranged like a note's
     properties with `PropertyArranger` ("Shown" ones have a row of chips above the notes, in
-    that order; dragged past the "Hidden" line, or the eye, a property stops filtering); Clear
+    that order; dragged past the "Hidden" line, or the eye, it loses its row), then every
+    property with its values to filter by (also the hidden ones); Clear
     filters. **Sort** is a menu: tapping the current sort again turns it around, an arrow shows
     which way. Above the notes, one row of chips per quick filter (`DatabaseConfig.quickFilters`),
     each starting with the property's name and, while something in it is selected, ending in ×;

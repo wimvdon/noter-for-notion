@@ -328,12 +328,8 @@ class MainViewModel(
         if (state.value.isHome) pinnedChips.value = emptySet() else updateNotebook { it.copy(selected = emptyMap()) }
     }
 
-    /**
-     * The properties with a row of chips above the notes, in this order. A hidden property doesn't
-     * filter any more (nothing would show why notes are missing).
-     */
-    fun setQuickFilters(properties: List<String>) =
-        updateNotebook { it.copy(quickFilters = properties, selected = it.selected.filterKeys { name -> name in properties }) }
+    /** The properties with a row of chips above the notes, in this order (filters stay as they are). */
+    fun setQuickFilters(properties: List<String>) = updateNotebook { it.copy(quickFilters = properties) }
 
     /** The × at the end of a row of chips: [property] doesn't filter any more. */
     fun clearRow(property: String) = updateNotebook { it.copy(selected = it.selected - property) }

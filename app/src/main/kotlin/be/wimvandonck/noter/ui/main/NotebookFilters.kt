@@ -38,6 +38,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import be.wimvandonck.noter.R
@@ -131,14 +136,15 @@ private fun sortLabel(sort: NotebookSort): String = when (sort.kind) {
 
 /**
  * The notebook's Filters panel: which properties have a row of chips above the notes, arranged
- * like a note's properties (drag by the handle, past the "Hidden" line, or the eye), and Clear
- * filters. Everything is kept on this phone.
+ * like a note's properties (drag by the handle, past the "Hidden" line, or the eye), then every
+ * property with its values to filter by, and Clear filters. Everything is kept on this phone.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 internal fun NotebookFiltersSheet(
     state: MainUiState,
     actions: NotebookActions,
+    onToggle: (property: String, key: String) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -163,6 +169,33 @@ internal fun NotebookFiltersSheet(
                 onDone = null,
                 shownTitle = stringResource(R.string.chip_rows_shown),
             )
+            // The values to filter by, for every property (also those without a row of chips).
+            state.filterOptions.forEach { group ->
+                val property = group.property ?: return@forEach
+                HorizontalDivider(Modifier.padding(top = 16.dp, bottom = 12.dp, end = 12.dp))
+                Text(
+                    property.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(bottom = 8.dp).semantics { heading() },
+                )
+                if (group.chips.isEmpty()) {
+                    Text(
+                        stringResource(R.string.filter_no_values),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    FlowRow(Modifier.padding(end = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        group.chips.forEach { chip ->
+                            FilterChip(
+                                selected = chip.key in group.selected,
+                                onClick = { onToggle(property.name, chip.key) },
+                                label = { ChipText(chipLabel(chip, property.name, state), chip.count) },
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

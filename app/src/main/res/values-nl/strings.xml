@@ -196,4 +196,5 @@
     <string name="chip_rows_shown">Getoond</string>
     <string name="new_subpage">Nieuwe subpagina</string>
     <string name="cards_of">Kaarten: %1$s</string>
+    <string name="filter_no_values">Nog geen waarden</string>
 </resources>
