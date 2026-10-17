@@ -30,10 +30,10 @@ object NoteOrdering {
         return ArrangedNotes(top, rest)
     }
 
-    /** [ids] with the item at [from] moved to [to]. */
-    fun move(ids: List<String>, from: Int, to: Int): List<String> {
-        if (from !in ids.indices || to !in ids.indices || from == to) return ids
-        return ids.toMutableList().apply { add(to, removeAt(from)) }
+    /** [items] with the item at [from] moved to [to] (notes, notebooks). */
+    fun <T> move(items: List<T>, from: Int, to: Int): List<T> {
+        if (from !in items.indices || to !in items.indices || from == to) return items
+        return items.toMutableList().apply { add(to, removeAt(from)) }
     }
 
     /**

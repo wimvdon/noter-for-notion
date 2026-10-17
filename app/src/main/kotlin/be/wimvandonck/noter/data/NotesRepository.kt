@@ -1253,11 +1253,10 @@ class NotesRepository(
 
     private fun plain(id: String) = id.replace("-", "")
 
-    suspend fun moveDatabase(id: String, up: Boolean) {
+    suspend fun moveDatabase(id: String, to: Int) {
         settings.update { s ->
             val index = s.databases.indexOfFirst { it.id == id }
-            val target = if (up) index - 1 else index + 1
-            if (index < 0 || target !in s.databases.indices) s else s.copy(databases = s.databases.toMutableList().apply { add(target, removeAt(index)) })
+            if (index < 0 || to !in s.databases.indices) s else s.copy(databases = NoteOrdering.move(s.databases, index, to))
         }
     }
 

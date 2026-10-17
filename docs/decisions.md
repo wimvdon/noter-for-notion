@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: Same design rules as the sibling apps
+
+A design review of all the apps found Noter doing some things its own way. Lists in your own order (Manage notebooks, Settings › Navigation bar) had up and down arrows while the Filters panel had drag handles: every reorderable list now has a drag handle at the end of the row, from the shared `Reorder.kt` (Move up and Move down stay as screen reader actions). The Filters panel's handle moved from the start to the end of the row to match. The navigation bar shows outlined icons for the destinations that aren't selected, as Tracker for Simkl does and Material describes. The note editor and Search keep a readable width (640dp) on wide windows (`Layout.kt`). Noter now also speaks French, German, Spanish and Italian, like the other apps. Rejected: keeping arrows for short lists (two ways to do the same thing across the apps).
+
 ## 2026-10-17: Notebooks follow data sources moved in Notion
 
 The owner moved a database (Development) into another one (Notities) as a data source, and the app kept two notebooks. The app now asks Notion where each notebook's data source is (the data source's parent database) and which data sources that database has, when the app opens (at most every 15 minutes) and on pull-to-refresh: one request per data source and per database. The notebooks are then brought in line: the moved data source becomes a sub-notebook of the database's notebook and keeps its filters, sort and cards. A second notebook of the same data source (other filters) is left alone, since that may be on purpose. A data source Notion can't find (deleted, in the trash, or no access) isn't removed by itself, since it may only be a lost permission: its notebook says so, with a button to remove it and one to retry. Rejected: checking on every refresh (more requests for something that rarely changes).
@@ -289,7 +293,7 @@ Without a `LICENSE` file the legal default is already all rights reserved, but t
   "enhanced" provider is closed source under separate terms of use.
 - **CI artifacts:** the debug APK is uploaded unzipped (`archive: false`) so it can be installed on a
   phone straight from the download.
-- **Languages:** English (default) + Dutch, as a working example of translations. `generateLocaleConfig`
+- **Languages:** English (default), Dutch, French, German, Spanish and Italian, like the sibling apps. `generateLocaleConfig`
   makes the app appear under Android's per-app language settings.
 - **Persistence:** DataStore when needed (version in the catalog, not added as a dependency yet). No
   network, analytics or crash-reporting libraries.

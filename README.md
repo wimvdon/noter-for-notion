@@ -12,7 +12,7 @@ notes you pinned from all of them, and **Search** finds your notes and anything 
 - The note's properties (select, status, dates, people, relations, …) are edited above the content.
 - Opens instantly and works offline: the app keeps a copy on the phone and sends changes to Notion
   about once a second while you type, within Notion's limits.
-- Material 3 (light/dark, wallpaper colours), English and Dutch, Android 12+.
+- Material 3 (light/dark, wallpaper colours), English, Dutch, French, German, Spanish and Italian, Android 12+.
 
 What the app sends and stores: [`PRIVACY.md`](PRIVACY.md). Rules for Claude Code sessions:
 [`CLAUDE.md`](CLAUDE.md).

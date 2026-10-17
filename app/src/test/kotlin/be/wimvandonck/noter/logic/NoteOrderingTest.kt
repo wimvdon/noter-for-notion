@@ -30,6 +30,8 @@ class NoteOrderingTest {
     fun `move puts an item at a new position`() {
         assertEquals(listOf("b", "c", "a"), NoteOrdering.move(listOf("a", "b", "c"), 0, 2))
         assertEquals(listOf("a", "b"), NoteOrdering.move(listOf("a", "b"), 0, 5))
+        // Also for notebooks dragged in Manage notebooks.
+        assertEquals(listOf(3, 1, 2), NoteOrdering.move(listOf(1, 2, 3), 2, 0))
     }
 
     @Test

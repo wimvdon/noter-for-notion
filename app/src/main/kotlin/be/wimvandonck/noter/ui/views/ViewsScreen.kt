@@ -19,8 +19,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,6 +58,8 @@ import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.ui.common.DatabaseIcons
 import be.wimvandonck.noter.ui.common.IconPicker
 import be.wimvandonck.noter.ui.common.errorText
+import be.wimvandonck.noter.ui.theme.DragHandle
+import be.wimvandonck.noter.ui.theme.ReorderableColumn
 import be.wimvandonck.noter.ui.theme.SettingsBlock
 import be.wimvandonck.noter.ui.theme.SettingsScaffold
 
@@ -95,14 +95,16 @@ fun ViewsScreen(
         backLabel = stringResource(R.string.back),
         onBack = onBack,
     ) {
-        views.forEachIndexed { index, db ->
-            item(key = db.id) {
+        item(key = "notebooks") {
+            ReorderableColumn(
+                items = views,
+                key = { it.id },
+                onMove = { from, to -> viewModel.moveDatabase(views[from].id, to) },
+            ) { db ->
                 DatabaseRow(
                     config = db,
-                    canMoveUp = index > 0,
-                    canMoveDown = index < views.lastIndex,
                     onClick = { viewModel.startEdit(db) },
-                    onMove = { up -> viewModel.moveDatabase(db.id, up) },
+                    handle = { DragHandle(handleModifier) },
                 )
             }
         }
@@ -135,24 +137,13 @@ fun ViewsScreen(
 @Composable
 private fun DatabaseRow(
     config: DatabaseConfig,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
     onClick: () -> Unit,
-    onMove: (Boolean) -> Unit,
+    handle: @Composable () -> Unit,
 ) {
     ListItem(
         leadingContent = { Icon(DatabaseIcons.icon(config.icon), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         headlineContent = { Text(config.name) },
-        trailingContent = {
-            Row {
-                IconButton(onClick = { onMove(true) }, enabled = canMoveUp) {
-                    Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = stringResource(R.string.action_move_up))
-                }
-                IconButton(onClick = { onMove(false) }, enabled = canMoveDown) {
-                    Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.action_move_down))
-                }
-            }
-        },
+        trailingContent = handle,
         modifier = Modifier.clickable(onClick = onClick),
     )
 }

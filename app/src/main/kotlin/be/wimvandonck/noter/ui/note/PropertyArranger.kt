@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Icon
@@ -44,6 +43,7 @@ import androidx.compose.ui.zIndex
 import be.wimvandonck.noter.R
 import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.logic.PropertyLayouts
+import be.wimvandonck.noter.ui.theme.DragHandle
 
 /**
  * Arranging a database's properties in place, where they are shown in the note: drag a property
@@ -130,10 +130,10 @@ fun PropertyArranger(
                             .graphicsLayer {
                                 if (isDragging) {
                                     translationY = dragOffset
-                                    shadowElevation = 8f
+                                    shadowElevation = 8.dp.toPx()
                                 }
                             }
-                            .then(if (isDragging) Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow) else Modifier)
+                            .then(if (isDragging) Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh) else Modifier)
                             .semantics {
                                 customActions = listOf(
                                     CustomAccessibilityAction(moveUp) { move(name, -1).also { if (it) save() } },
@@ -142,12 +142,30 @@ fun PropertyArranger(
                             },
                     ) {
                         Row(Modifier.fillMaxWidth().height(ROW_HEIGHT), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Rounded.DragIndicator,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier
-                                    .padding(end = 8.dp, top = 12.dp, bottom = 12.dp)
+                            Text(
+                                name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (isShown) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            IconToggleButton(
+                                checked = isShown,
+                                onCheckedChange = {
+                                    val shown = entries.subList(0, entries.indexOf(HIDDEN_LINE)).toList()
+                                    val hidden = entries.subList(entries.indexOf(HIDDEN_LINE) + 1, entries.size).toList()
+                                    if (isShown) onArrange(shown - name, listOf(name) + hidden) else onArrange(shown + name, hidden - name)
+                                },
+                            ) {
+                                Icon(
+                                    if (isShown) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
+                                    contentDescription = stringResource(R.string.property_shown, name),
+                                    tint = if (isShown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            DragHandle(
+                                Modifier
                                     .pointerInput(name) {
                                         detectDragGestures(
                                             onDragStart = {
@@ -178,28 +196,6 @@ fun PropertyArranger(
                                         )
                                     },
                             )
-                            Text(
-                                name,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = if (isShown) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f),
-                            )
-                            IconToggleButton(
-                                checked = isShown,
-                                onCheckedChange = {
-                                    val shown = entries.subList(0, entries.indexOf(HIDDEN_LINE)).toList()
-                                    val hidden = entries.subList(entries.indexOf(HIDDEN_LINE) + 1, entries.size).toList()
-                                    if (isShown) onArrange(shown - name, listOf(name) + hidden) else onArrange(shown + name, hidden - name)
-                                },
-                            ) {
-                                Icon(
-                                    if (isShown) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
-                                    contentDescription = stringResource(R.string.property_shown, name),
-                                    tint = if (isShown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
                         }
                         below?.invoke(name)
                     }

@@ -123,7 +123,7 @@ properties and content: the pages of databases and pages on their own.
   mapped to their Material Symbols names.
 - **Settings** (`ui/settings/`): Connection (a personal access token, with the steps to make one,
   and sync status), Views (a link to Manage views), Navigation bar (the order of Pinned and
-  Notebooks with up and down arrows, the first marked as where the app opens; Search locked
+  Notebooks by their drag handles, the first marked as where the app opens; Search locked
   last), Appearance; built from the shared
   `SettingsKit.kt`.
 - **Data sources** (`NotesRepository.resolveSource`): a key is asked about as a database first

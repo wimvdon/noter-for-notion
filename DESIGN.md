@@ -54,7 +54,8 @@ Follows Material 3's split between destinations and actions:
 
 - Top-level destinations (two to five) sit in Material's `NavigationBar`, docked at the bottom
   edge. On wide windows an app may switch to a `NavigationRail` with the same destinations in
-  the same order. Floating bars (M3 Expressive's floating toolbar) are for actions on the
+  the same order. A selected destination shows its filled (Rounded) icon, the others their
+  Outlined icon, as Material's navigation guidelines describe. Floating bars (M3 Expressive's floating toolbar) are for actions on the
   current screen, never for switching sections.
 - Tabs are only for peer views of the same content. Chips filter or sort a collection; they are
   not navigation and not general buttons.
@@ -68,7 +69,25 @@ Follows Material 3's split between destinations and actions:
   under a tile has a fixed number of lines (two for a title, one for a caption, ending in "…"),
   and a missing line still takes its space. Otherwise the row grows and shrinks as tiles with
   longer titles scroll into view, and everything below it jumps.
-- Content keeps a readable width on wide windows (about 640dp for lists and settings).
+- Content keeps a readable width on wide windows: lists, forms, settings and text stay at most
+  640dp wide and centred (`Modifier.readableWidth()`). Grids of posters or cards and pictures
+  may use the whole width.
+
+## Reordering
+
+Every list the user can put in their own order works the same way (`ui/theme/Reorder.kt`):
+
+- A drag handle (the six-dot grip, `DragHandle`) at the end of each row. Dragging it moves the
+  row at once; the dragged row lifts with a shadow on `surfaceContainerHigh`, with a haptic tick
+  when the drag starts. The new order is saved when the row is dropped.
+- No up and down arrows. Screen readers get Move up and Move down as actions on the handle (or
+  on the row in a list with its own drag code).
+- A row that can't move (for example a destination locked last) shows what it is instead of a
+  handle, such as a lock, and other rows can't pass it.
+- Short lists use `ReorderableColumn`. A long or lazy list, or one with sections, may build
+  its own drag on the same look and handle.
+- Cards in a grid (a staggered grid of notes) are moved with a long press instead, as on a
+  home screen: a grid has no row end for a handle.
 
 ## Settings screen
 
@@ -164,6 +183,11 @@ English, Dutch, German, French, Spanish and Italian).
 | Dynamic color, supporting text | Use colors from your wallpaper | Kleuren van je achtergrond gebruiken | Farben deines Hintergrundbilds verwenden | Utiliser les couleurs du fond d’écran | Usar los colores del fondo de pantalla | Usa i colori dello sfondo |
 | Go to settings | Open settings | Naar instellingen | Zu den Einstellungen | Ouvrir les paramètres | Abrir ajustes | Apri impostazioni |
 | Setup needed (Notion apps) | Connect to Notion | Verbind met Notion | Mit Notion verbinden | Connexion à Notion | Conéctate a Notion | Collegati a Notion |
+| Close a dialog that only shows something | Close | Sluiten | Schließen | Fermer | Cerrar | Chiudi |
+| Finish an editing mode | Done | Klaar | Fertig | OK | Listo | Fine |
+| Leave an account | Sign out | Uitloggen | Abmelden | Se déconnecter | Cerrar sesión | Esci |
+| Screen reader: reorder handle | Reorder | Volgorde wijzigen | Neu anordnen | Réorganiser | Reordenar | Riordina |
+| Screen reader: move a row | Move up / Move down | Omhoog / Omlaag | Nach oben / Nach unten | Monter / Descendre | Subir / Bajar | Sposta su / Sposta giù |
 
 - Prefer the shortest clear wording ("System", not "Follow device (Auto)").
 - American spelling in English ("color").
@@ -194,6 +218,10 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
 - `ui/theme/SettingsKit.kt`: the settings screen components above. It also needs
   `drawable/ic_arrow_back`, `drawable/ic_expand_more` and the strings `section_expanded` and
   `section_collapsed`.
+- `ui/theme/Layout.kt`: `ReadableWidth` (640dp) and `Modifier.readableWidth()`.
+- `ui/theme/Reorder.kt`: `DragHandle` and `ReorderableColumn` (see "Reordering"). It also
+  needs `drawable/ic_drag_handle` and the strings `action_reorder`, `action_move_up` and
+  `action_move_down`. An app without lists to reorder (Snoozer) leaves it out.
 
 ## This app
 
@@ -215,7 +243,7 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   Medium), or else the filter property's options. "Pinned" and "Others" are Label Large headers spanning
   the grid. A dragged card lifts (shadow, 3% larger, `surfaceContainerHigh`).
 - Navigation: the navigation bar has the three top-level destinations, Pinned, Notebooks and
-  Search, in the order set in Settings › Navigation bar (arrows, as in Tracker for Simkl): the
+  Search, in the order set in Settings › Navigation bar (drag handles, as in Tracker for Simkl): the
   first is where the app opens, Search is locked last because it opens the keyboard. The notebooks are peers within Notebooks: a primary scrollable tab row under the top
   app bar, leading-icon tabs with the notebook's icon. A notebook of several data sources has a
   secondary scrollable tab row below it, one tab per data source (a sub-notebook). The top app bar's ⋮ menu has Edit
