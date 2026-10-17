@@ -35,7 +35,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.FormatIndentDecrease
-import androidx.compose.material.icons.automirrored.rounded.NoteAdd
 import androidx.compose.material.icons.automirrored.rounded.FormatIndentIncrease
 import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
@@ -247,17 +246,6 @@ fun NoteScreen(
                                         onClick = {
                                             menu = false
                                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, note.url.toUri())) }
-                                        },
-                                    )
-                                }
-                                // Notion only adds a page inside a page it already has.
-                                if (!note.isLocal) {
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.new_subpage)) },
-                                        leadingIcon = { Icon(Icons.AutoMirrored.Rounded.NoteAdd, null) },
-                                        onClick = {
-                                            menu = false
-                                            viewModel.createSubpage(onOpenNote)
                                         },
                                     )
                                 }

@@ -150,15 +150,6 @@
         <item quantity="one">%d notebook</item>
         <item quantity="other">%d notebooks</item>
     </plurals>
-    <plurals name="bar_room">
-        <item quantity="one">De balk onderaan heeft op dit scherm plaats voor %d notebook.</item>
-        <item quantity="other">De balk onderaan heeft op dit scherm plaats voor %d notebooks.</item>
-    </plurals>
-    <string name="view_in_bar">In de balk onderaan</string>
-    <string name="view_no_room">Vastgezet in de balk, maar er is geen plaats op dit scherm</string>
-    <string name="view_in_drawer">Onder Notebooks</string>
-    <string name="pin_to_bar">Tonen in de balk onderaan</string>
-    <string name="pin_to_bar_help">Als er plaats is. Het notebook staat altijd onder Notebooks in de balk.</string>
     <string name="icon_search">Pictogrammen zoeken (in het Engels)</string>
     <string name="icon_none_found">Geen pictogrammen gevonden. Probeer een ander woord, zoals “list”, “food” of “work”.</string>
     <string name="cards_title">Kaarten in het overzicht</string>
@@ -174,7 +165,6 @@
     <string name="new_page">Nieuwe pagina</string>
     <string name="new_page_top_level">Bovenaan in je werkruimte</string>
     <string name="new_page_top_level_help">Bij je privépagina’s</string>
-    <string name="new_subpage">Nieuwe subpagina</string>
     <string name="create_top_level_failed">Notion laat dit token geen pagina’s bovenaan in je werkruimte toevoegen. Voeg de pagina in een pagina toe (⋮ › Nieuwe subpagina in een pagina).</string>
     <string name="create_failed">Notion kon de pagina niet maken: %1$s</string>
     <string name="browse_empty_title">Nog niets te zien</string>
@@ -184,13 +174,11 @@
     <string name="empty_clear_filters">Filters wissen</string>
     <string name="filters">Filters</string>
     <string name="filters_count">Filters · %1$d</string>
-    <string name="sort">Sorteren</string>
     <string name="sort_notion">Volgorde van de pagina</string>
     <string name="sort_custom">Eigen volgorde</string>
     <string name="sort_last_edited">Laatst bewerkt</string>
     <string name="sort_created">Aangemaakt</string>
     <string name="sort_title">Titel</string>
-    <string name="sort_reverse">Omgekeerde volgorde</string>
     <string name="sorted_by_hand">Nu in je eigen volgorde</string>
     <string name="undo">Ongedaan maken</string>
     <string name="filter_no_values">Nog geen waarden</string>
@@ -203,9 +191,11 @@
     <string name="chip_next_7_days">Komende 7 dagen</string>
     <string name="chip_later">Later</string>
     <string name="chip_no_date">Geen datum</string>
-    <string name="chip_rows_help">Elke eigenschap hier krijgt een eigen rij chips boven de notities. Sleep aan het handvat om de volgorde te wijzigen.</string>
-    <string name="chip_rows_shown">Rijen chips</string>
-    <string name="chip_rows_hidden">Alleen hier</string>
+    <string name="chip_rows_help">Tik op het oog om een filter een eigen rij chips boven de notities te geven. Sleep die aan het handvat om de volgorde te wijzigen.</string>
     <string name="chip_row_shown">Rij chips voor %1$s</string>
     <string name="no_notebooks">Nog geen notebooks</string>
+    <string name="sort_by">Sorteren: %1$s</string>
+    <string name="sort_ascending">Oplopend</string>
+    <string name="sort_descending">Aflopend</string>
+    <string name="no_notebooks_body">Een notebook toont de notities van een Notion-database of de subpagina’s van een pagina.</string>
 </resources>

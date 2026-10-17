@@ -1,8 +1,12 @@
 package be.wimvandonck.noter.ui.main
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.LeadingIconTab
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridItemInfo
 import androidx.compose.runtime.mutableFloatStateOf
@@ -113,7 +117,6 @@ import be.wimvandonck.noter.ui.common.PageIconView
 import be.wimvandonck.noter.ui.common.SMALL_PAGE_ICON
 import be.wimvandonck.noter.ui.common.OptionChip
 import be.wimvandonck.noter.ui.common.SyncButton
-import be.wimvandonck.noter.ui.views.rememberWindowWidthDp
 import be.wimvandonck.noter.logic.ChipFilter
 import be.wimvandonck.noter.logic.FilterChip as Chip
 import be.wimvandonck.noter.logic.Destinations
@@ -129,11 +132,11 @@ import be.wimvandonck.noter.ui.theme.EmptyState
 import be.wimvandonck.noter.ui.theme.SkeletonBlock
 
 /**
- * The overview, in the style of Google Keep. Top-level destinations: Pinned (the pinned notes of
- * everything) and the user's notebooks. The navigation bar holds Pinned, the notebooks pinned to
- * it (as many as fit) and Notebooks, which opens a sheet with every notebook, Manage notebooks and
- * Settings: all within reach of the thumb, however many notebooks there are. The search button
- * opens Search (the notes here, then Notion's pages and databases).
+ * The overview, in the style of Google Keep. The navigation bar holds the top-level destinations:
+ * Pinned (the pinned notes of everything), Notebooks (the user's notebooks as tabs: peers within
+ * one destination) and Search (the notes here, then Notion's pages and databases). A notebook's
+ * Filters and Sort are buttons in the top app bar; the ⋮ menu has Edit notebook, Manage
+ * notebooks and Settings.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -143,14 +146,17 @@ fun MainScreen(
     onOpenDatabase: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenViews: () -> Unit,
-    onOpenSearch: () -> Unit,
+    onEditNotebook: (String) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val previews by viewModel.previews.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val resources = androidx.compose.ui.platform.LocalResources.current
     var choosingDatabase by remember { mutableStateOf(false) }
-    var notebooksOpen by remember { mutableStateOf(false) }
+    var filtersOpen by remember { mutableStateOf(false) }
+    val section = state.section
+    // Back from Notebooks or Search goes to Pinned, the start destination, before leaving the app.
+    BackHandler(enabled = state.ready && !state.isHome) { viewModel.selectTab(Destinations.PINNED) }
 
     val sortedByHand = stringResource(R.string.sorted_by_hand)
     val undo = stringResource(R.string.undo)
@@ -181,55 +187,86 @@ fun MainScreen(
         }
     }
 
-    val labels = TabLabels(stringResource(R.string.tab_home))
-    val title = state.tabs.firstOrNull { it.key == state.currentTab }?.let { labels.of(it) } ?: labels.pinned
+    val notebookActions = NotebookActions(onQuickFilters = viewModel::setQuickFilters, onSort = viewModel::setSort)
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-    val width = rememberWindowWidthDp()
-    val barIds = Destinations.barViews(state.views, width).map { it.id }.toSet()
-    val barTabs = state.tabs.filter { it.isPinned || it.key in barIds }
     val targets = NoteTargets.of(state.views, null)
+    val navigationBar: @Composable () -> Unit = {
+        NavigationBar {
+            NavigationBarItem(
+                selected = section == Destinations.Section.PINNED,
+                onClick = { viewModel.selectTab(Destinations.PINNED) },
+                icon = { Icon(Icons.Rounded.PushPin, contentDescription = null) },
+                label = { Text(stringResource(R.string.tab_home), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            )
+            NavigationBarItem(
+                selected = section == Destinations.Section.NOTEBOOKS,
+                onClick = { viewModel.selectNotebooks() },
+                icon = { Icon(Icons.AutoMirrored.Rounded.LibraryBooks, contentDescription = null) },
+                label = { Text(stringResource(R.string.section_views), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            )
+            NavigationBarItem(
+                selected = section == Destinations.Section.SEARCH,
+                onClick = { viewModel.selectTab(Destinations.SEARCH) },
+                enabled = state.hasKey,
+                icon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                label = { Text(stringResource(R.string.action_search), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            )
+        }
+    }
+
+    if (section == Destinations.Section.SEARCH) {
+        SearchScreen(viewModel = viewModel, onOpenNote = onOpenNote, onOpenDatabase = onOpenDatabase, bottomBar = navigationBar)
+        return
+    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            TopAppBar(
-                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                actions = {
-                    SyncButton(state.pendingCount, state.offline, syncing = false, onSync = viewModel::refresh, alwaysShown = false)
-                    if (state.hasKey) {
-                        IconButton(onClick = onOpenSearch) {
-                            Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.action_search))
+            Column {
+                TopAppBar(
+                    title = {
+                        Text(
+                            stringResource(if (state.isHome) R.string.tab_home else R.string.section_views),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    actions = {
+                        SyncButton(state.pendingCount, state.offline, syncing = false, onSync = viewModel::refresh, alwaysShown = false)
+                        if (state.hasKey) NotebookBarActions(state, notebookActions, onOpenFilters = { filtersOpen = true })
+                        OverflowMenu(
+                            notebookId = state.notebook?.id,
+                            onEditNotebook = onEditNotebook,
+                            onManage = onOpenViews,
+                            onSettings = onOpenSettings,
+                        )
+                    },
+                    scrollBehavior = scrollBehavior,
+                )
+                // The notebooks are peers within Notebooks: tabs, in the order of Manage notebooks.
+                if (section == Destinations.Section.NOTEBOOKS && state.tabs.isNotEmpty() && state.hasKey) {
+                    val selected = state.tabs.indexOfFirst { it.key == state.currentTab }.coerceAtLeast(0)
+                    PrimaryScrollableTabRow(selectedTabIndex = selected, edgePadding = 16.dp) {
+                        state.tabs.forEach { tab ->
+                            LeadingIconTab(
+                                selected = tab.key == state.currentTab,
+                                onClick = { viewModel.selectTab(tab.key) },
+                                icon = { Icon(DatabaseIcons.icon(tab.icon), contentDescription = null, Modifier.size(18.dp)) },
+                                text = { Text(tab.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            )
                         }
                     }
-                },
-                scrollBehavior = scrollBehavior,
-            )
-        },
-        bottomBar = {
-            NavigationBar {
-                barTabs.forEach { tab ->
-                    NavigationBarItem(
-                        selected = tab.key == state.currentTab,
-                        onClick = { viewModel.selectTab(tab.key) },
-                        icon = { Icon(tab.iconVector(), contentDescription = null) },
-                        label = { Text(labels.of(tab), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    )
                 }
-                // Every notebook, also the ones not in the bar; selected while one of those is shown.
-                NavigationBarItem(
-                    selected = !state.isHome && barTabs.none { it.key == state.currentTab },
-                    onClick = { notebooksOpen = true },
-                    icon = { Icon(Icons.AutoMirrored.Rounded.LibraryBooks, contentDescription = null) },
-                    label = { Text(stringResource(R.string.section_views), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                )
             }
         },
+        bottomBar = navigationBar,
         floatingActionButton = {
             // A notebook adds to itself; Pinned asks where (when there is a choice): a notebook, or
             // a page at the top of the workspace (with a personal access token).
-            val inNotebook = !state.isHome
-            if (state.hasKey && (inNotebook || targets.isNotEmpty() || state.canAddTopLevel)) {
+            val inNotebook = state.notebook != null
+            val noNotebook = section == Destinations.Section.NOTEBOOKS && state.notebook == null
+            if (state.hasKey && !noNotebook && (inNotebook || targets.isNotEmpty() || state.canAddTopLevel)) {
                 FloatingActionButton(
                     onClick = {
                         when {
@@ -254,14 +291,17 @@ fun MainScreen(
                 ) {
                     Button(onClick = onOpenSettings) { Text(stringResource(R.string.empty_no_key_action)) }
                 }
+                section == Destinations.Section.NOTEBOOKS && state.notebook == null -> EmptyState(
+                    Icons.AutoMirrored.Rounded.LibraryBooks,
+                    stringResource(R.string.no_notebooks),
+                    body = stringResource(R.string.no_notebooks_body),
+                ) {
+                    Button(onClick = onOpenViews) { Text(stringResource(R.string.add_database)) }
+                }
                 else -> NotesPane(
                     state = state,
                     previews = previews,
                     onLoadPreviews = viewModel::loadPreviews,
-                    notebookActions = NotebookActions(
-                        onQuickFilters = viewModel::setQuickFilters,
-                        onSort = viewModel::setSort,
-                    ),
                     onToggleChip = viewModel::toggleChip,
                     onClearChips = viewModel::clearChips,
                     onLoadChipTitles = { viewModel.loadChipTitles(it) },
@@ -275,23 +315,13 @@ fun MainScreen(
         }
     }
 
-    if (notebooksOpen) {
-        NotebooksSheet(
-            tabs = state.tabs.filterNot { it.isPinned },
-            current = state.currentTab,
-            onSelect = { key ->
-                notebooksOpen = false
-                viewModel.selectTab(key)
-            },
-            onManage = {
-                notebooksOpen = false
-                onOpenViews()
-            },
-            onSettings = {
-                notebooksOpen = false
-                onOpenSettings()
-            },
-            onDismiss = { notebooksOpen = false },
+    if (filtersOpen && state.notebook != null) {
+        NotebookFiltersSheet(
+            state = state,
+            actions = notebookActions,
+            onToggle = { property, key -> viewModel.toggleChip(property, key) },
+            onClear = viewModel::clearChips,
+            onDismiss = { filtersOpen = false },
         )
     }
 
@@ -336,56 +366,40 @@ fun MainScreen(
     }
 }
 
-/**
- * Every notebook, within reach at the bottom of the screen (the navigation bar only has room for
- * a few), then Manage notebooks and Settings.
- */
-@OptIn(ExperimentalMaterial3Api::class)
+/** The top app bar's ⋮ menu: Edit notebook (in a notebook), Manage notebooks, Settings. */
 @Composable
-private fun NotebooksSheet(
-    tabs: List<Tab>,
-    current: String,
-    onSelect: (String) -> Unit,
-    onManage: () -> Unit,
-    onSettings: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .navigationBarsPadding()
-                .padding(start = 12.dp, end = 12.dp, bottom = 16.dp),
-        ) {
-            SheetHeader(stringResource(R.string.section_views))
-            if (tabs.isEmpty()) {
-                Text(
-                    stringResource(R.string.no_notebooks),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+private fun OverflowMenu(notebookId: String?, onEditNotebook: (String) -> Unit, onManage: () -> Unit, onSettings: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more_options))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            if (notebookId != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.edit_view)) },
+                    leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
+                    onClick = {
+                        open = false
+                        onEditNotebook(notebookId)
+                    },
                 )
             }
-            tabs.forEach { tab ->
-                NavigationDrawerItem(
-                    label = { Text(tab.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    icon = { Icon(tab.iconVector(), contentDescription = null) },
-                    selected = tab.key == current,
-                    onClick = { onSelect(tab.key) },
-                )
-            }
-            HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-            NavigationDrawerItem(
-                label = { Text(stringResource(R.string.manage_views)) },
-                icon = { Icon(Icons.AutoMirrored.Rounded.ViewList, contentDescription = null) },
-                selected = false,
-                onClick = onManage,
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.manage_views)) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.ViewList, contentDescription = null) },
+                onClick = {
+                    open = false
+                    onManage()
+                },
             )
-            NavigationDrawerItem(
-                label = { Text(stringResource(R.string.settings_title)) },
-                icon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
-                selected = false,
-                onClick = onSettings,
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.settings_title)) },
+                leadingIcon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
+                onClick = {
+                    open = false
+                    onSettings()
+                },
             )
         }
     }
@@ -400,20 +414,8 @@ private fun SheetHeader(text: String) {
     )
 }
 
-/** The name of the fixed destination (notebooks have their own). */
-private class TabLabels(val pinned: String) {
-    fun of(tab: Tab): String = if (tab.isPinned) pinned else tab.name
-}
-
-@Composable
-private fun Tab.iconVector(): ImageVector = when {
-    isPinned -> Icons.Rounded.PushPin
-    else -> DatabaseIcons.icon(icon)
-}
-
 /**
- * The notes of Pinned, a notebook or a database: filters on top (a notebook's start with Filters
- * and Sort), then the notes as cards, with pull-to-refresh, loading placeholders and empty
+ * The notes of Pinned, a notebook or a database: rows of filter chips on top, then the notes as cards, with pull-to-refresh, loading placeholders and empty
  * states. Moving a note to the trash asks first.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -430,20 +432,15 @@ internal fun NotesPane(
     onTogglePin: (String) -> Unit,
     onTrash: (String) -> Unit,
     onReordered: (List<String>) -> Unit,
-    notebookActions: NotebookActions? = null,
 ) {
     var confirmTrash by remember { mutableStateOf<NoteSummary?>(null) }
-    var filtersOpen by remember { mutableStateOf(false) }
     LaunchedEffect(state.chipRelationDatabases) { state.chipRelationDatabases.forEach(onLoadChipTitles) }
     // Previews are only downloaded for cards that show the content.
     LaunchedEffect(state.pinned, state.others, state.propertyLayouts) {
         onLoadPreviews((state.pinned + state.others).filter { PropertyLayouts.showsContent(state.propertyLayouts[it.databaseId]) })
     }
     Column(Modifier.fillMaxSize()) {
-        val actions = notebookActions?.takeIf { state.notebook != null }
-        if (state.chipGroups.isNotEmpty() || actions != null) {
-            ChipRows(state, actions, onToggle = onToggleChip, onClear = onClearChips, onOpenFilters = { filtersOpen = true })
-        }
+        if (state.chipGroups.isNotEmpty()) ChipRows(state, onToggle = onToggleChip, onClear = onClearChips)
         PullToRefreshBox(
             isRefreshing = state.refreshing && !state.loading,
             onRefresh = onRefresh,
@@ -475,15 +472,6 @@ internal fun NotesPane(
             }
         }
     }
-    if (filtersOpen && notebookActions != null) {
-        NotebookFiltersSheet(
-            state = state,
-            actions = notebookActions,
-            onToggle = { property, key -> onToggleChip(property, key) },
-            onClear = onClearChips,
-            onDismiss = { filtersOpen = false },
-        )
-    }
     confirmTrash?.let { note ->
         AlertDialog(
             onDismissRequest = { confirmTrash = null },
@@ -501,25 +489,19 @@ internal fun NotesPane(
 }
 
 /**
- * The chips above the notes. A notebook: Filters and Sort, then one row per quick filter, named
- * after its property. Pinned (its sources) and a database on its own: All, then the chips.
+ * The chips above the notes. A notebook: one row per quick filter, named after its property
+ * ("Clear filters" is in the Filters panel). Pinned (its sources) and a database on its own: All,
+ * then the chips.
  */
 @Composable
 private fun ChipRows(
     state: MainUiState,
-    actions: NotebookActions?,
     onToggle: (property: String?, key: String) -> Unit,
     onClear: () -> Unit,
-    onOpenFilters: () -> Unit,
 ) {
     val anySelected = state.chipGroups.any { it.selected.isNotEmpty() }
+    val inNotebook = state.notebook != null
     Column(Modifier.padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (actions != null) {
-            // "Clear filters" is in the Filters panel.
-            Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-                NotebookChips(state, actions, onOpenFilters)
-            }
-        }
         state.chipGroups.forEachIndexed { index, group ->
             val property = group.property
             LazyRow(
@@ -527,7 +509,7 @@ private fun ChipRows(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (actions == null && index == 0) {
+                if (!inNotebook && index == 0) {
                     item(key = "__all") {
                         FilterChip(
                             selected = !anySelected,
@@ -536,7 +518,7 @@ private fun ChipRows(
                         )
                     }
                 }
-                if (actions != null && property != null) {
+                if (inNotebook && property != null) {
                     item(key = "__name") {
                         Text(
                             property.name,

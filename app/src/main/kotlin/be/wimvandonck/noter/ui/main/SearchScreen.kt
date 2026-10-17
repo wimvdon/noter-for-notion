@@ -13,11 +13,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.StickyNote2
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -62,7 +62,7 @@ import be.wimvandonck.noter.ui.theme.SkeletonLine
 import java.util.Locale
 
 /**
- * Search, from the search button: the notes on this phone whose title matches (at once, also
+ * Search, a destination of its own in the navigation bar ([bottomBar]): the notes on this phone whose title matches (at once, also
  * offline), then the pages and databases Notion finds. Before anything is typed, Notion's most
  * recently edited pages and databases. A database opens its notes (and can become a notebook); a
  * page opens in the editor.
@@ -71,9 +71,9 @@ import java.util.Locale
 @Composable
 fun SearchScreen(
     viewModel: MainViewModel,
-    onBack: () -> Unit,
     onOpenNote: (String) -> Unit,
     onOpenDatabase: (String) -> Unit,
+    bottomBar: @Composable () -> Unit,
 ) {
     val state by viewModel.browse.collectAsStateWithLifecycle()
     val focus = remember { FocusRequester() }
@@ -82,12 +82,16 @@ fun SearchScreen(
         runCatching { focus.requestFocus() }
     }
     Scaffold(
+        bottomBar = bottomBar,
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
+                    Icon(
+                        Icons.Rounded.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 16.dp, end = 4.dp),
+                    )
                 },
                 title = {
                     TextField(

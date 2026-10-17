@@ -6,24 +6,25 @@ Noter shows Notion pages as notes, in the style of Google Keep, and edits their 
 properties and content: the pages of databases and pages on their own.
 
 ### Screens
-- **Overview** (`ui/main/`): top-level destinations (`logic/Destinations.kt`): Pinned and the
-  notebooks. The navigation bar at the bottom holds Pinned, the notebooks pinned to it (as many as
-  fit: one item per 80dp of window width, five items on a phone, so three notebooks) and
-  **Notebooks**, which opens a bottom sheet with every notebook, Manage notebooks and Settings.
-  It replaces the navigation drawer behind a menu button in the top corner: everything stays in
-  reach of the thumb, however many notebooks there are. Notebooks is selected while a notebook
-  that isn't in the bar is shown.
+- **Overview** (`ui/main/`): three top-level destinations in the navigation bar
+  (`logic/Destinations.kt`): **Pinned**, **Notebooks** and **Search**. The notebooks are peers
+  inside Notebooks, as scrollable tabs under the top app bar (in the order of Manage notebooks);
+  tapping Notebooks shows the notebook seen last. The top app bar has the sync button, a
+  notebook's **Filters** and **Sort** buttons, and a ⋮ menu with Edit notebook (in a notebook),
+  Manage notebooks and Settings. Back from Notebooks or Search goes to Pinned first.
   - **Pinned**: the pinned notes of everything (databases and pages), filtered by source.
   - **Notebooks** (`DatabaseConfig`, kept under `AppSettings.databases`; the code still calls them
     views, the screens say "notebook" in every language, as a name of the app's own): all notes of
     a database (its raw data source; Notion's views aren't used), set up on this phone
     (`logic/Notebooks.kt`): the notebook's own filters per property (a note shows when it has one
     of the selected values of every filtering property), and its sort: the custom order (dragged),
-    last edited, created, title or a date property. The first chip row has **Filters** (the panel:
-    which properties have a row of chips above the notes and in which order, arranged like a
-    note's properties with `PropertyArranger`; then every property with its values; Clear
-    filters) and **Sort** (a menu, with Reverse order). Below it, one row of chips per quick
-    filter (`DatabaseConfig.quickFilters`, in order), each starting with the property's name.
+    last edited, created, title or a date property. **Filters** (a dot on the button while
+    filters are on) opens the panel: every property it can filter by, with its values; an eye
+    gives a property its own row of chips above the notes, and those come first and are dragged
+    by their handle to change the order of the rows; Clear filters. **Sort** is a menu: tapping
+    the current sort again turns it around, an arrow shows which way. Above the notes, one row of
+    chips per quick filter (`DatabaseConfig.quickFilters`, in order), each starting with the
+    property's name.
     Dragging a note in another sort switches to the custom order, starting from the order on
     screen, with an Undo snackbar. Notebooks that followed a Notion view before (`viewId` in old
     settings) now show all notes of their database, in the custom order.
@@ -47,7 +48,7 @@ properties and content: the pages of databases and pages on their own.
   A chip's count of notes is set apart in a small pill, so an option "5" with one note doesn't
   read as "5 1". A new note made with a filter selected
   gets its value where it can (not for computed properties; a date only for Today).
-- **Search** (`SearchScreen.kt`, the search button in the top bar): the notes on this phone whose
+- **Search** (`SearchScreen.kt`, a destination in the navigation bar): the notes on this phone whose
   title has every word typed (`logic/NoteSearch.kt`, at once and offline), then the databases and
   pages Notion's search finds; before anything is typed, Notion's most recently edited ones. It
   replaces the Browse tab: browsing Notion is something to do now and then, not a place to stay.
@@ -56,7 +57,7 @@ properties and content: the pages of databases and pages on their own.
   button is "Edit notebook" and opens its setup (Manage notebooks), so it isn't added twice.
 - **New pages**: + on Pinned offers a note in one of the notebooks and, with a personal access
   token, a page at the top of the workspace (among the user's private pages; when Notion refuses,
-  the page is removed again and the app explains). A page's ⋮ menu has "New subpage".
+  the page is removed again and the app explains).
 - **Note** (`ui/note/`): header image, icon (tap it, or "Add icon", to choose an emoji in
   `PageIconSheet.kt`: common ones, any other typed with the keyboard (`logic/EmojiInput.kt`), or
   none; sent as `PendingOp.SetIcon`, or with the create for a new note), title, properties (`PropertyEditors.kt`), then the content as a
@@ -72,13 +73,12 @@ properties and content: the pages of databases and pages on their own.
   no previews are downloaded for that database) and up to three properties (else the card shows
   the filter property). All of it is kept per database in `AppSettings.propertyLayouts` (backed
   up), so it applies to every view of that database.
-- **Manage notebooks** (`ui/views/`): the notebooks in their order (up/down), each with a pin for
-  the navigation bar (`DatabaseConfig.inBar`; disabled when the bar is full); tapping one edits
-  its name, icon, bar pin and what the cards show. "Add notebook" picks a database (all its notes;
+- **Manage notebooks** (`ui/views/`): the notebooks in their order (up/down; the order of the
+  tabs); tapping one edits its name, icon and what the cards show. "Add notebook" picks a database (all its notes;
   `Notebooks.newNotebook` gives it a status, else a select, property as its first row of chips,
   in the custom order) or a page (its subpages). Filters and sort are changed in the notebook
-  itself. "Add as notebook" on a database's page opens the same step. Opens from the Notebooks
-  sheet and from Settings.
+  itself. "Add as notebook" on a database's page opens the same step. Opens from the ⋮ menu
+  and from Settings.
 - **View icons** (`data/icons/IconCatalog.kt`, `ui/common/IconPicker.kt`, `DatabaseIcons.kt`):
   the Material Symbols set (4 229 icons) from `assets/material_symbols.txt` (name, categories and
   SVG path data per icon, from RSS Reader), drawn as vectors and searchable by English name,

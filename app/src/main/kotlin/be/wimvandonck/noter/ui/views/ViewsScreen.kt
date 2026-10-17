@@ -18,11 +18,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,7 +29,6 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -49,10 +46,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -60,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import be.wimvandonck.noter.R
 import be.wimvandonck.noter.data.model.DatabaseConfig
-import be.wimvandonck.noter.logic.Destinations
 import be.wimvandonck.noter.logic.PropertyLayouts
 import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.ui.common.DatabaseIcons
@@ -68,27 +61,15 @@ import be.wimvandonck.noter.ui.common.IconPicker
 import be.wimvandonck.noter.ui.theme.SettingsBlock
 import be.wimvandonck.noter.ui.theme.SettingsScaffold
 
-/** The window's width in dp, for how many destinations fit in the navigation bar. */
-@Composable
-fun rememberWindowWidthDp(): Int {
-    val width = LocalWindowInfo.current.containerSize.width
-    val density = LocalDensity.current
-    return remember(width, density) { with(density) { width.toDp().value.toInt() } }
-}
-
 /**
- * Manage notebooks: the notebooks in their order, each in the navigation drawer and, when pinned,
- * in the navigation bar (as many as fit). Tapping one edits it; "Add notebook" picks a database
- * (all its notes) or a page (its subpages).
+ * Manage notebooks: the notebooks in their order (the order of the tabs under Notebooks). Tapping
+ * one edits it; "Add notebook" picks a database (all its notes) or a page (its subpages).
  */
 @Composable
 fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: String? = null, addDatabaseId: String? = null) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var addingDatabase by remember { mutableStateOf(false) }
-    val width = rememberWindowWidthDp()
     val views = state.views
-    val inBar = Destinations.barViews(views, width).map { it.id }.toSet()
-    val room = Destinations.barRoom(views, width)
     // Opened from "Edit notebook" or "Add as notebook" on a database's page: that step, once.
     var opened by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(editViewId, addDatabaseId) {
@@ -96,10 +77,9 @@ fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: Strin
         opened = true
         when {
             editViewId != null -> viewModel.startEdit(editViewId)
-            addDatabaseId != null -> viewModel.startAddFor(addDatabaseId, roomInBar = room > 0)
+            addDatabaseId != null -> viewModel.startAddFor(addDatabaseId)
         }
     }
-    val capacity = Destinations.barNotebooks(width)
 
     SettingsScaffold(
         title = stringResource(R.string.manage_views),
@@ -113,11 +93,6 @@ fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: Strin
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Text(
-                    pluralStringResource(R.plurals.bar_room, capacity, capacity),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
         views.forEachIndexed { index, db ->
@@ -126,11 +101,8 @@ fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: Strin
                     config = db,
                     canMoveUp = index > 0,
                     canMoveDown = index < views.lastIndex,
-                    shownInBar = db.id in inBar,
-                    canPin = room > 0,
                     onClick = { viewModel.startEdit(db) },
                     onMove = { up -> viewModel.moveDatabase(db.id, up) },
-                    onPin = { viewModel.setInBar(db.id, it) },
                 )
             }
         }
@@ -159,11 +131,11 @@ fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: Strin
             onDismiss = { addingDatabase = false },
             onPick = {
                 addingDatabase = false
-                viewModel.startAdd(it, roomInBar = room > 0)
+                viewModel.startAdd(it)
             },
             onPickPage = {
                 addingDatabase = false
-                viewModel.startAddPage(it, roomInBar = room > 0)
+                viewModel.startAddPage(it)
             },
         )
     }
@@ -184,34 +156,20 @@ private fun DatabaseRow(
     config: DatabaseConfig,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
-    shownInBar: Boolean,
-    canPin: Boolean,
     onClick: () -> Unit,
     onMove: (Boolean) -> Unit,
-    onPin: (Boolean) -> Unit,
 ) {
     val filters = if (config.pageId != null) {
         stringResource(R.string.notebook_subpages)
     } else {
         stringResource(R.string.notebook_all_notes)
     }
-    val place = when {
-        shownInBar -> stringResource(R.string.view_in_bar)
-        config.inBar -> stringResource(R.string.view_no_room)
-        else -> stringResource(R.string.view_in_drawer)
-    }
     ListItem(
         leadingContent = { Icon(DatabaseIcons.icon(config.icon), contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
         headlineContent = { Text(config.name) },
-        supportingContent = { Text(listOfNotNull(filters, place).joinToString("\n")) },
+        supportingContent = { Text(filters) },
         trailingContent = {
             Row {
-                IconToggleButton(checked = config.inBar, onCheckedChange = onPin, enabled = config.inBar || canPin) {
-                    Icon(
-                        if (config.inBar) Icons.Rounded.PushPin else Icons.Outlined.PushPin,
-                        contentDescription = stringResource(R.string.pin_to_bar),
-                    )
-                }
                 IconButton(onClick = { onMove(true) }, enabled = canMoveUp) {
                     Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = stringResource(R.string.action_move_up))
                 }
@@ -326,23 +284,6 @@ private fun DatabaseEditorSheet(
             )
             Text(stringResource(R.string.database_icon), style = MaterialTheme.typography.titleSmall)
             IconPicker(draft.config.icon) { name -> onChange { it.copy(icon = name) } }
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .toggleable(value = draft.config.inBar, role = Role.Switch, onValueChange = { v -> onChange { it.copy(inBar = v) } }),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.pin_to_bar), style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        stringResource(R.string.pin_to_bar_help),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Spacer(Modifier.width(16.dp))
-                Switch(checked = draft.config.inBar, onCheckedChange = null)
-            }
             // Filters and sort are set in the notebook itself (Filters, Sort); here only what it shows.
             Text(
                 if (draft.config.pageId != null) {

@@ -1,6 +1,7 @@
 package be.wimvandonck.noter.logic
 
 import be.wimvandonck.noter.data.model.DatabaseConfig
+import be.wimvandonck.noter.logic.Destinations.Section
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -8,32 +9,29 @@ class DestinationsTest {
     private fun views(n: Int) = (1..n).map { DatabaseConfig("v$it", "View $it", databaseId = "db") }
 
     @Test
-    fun `the bar holds as many destinations as fit on the screen`() {
-        assertEquals(5, Destinations.barCapacity(411))
-        assertEquals(10, Destinations.barCapacity(800))
-        // Next to Pinned and Notebooks: three notebooks on a phone.
-        assertEquals(3, Destinations.barNotebooks(411))
-        // Pinned, one notebook and Notebooks always fit.
-        assertEquals(3, Destinations.barCapacity(120))
-        assertEquals(1, Destinations.barNotebooks(120))
-        assertEquals(listOf("home", "v1"), Destinations.keys(views(1)))
+    fun `Pinned, Notebooks and Search are the destinations, notebooks are inside Notebooks`() {
+        assertEquals(Section.PINNED, Destinations.section(Destinations.PINNED))
+        assertEquals(Section.SEARCH, Destinations.section(Destinations.SEARCH))
+        assertEquals(Section.NOTEBOOKS, Destinations.section("v1"))
+        assertEquals(Section.NOTEBOOKS, Destinations.section(Destinations.NOTEBOOKS))
     }
 
     @Test
-    fun `only views pinned to the bar are in it, as many as fit`() {
-        val all = views(6).mapIndexed { i, v -> v.copy(inBar = i != 1) }
-        assertEquals(listOf("v1", "v3", "v4"), Destinations.barViews(all, 411).map { it.id })
-        assertEquals(listOf("v1", "v3", "v4", "v5", "v6"), Destinations.barViews(all, 800).map { it.id })
-        assertEquals(0, Destinations.barRoom(all, 411))
-        assertEquals(3, Destinations.barRoom(all, 800))
-    }
-
-    @Test
-    fun `a removed view falls back to Pinned`() {
+    fun `a removed notebook gives way to the first one, or to Notebooks without any`() {
         assertEquals("v1", Destinations.valid("v1", views(1)))
-        // Browse was a destination before it became the search screen.
-        assertEquals("home", Destinations.valid("browse", views(0)))
-        assertEquals("home", Destinations.valid("v2", views(1)))
+        assertEquals("v1", Destinations.valid("v2", views(1)))
+        assertEquals(Destinations.NOTEBOOKS, Destinations.valid("v2", views(0)))
+        assertEquals("v1", Destinations.valid(Destinations.NOTEBOOKS, views(2)))
+        assertEquals(Destinations.SEARCH, Destinations.valid(Destinations.SEARCH, views(0)))
+        assertEquals(Destinations.PINNED, Destinations.valid(Destinations.PINNED, views(2)))
+    }
+
+    @Test
+    fun `Notebooks opens the notebook seen last`() {
+        assertEquals("v2", Destinations.notebook("v2", views(3)))
+        assertEquals("v1", Destinations.notebook(null, views(3)))
+        assertEquals("v1", Destinations.notebook("gone", views(3)))
+        assertEquals(Destinations.NOTEBOOKS, Destinations.notebook(null, views(0)))
     }
 
     @Test

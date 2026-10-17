@@ -3,37 +3,39 @@ package be.wimvandonck.noter.logic
 import be.wimvandonck.noter.data.model.DatabaseConfig
 
 /**
- * The top-level destinations: Pinned, then the user's notebooks. The navigation bar at the bottom
- * holds Pinned, the notebooks pinned to it (as many as fit on the screen) and Notebooks, which
- * opens a sheet with all of them. Searching Notion is a screen of its own (the search button),
- * not a destination.
+ * The top-level destinations, in the navigation bar: Pinned, Notebooks and Search. The notebooks
+ * are peers inside Notebooks, as tabs (Material 3: the bar for top-level destinations, tabs for
+ * peer views within one). A destination key is [PINNED], [SEARCH], a notebook's ID, or
+ * [NOTEBOOKS] while there is no notebook to show.
  */
 object Destinations {
     /** Pinned (the key is also where Pinned's own note order is kept). */
     const val PINNED = "home"
 
-    /** Width (dp) a navigation bar item needs: Material's items are at least 80dp wide here. */
-    const val BAR_ITEM_WIDTH_DP = 80
+    /** Notebooks without a notebook (there are none yet). */
+    const val NOTEBOOKS = "notebooks"
 
-    /** Pinned and Notebooks are always in the bar. */
-    private const val FIXED = 2
+    const val SEARCH = "search"
 
-    fun keys(views: List<DatabaseConfig>): List<String> = listOf(PINNED) + views.map { it.id }
+    enum class Section { PINNED, NOTEBOOKS, SEARCH }
 
-    /** How many items fit in the bar on a window [widthDp] wide (at least Pinned, one notebook and Notebooks). */
-    fun barCapacity(widthDp: Int): Int = (widthDp / BAR_ITEM_WIDTH_DP).coerceAtLeast(FIXED + 1)
+    fun section(key: String): Section = when (key) {
+        PINNED -> Section.PINNED
+        SEARCH -> Section.SEARCH
+        else -> Section.NOTEBOOKS
+    }
 
-    /** How many notebooks fit in the bar, next to Pinned and Notebooks. */
-    fun barNotebooks(widthDp: Int): Int = barCapacity(widthDp) - FIXED
+    /**
+     * The destination to show: [current] while it exists; under Notebooks, a notebook that's gone
+     * (removed) gives way to the first notebook.
+     */
+    fun valid(current: String, views: List<DatabaseConfig>): String = when {
+        current == PINNED || current == SEARCH -> current
+        views.any { it.id == current } -> current
+        else -> views.firstOrNull()?.id ?: NOTEBOOKS
+    }
 
-    /** The notebooks in the bar: the pinned ones, in their order, as many as fit. */
-    fun barViews(views: List<DatabaseConfig>, widthDp: Int): List<DatabaseConfig> =
-        views.filter { it.inBar }.take(barNotebooks(widthDp))
-
-    /** The views that can still be pinned to the bar on a window [widthDp] wide. */
-    fun barRoom(views: List<DatabaseConfig>, widthDp: Int): Int =
-        (barNotebooks(widthDp) - views.count { it.inBar }).coerceAtLeast(0)
-
-    /** The destination to show: [current] while it exists, else Pinned (a removed view). */
-    fun valid(current: String, views: List<DatabaseConfig>): String = if (current in keys(views)) current else PINNED
+    /** What tapping Notebooks shows: the notebook seen last, else the first. */
+    fun notebook(last: String?, views: List<DatabaseConfig>): String =
+        views.firstOrNull { it.id == last }?.id ?: views.firstOrNull()?.id ?: NOTEBOOKS
 }

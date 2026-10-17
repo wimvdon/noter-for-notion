@@ -46,7 +46,7 @@ data class ViewsUiState(
     val draft: DatabaseDraft? = null,
 )
 
-/** Manage views: add, edit, order, pin to the navigation bar and remove the views. */
+/** Manage views: add, edit, order and remove the views. */
 class ViewsViewModel(
     private val repository: NotesRepository,
     hasKey: StateFlow<Boolean>,
@@ -85,13 +85,12 @@ class ViewsViewModel(
      * A notebook of page [page]: its subpages are the notes, in the page's order. There is nothing
      * to filter by (subpages only have a title).
      */
-    fun startAddPage(page: PageRef, roomInBar: Boolean) {
+    fun startAddPage(page: PageRef) {
         val key = NotesRepository.pageNotebookKey(page.id)
         val config = DatabaseConfig(
             id = "view-" + UUID.randomUUID(),
             name = page.title,
             databaseId = key,
-            inBar = roomInBar,
             pageId = page.id,
         )
         draft.value = DatabaseDraft(config, isNew = true, schema = PAGE_SCHEMA)
@@ -99,26 +98,25 @@ class ViewsViewModel(
     }
 
     /** "Add as notebook" on a page (its key) or a database's page. */
-    fun startAddFor(databaseId: String, roomInBar: Boolean) {
+    fun startAddFor(databaseId: String) {
         if (NotesRepository.isPageNotebook(databaseId)) {
             val pageId = NotesRepository.pageOf(databaseId)
             val title = repository.databases.value.values.flatMap { it.notes }.firstOrNull { it.id == pageId }?.title.orEmpty()
-            return startAddPage(PageRef(pageId, title), roomInBar)
+            return startAddPage(PageRef(pageId, title))
         }
         val title = repository.databases.value[databaseId]?.schema?.title.orEmpty()
-        startAdd(PageRef(databaseId, title), roomInBar)
+        startAdd(PageRef(databaseId, title))
     }
 
     /**
      * Starts a new notebook of [database]: all its notes, set up and filtered on this phone (see
-     * Notebooks.newNotebook). It goes in the navigation bar when there is [roomInBar].
+     * Notebooks.newNotebook).
      */
-    fun startAdd(database: PageRef, roomInBar: Boolean) {
+    fun startAdd(database: PageRef) {
         val config = DatabaseConfig(
             id = "view-" + UUID.randomUUID(),
             name = database.title,
             databaseId = database.id,
-            inBar = roomInBar,
         )
         draft.value = DatabaseDraft(config, isNew = true)
         viewModelScope.launch {
@@ -195,11 +193,6 @@ class ViewsViewModel(
     }
 
     fun moveDatabase(id: String, up: Boolean) = viewModelScope.launch { repository.moveDatabase(id, up) }
-
-    /** Pins the view to the navigation bar, or takes it off (it stays in the drawer). */
-    fun setInBar(id: String, inBar: Boolean) = viewModelScope.launch {
-        repository.updateSettings { s -> s.copy(databases = s.databases.map { if (it.id == id) it.copy(inBar = inBar) else it }) }
-    }
 
     companion object {
         /** A page's notebook: its notes (subpages) have only a title. */
