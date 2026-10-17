@@ -236,12 +236,8 @@ class NoteViewModel(
 
     // ---- How properties are shown (per database) ----
 
-    private val propertyNames: List<String>
-        get() = state.value.note?.properties.orEmpty().filter { it.type != "title" }.map { it.name }
-
-    fun reorderProperties(names: List<String>) = updateLayout { PropertyLayouts.reorder(it, names) }
-
-    fun toggleShown(name: String) = updateLayout { PropertyLayouts.toggleShown(it, propertyNames, name) }
+    /** The user arranged the properties: [shown] in this order, then [hidden] (folded away). */
+    fun arrangeProperties(shown: List<String>, hidden: List<String>) = updateLayout { PropertyLayouts.arranged(it, shown, hidden) }
 
 
 

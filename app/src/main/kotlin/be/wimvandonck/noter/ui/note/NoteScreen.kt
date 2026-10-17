@@ -160,7 +160,7 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
     var focusedKey by remember { mutableStateOf<String?>(null) }
     var menu by remember { mutableStateOf(false) }
     var confirmTrash by remember { mutableStateOf(false) }
-    var customize by rememberSaveable { mutableStateOf(false) }
+    var arranging by rememberSaveable { mutableStateOf(false) }
     var choosingIcon by rememberSaveable { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val openFailed by viewModel.openFailed.collectAsStateWithLifecycle()
@@ -187,16 +187,6 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
         val itemIndex = index + blocksOffset(note)
         val visible = listState.layoutInfo.visibleItemsInfo.map { it.index }
         if (itemIndex !in visible || itemIndex >= (visible.maxOrNull() ?: 0)) listState.animateScrollToItem(itemIndex)
-    }
-
-    if (customize && note != null) {
-        PropertyLayoutSheet(
-            properties = note.properties,
-            layout = state.layout,
-            onReorder = viewModel::reorderProperties,
-            onToggleShown = viewModel::toggleShown,
-            onDismiss = { customize = false },
-        )
     }
 
     if (choosingIcon && note != null) {
@@ -357,8 +347,17 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
                 )
             }
             item(key = "__properties") {
-                PropertiesPanel(note, state, lookups, onCustomize = { customize = true }) { prop, debounce ->
-                    viewModel.setProperty(prop, debounce)
+                if (arranging) {
+                    PropertyArranger(
+                        names = note.properties.filter { it.type != "title" }.map { it.name },
+                        layout = state.layout,
+                        onArrange = viewModel::arrangeProperties,
+                        onDone = { arranging = false },
+                    )
+                } else {
+                    PropertiesPanel(note, state, lookups, onArrange = { arranging = true }) { prop, debounce ->
+                        viewModel.setProperty(prop, debounce)
+                    }
                 }
             }
             item(key = "__divider") {
@@ -576,7 +575,7 @@ private fun PropertiesPanel(
     note: NoteSummary,
     state: NoteUiState,
     lookups: PropertyLookups,
-    onCustomize: () -> Unit,
+    onArrange: () -> Unit,
     onChange: (NoteProperty, Boolean) -> Unit,
 ) {
     val arranged = remember(note.properties, state.layout) { PropertyLayouts.arrange(note.properties, state.layout) }
@@ -590,7 +589,7 @@ private fun PropertiesPanel(
                 arranged.hidden.forEach { prop -> PropertyRow(prop, state.schema?.property(prop.name), lookups, onChange) }
             }
         }
-        // The collapsed properties, and the button to choose which properties are shown.
+        // The hidden properties, and the button to arrange them (in place, see PropertyArranger).
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             if (arranged.hidden.isNotEmpty()) {
                 val rotation by animateFloatAsState(if (showHidden) 180f else 0f, label = "chevron")
@@ -616,7 +615,7 @@ private fun PropertiesPanel(
                 Spacer(Modifier.weight(1f))
             }
             if (arranged.shown.isNotEmpty() || arranged.hidden.isNotEmpty()) {
-                IconButton(onClick = onCustomize) {
+                IconButton(onClick = onArrange) {
                     Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.customize_properties), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

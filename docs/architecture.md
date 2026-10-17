@@ -39,14 +39,15 @@ properties and content: the pages of databases and pages on their own.
   list of blocks, each its own text field. To-do items have an × to delete them. A toolbar above the keyboard changes the block's kind,
   adds a divider or deletes the block. Tapping below the content continues at the end. Moving a
   note to the trash asks first.
-- **Properties per database** (`logic/PropertyLayouts.kt`, `PropertyLayoutSheet.kt`): the first
-  three are shown and the rest collapsed under "N more properties", until the user chooses
-  otherwise with the tune button: drag to reorder, the eye to show or collapse. What the cards
-  in the overview show is set up with the view (Manage views): the header image (off by
-  default), the start of the content (on; when off, no previews are downloaded for that
-  database) and up to three properties (else the card shows the filter property). All of it is
-  kept per database in `AppSettings.propertyLayouts` (backed up), so it applies to every view of
-  that database.
+- **Properties per database** (`logic/PropertyLayouts.kt`, `ui/note/PropertyArranger.kt`): as in
+  Notion, every property is shown until the user hides it; hidden ones are folded away under "N
+  more properties". The tune button turns the properties into a list to arrange in place: drag a
+  property by its handle to change the order, and below the "Hidden" line to hide it (the eye does
+  the same with one tap); "Done" goes back. What the cards in the overview show is set up with the
+  view (Manage views): the header image (off by default), the start of the content (on; when off,
+  no previews are downloaded for that database) and up to three properties (else the card shows
+  the filter property). All of it is kept per database in `AppSettings.propertyLayouts` (backed
+  up), so it applies to every view of that database.
 - **Manage views** (`ui/views/`): the views in their order (up/down), each with a pin for the
   navigation bar (`DatabaseConfig.inBar`; disabled when the bar is full); tapping one edits its
   name, icon, bar pin, filter property and filters, and what the cards show; "Add view" picks a

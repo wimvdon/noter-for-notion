@@ -66,10 +66,11 @@
     <string name="placeholder_start">Start writing… Type # for a heading, - for a list, [] for a checkbox.</string>
     <string name="include_time">Include time</string>
     <string name="no_options">Nothing to choose from.</string>
-    <string name="customize_properties">Customize properties</string>
-    <string name="hide_properties">Hide properties</string>
-    <string name="properties_title">Properties</string>
-    <string name="properties_help">Shown properties are above the note, the others are folded away. Applies to every note in this database.</string>
+    <string name="customize_properties">Arrange properties</string>
+    <string name="hide_properties">Fewer properties</string>
+    <string name="properties_shown">Shown in the note</string>
+    <string name="properties_hidden">Hidden</string>
+    <string name="done">Done</string>
     <string name="property_shown">Show %1$s</string>
     <string name="unsupported_block">Can’t be shown or edited here.</string>
     <string name="nested_not_loaded">Not loaded. Check your connection and tap sync to try again.</string>

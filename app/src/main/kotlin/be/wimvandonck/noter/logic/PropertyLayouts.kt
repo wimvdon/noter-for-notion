@@ -5,14 +5,13 @@ import be.wimvandonck.noter.data.model.PropertyLayout
 
 /**
  * Which of a note's properties are shown, in which order, and which appear on its card
- * ([PropertyLayout], one per database). By default the first [DEFAULT_SHOWN] are shown and the
- * rest are collapsed. The title is never part of it (it has its own field).
+ * ([PropertyLayout], one per database). As in Notion, all of them are shown until the user hides
+ * some; hidden ones are folded away. The title is never part of it (it has its own field).
  */
 object PropertyLayouts {
-    const val DEFAULT_SHOWN = 3
     const val MAX_ON_CARD = 3
 
-    /** A note's properties, split into the shown ones and the collapsed ones, in the user's order. */
+    /** A note's properties, split into the shown ones and the hidden ones, in the user's order. */
     data class Arranged(val shown: List<NoteProperty>, val hidden: List<NoteProperty>)
 
     /** [names] in the user's order: the ordered ones first, then the rest as they come. */
@@ -21,26 +20,26 @@ object PropertyLayouts {
         return order.filter { it in names } + names.filterNot { it in order }
     }
 
-    fun shownNames(names: List<String>, layout: PropertyLayout?): Set<String> =
-        layout?.shown?.toSet() ?: ordered(names, layout).take(DEFAULT_SHOWN).toSet()
+    /** [names] in the user's order, split into the shown ones and the hidden ones. */
+    fun sections(names: List<String>, layout: PropertyLayout?): Pair<List<String>, List<String>> {
+        val hidden = layout?.hidden.orEmpty().toSet()
+        return ordered(names, layout).partition { it !in hidden }
+    }
 
     fun arrange(properties: List<NoteProperty>, layout: PropertyLayout?): Arranged {
         val byName = properties.filter { it.type != "title" }.associateBy { it.name }
-        val names = ordered(byName.keys.toList(), layout)
-        val shown = shownNames(names, layout)
-        val (visible, hidden) = names.mapNotNull { byName[it] }.partition { it.name in shown }
-        return Arranged(visible, hidden)
+        val (shown, hidden) = sections(byName.keys.toList(), layout)
+        return Arranged(shown.mapNotNull { byName[it] }, hidden.mapNotNull { byName[it] })
     }
 
-    /** The layout after the user put the properties in the order [names]. */
-    fun reorder(layout: PropertyLayout?, names: List<String>): PropertyLayout =
-        (layout ?: PropertyLayout()).copy(order = names)
+    /** The layout after the user arranged the properties: [shown] in this order, then [hidden]. */
+    fun arranged(layout: PropertyLayout?, shown: List<String>, hidden: List<String>): PropertyLayout =
+        (layout ?: PropertyLayout()).copy(order = shown + hidden, hidden = hidden)
 
-    /** Shows or collapses [name]; the default (first three) becomes an explicit choice. */
+    /** Shows or hides [name]: it moves to the end of the shown ones, or the top of the hidden ones. */
     fun toggleShown(layout: PropertyLayout?, names: List<String>, name: String): PropertyLayout {
-        val current = shownNames(names, layout)
-        val shown = if (name in current) current - name else current + name
-        return (layout ?: PropertyLayout()).copy(shown = ordered(names, layout).filter { it in shown })
+        val (shown, hidden) = sections(names, layout)
+        return if (name in shown) arranged(layout, shown - name, listOf(name) + hidden) else arranged(layout, shown + name, hidden - name)
     }
 
     /** Puts [name] on the card or takes it off; nothing changes when the card already has [MAX_ON_CARD]. */

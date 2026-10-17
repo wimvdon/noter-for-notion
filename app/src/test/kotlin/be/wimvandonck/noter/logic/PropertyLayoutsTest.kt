@@ -15,26 +15,32 @@ class PropertyLayoutsTest {
     private val names = listOf("A", "B", "C", "D", "E")
 
     @Test
-    fun `shows the first three by default and collapses the rest`() {
+    fun `shows every property by default, as Notion does`() {
         val arranged = PropertyLayouts.arrange(properties, null)
-        assertEquals(listOf("A", "B", "C"), arranged.shown.map { it.name })
-        assertEquals(listOf("D", "E"), arranged.hidden.map { it.name })
+        assertEquals(names, arranged.shown.map { it.name })
+        assertEquals(emptyList<String>(), arranged.hidden.map { it.name })
     }
 
     @Test
-    fun `follows the user's order, new properties last`() {
-        val layout = PropertyLayout(order = listOf("E", "C", "Gone"))
+    fun `follows the user's order, new properties last and shown`() {
+        val layout = PropertyLayout(order = listOf("E", "C", "Gone"), hidden = listOf("C"))
         assertEquals(listOf("E", "C", "A", "B", "D"), PropertyLayouts.ordered(names, layout))
-        assertEquals(listOf("E", "C", "A"), PropertyLayouts.arrange(properties, layout).shown.map { it.name })
+        assertEquals(listOf("E", "A", "B", "D"), PropertyLayouts.arrange(properties, layout).shown.map { it.name })
+        assertEquals(listOf("C"), PropertyLayouts.arrange(properties, layout).hidden.map { it.name })
     }
 
     @Test
-    fun `showing or collapsing a property keeps the others as they were`() {
+    fun `arranging keeps the order of both sections`() {
+        val layout = PropertyLayouts.arranged(null, shown = listOf("D", "A"), hidden = listOf("E", "B", "C"))
+        assertEquals(PropertyLayouts.sections(names, layout), listOf("D", "A") to listOf("E", "B", "C"))
+    }
+
+    @Test
+    fun `hiding a property puts it on top of the hidden ones, showing it at the end of the shown ones`() {
         val hidden = PropertyLayouts.toggleShown(null, names, "B")
-        assertEquals(listOf("A", "C"), hidden.shown)
-        val shown = PropertyLayouts.toggleShown(hidden, names, "E")
-        assertEquals(listOf("A", "C", "E"), shown.shown)
-        assertEquals(listOf("B", "D"), PropertyLayouts.arrange(properties, shown).hidden.map { it.name })
+        assertEquals(listOf("A", "C", "D", "E") to listOf("B"), PropertyLayouts.sections(names, hidden))
+        val shown = PropertyLayouts.toggleShown(hidden, names, "B")
+        assertEquals(listOf("A", "C", "D", "E", "B") to emptyList<String>(), PropertyLayouts.sections(names, shown))
     }
 
     @Test
