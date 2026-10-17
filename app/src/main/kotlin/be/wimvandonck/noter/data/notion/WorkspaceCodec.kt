@@ -3,6 +3,9 @@ package be.wimvandonck.noter.data.notion
 import be.wimvandonck.noter.data.api.arrayOrNull
 import be.wimvandonck.noter.data.api.objOrNull
 import be.wimvandonck.noter.data.api.stringOrNull
+import be.wimvandonck.noter.data.model.PropertyValue
+import be.wimvandonck.noter.data.model.NoteProperty
+import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.PageRef
 import be.wimvandonck.noter.data.model.WorkspaceItem
 import kotlinx.serialization.json.JsonObject
@@ -29,6 +32,23 @@ object WorkspaceCodec {
             val id = source.stringOrNull("id") ?: return@mapNotNull null
             PageRef(id, source.stringOrNull("name").orEmpty())
         }
+
+    /**
+     * A subpage from its block on the parent page (Notion's `child_page`), until the page itself is
+     * downloaded: its title and times. Kept under [key].
+     */
+    fun childPage(block: JsonObject, key: String): NoteSummary? {
+        val id = block.stringOrNull("id") ?: return null
+        val title = block.objOrNull("child_page")?.stringOrNull("title").orEmpty()
+        return NoteSummary(
+            id = id,
+            databaseId = key,
+            title = title,
+            createdTime = block.stringOrNull("created_time").orEmpty(),
+            lastEditedTime = block.stringOrNull("last_edited_time").orEmpty(),
+            properties = listOf(NoteProperty("title", "title", PropertyValue.Text(title))),
+        )
+    }
 
     /**
      * One search result. Pages of a database (the notes) are left out unless [includeNotes]: the

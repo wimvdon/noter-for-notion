@@ -204,6 +204,8 @@
     <string name="notebook_follows">Follows the Notion view “%1$s”</string>
     <string name="notebook_all_notes">All notes of the database</string>
     <string name="notebook_all_notes_help">No Notion view: filter and sort in the notebook</string>
+    <string name="notebook_subpages">The subpages of a page</string>
+    <string name="notebook_pages">Pages</string>
     <string name="empty_error_title">Couldn’t load the notes</string>
     <string name="chip_overdue">Overdue</string>
     <string name="chip_today">Today</string>

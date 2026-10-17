@@ -132,6 +132,8 @@ import be.wimvandonck.noter.logic.ReadOnlyBlocks
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.Tab
 import androidx.compose.material.icons.rounded.AddReaction
+import androidx.compose.material.icons.rounded.BookmarkAdd
+import be.wimvandonck.noter.data.NotesRepository
 import androidx.compose.ui.draw.clip
 import be.wimvandonck.noter.logic.PropertyLayouts
 import be.wimvandonck.noter.ui.theme.AppShapes
@@ -153,7 +155,13 @@ import be.wimvandonck.noter.data.notion.InlineMarkdown
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit, onOpenDatabase: (String) -> Unit) {
+fun NoteScreen(
+    pageId: String,
+    onBack: () -> Unit,
+    onOpenNote: (String) -> Unit,
+    onOpenDatabase: (String) -> Unit,
+    onAddNotebook: (String) -> Unit,
+) {
     val viewModel: NoteViewModel = viewModel(key = "note-$pageId", factory = NoteViewModel.factory(pageId))
     val state by viewModel.state.collectAsStateWithLifecycle()
     val focus by viewModel.focus.collectAsStateWithLifecycle()
@@ -250,6 +258,17 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
                                         onClick = {
                                             menu = false
                                             viewModel.createSubpage(onOpenNote)
+                                        },
+                                    )
+                                }
+                                // A page on its own can be a notebook of its subpages.
+                                if (!note.isLocal && note.databaseId == NotesRepository.PAGES) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.add_view)) },
+                                        leadingIcon = { Icon(Icons.Rounded.BookmarkAdd, null) },
+                                        onClick = {
+                                            menu = false
+                                            onAddNotebook(NotesRepository.pageNotebookKey(note.id))
                                         },
                                     )
                                 }

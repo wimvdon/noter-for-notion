@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.SelectAll
+import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material.icons.rounded.ViewKanban
 import androidx.compose.material.icons.rounded.ViewTimeline
@@ -169,6 +170,10 @@ fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: Strin
                 addingDatabase = false
                 viewModel.chooseView(it, roomInBar = room > 0)
             },
+            onPickPage = {
+                addingDatabase = false
+                viewModel.startAddPage(it, roomInBar = room > 0)
+            },
         )
     }
     state.viewChoice?.let { choice ->
@@ -201,7 +206,9 @@ private fun DatabaseRow(
     onMove: (Boolean) -> Unit,
     onPin: (Boolean) -> Unit,
 ) {
-    val filters = if (config.viewId != null && config.followView) {
+    val filters = if (config.pageId != null) {
+        stringResource(R.string.notebook_subpages)
+    } else if (config.viewId != null && config.followView) {
         stringResource(R.string.notebook_follows, config.viewName.orEmpty())
     } else {
         stringResource(R.string.notebook_all_notes)
@@ -243,6 +250,7 @@ private fun AddDatabaseSheet(
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
     onPick: (be.wimvandonck.noter.data.model.PageRef) -> Unit,
+    onPickPage: (be.wimvandonck.noter.data.model.PageRef) -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
@@ -260,15 +268,16 @@ private fun AddDatabaseSheet(
                     Text(stringResource(R.string.key_failed, state.availableError), color = MaterialTheme.colorScheme.error)
                     TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
                 }
-                list.isEmpty() -> Text(
+                list.isEmpty() && state.availablePages.isEmpty() -> Text(
                     stringResource(R.string.no_databases_found),
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 else -> Column(Modifier.verticalScroll(rememberScrollState())) {
+                    if (list.isNotEmpty()) SheetSection(stringResource(R.string.browse_databases))
                     list.forEach { db ->
                         val added = db.id.replace("-", "") in configured
-                        // A database can have more than one view (with different filters).
+                        // A database can be more than one notebook (each with its own view or filters).
                         ListItem(
                             headlineContent = { Text(db.title.ifBlank { stringResource(R.string.untitled) }) },
                             supportingContent = if (added) ({ Text(stringResource(R.string.already_added)) }) else null,
@@ -276,10 +285,29 @@ private fun AddDatabaseSheet(
                             modifier = Modifier.clickable { onPick(db) },
                         )
                     }
+                    if (state.availablePages.isNotEmpty()) SheetSection(stringResource(R.string.notebook_pages))
+                    state.availablePages.forEach { page ->
+                        ListItem(
+                            headlineContent = { Text(page.title.ifBlank { stringResource(R.string.untitled) }) },
+                            supportingContent = { Text(stringResource(R.string.notebook_subpages)) },
+                            leadingContent = { Icon(Icons.Rounded.Description, contentDescription = null) },
+                            modifier = Modifier.clickable { onPickPage(page) },
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SheetSection(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 4.dp),
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -335,7 +363,9 @@ private fun DatabaseEditorSheet(
             }
             // Filters and sort are set in the notebook itself (Filters, Sort); here only where it starts from.
             Text(
-                if (draft.config.viewId != null) {
+                if (draft.config.pageId != null) {
+                    stringResource(R.string.notebook_subpages)
+                } else if (draft.config.viewId != null) {
                     stringResource(R.string.notebook_follows, draft.config.viewName.orEmpty())
                 } else {
                     stringResource(R.string.notebook_all_notes)

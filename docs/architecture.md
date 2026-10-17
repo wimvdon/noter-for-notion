@@ -26,6 +26,12 @@ properties and content: the pages of databases and pages on their own.
     order); then the quick filters' chips. Dragging a note in another sort switches to the custom
     order, starting from the order on screen, with an Undo snackbar. Nothing is written to Notion's
     view. A view that Notion doesn't have any more shows all notes and the panel says so.
+  - **A page's notebook** (`DatabaseConfig.pageId`, kept under the key
+    `NotesRepository.pageNotebookKey`): its notes are the page's subpages (the child pages directly
+    on it), "Notion's order" is their order on the page (kept like a view's results), and a new
+    note is a new subpage. Each refresh lists the page's blocks and downloads only the subpages
+    that changed (`refreshSubpages`). It has nothing to filter by. Added from "Add notebook"
+    (Pages) or a page's ⋮ menu, "Add as notebook".
   Notes are cards in a staggered grid with a preview of their content; pinned notes come first
   under "Pinned". Long-press and drag moves a note within its section; a long press without
   moving opens its menu (pin, move to trash). Filters (Material filter chips) come from one

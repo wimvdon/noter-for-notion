@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: A page can be a notebook of its subpages
+
+The owner asked to make regular pages notebooks too, with their subpages as the notes. A page's notebook lists the child pages directly on the page (`GET /blocks/{page}/children`, the `child_page` blocks), in the page's order, and downloads a subpage only when it changed; a new note is a new subpage. They are kept under a key of their own (`page:<id>`), so they work like a database's notes everywhere (Pinned, pins, trash, previews). Rejected: subpages nested deeper (inside toggles or columns; slower, and rarely what "the notes of this page" means) and the page's own text as a note (it is opened as a page as before).
+
 ## 2026-10-17: Notebooks follow Notion views; filters and sort on the phone
 
 The owner wanted to add an existing Notion view as a notebook and change it on the phone without syncing back ("mobile needs a different experience"), with a filter and sort button and the chips as highlighted filters. Notion's Views API (March 2026) lists a database's views and can run one, but a view query can't take extra filters or sorts. So Notion runs the view (its filter and order, exactly as in Notion, also complex ones the app couldn't redo) and returns the page IDs; the app keeps them and applies its own filters (per property) and sort on top, on the phone, also offline. A new notebook starts from the view's quick filters, order and property layout. Everything after that is the phone's: Filters (follow the view or not, filters per property, which ones are chips, reset to the view) and Sort (Notion's order, custom, last edited, created, title, a date property). Dragging switches to the custom order with an Undo snackbar instead of a confirmation dialog (Material 3: undo for actions that are easy to reverse). Rejected: translating Notion's filter JSON into the app's filters (many conditions can't be redone exactly), writing changes back to the Notion view (it would change everyone's desktop view), and putting every filter in the chip row (too long to scan).

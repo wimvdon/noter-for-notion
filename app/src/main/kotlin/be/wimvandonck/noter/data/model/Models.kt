@@ -36,6 +36,11 @@ data class DatabaseConfig(
     val selected: Map<String, List<String>> = emptyMap(),
     /** The order of the notes (null: Notion's order when following a view, else the custom order). */
     val sort: NotebookSort? = null,
+    /**
+     * A page's notebook: its notes are this page's subpages ([databaseId] is then the page's key
+     * in the repository, see NotesRepository.pageNotebookKey).
+     */
+    val pageId: String? = null,
 ) {
     /** The database this view shows. */
     val sourceId: String get() = databaseId ?: id
@@ -53,7 +58,10 @@ data class DatabaseConfig(
 
     /** The order the notes are in now. */
     val currentSort: NotebookSort
-        get() = sort ?: NotebookSort(if (viewId != null && followView) SortKind.NOTION else SortKind.CUSTOM)
+        get() = sort ?: NotebookSort(if ((viewId != null && followView) || pageId != null) SortKind.NOTION else SortKind.CUSTOM)
+
+    /** Notion has an order for this notebook: its view's, or the page's order of its subpages. */
+    val hasNotionOrder: Boolean get() = (viewId != null && followView) || pageId != null
 
     companion object {
         const val DEFAULT_ICON = "note"
@@ -63,7 +71,10 @@ data class DatabaseConfig(
 /** How a notebook's notes are sorted (pinned notes always come first). */
 @Serializable
 enum class SortKind {
-    /** As the Notion view sorts them (its sort, or its order dragged by hand in Notion). */
+    /**
+     * As the Notion view sorts them (its sort, or its order dragged by hand in Notion); for a
+     * page's notebook, the order of the subpages on the page.
+     */
     NOTION,
 
     /** As placed by dragging on this phone; new notes on top. */
