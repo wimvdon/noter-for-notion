@@ -150,15 +150,6 @@
         <item quantity="one">%d notebook</item>
         <item quantity="other">%d notebooks</item>
     </plurals>
-    <plurals name="bar_room">
-        <item quantity="one">The bottom bar has room for %d notebook on this screen.</item>
-        <item quantity="other">The bottom bar has room for %d notebooks on this screen.</item>
-    </plurals>
-    <string name="view_in_bar">In the bar at the bottom</string>
-    <string name="view_no_room">Pinned to the bar, but there’s no room on this screen</string>
-    <string name="view_in_drawer">Under Notebooks</string>
-    <string name="pin_to_bar">Show in the bar at the bottom</string>
-    <string name="pin_to_bar_help">When there’s room. The notebook is always under Notebooks in the bar.</string>
     <string name="icon_search">Search icons (in English)</string>
     <string name="icon_none_found">No icons found. Try another word, such as “list”, “food” or “work”.</string>
     <string name="cards_title">Cards in the overview</string>
@@ -174,7 +165,6 @@
     <string name="new_page">New page</string>
     <string name="new_page_top_level">At the top of your workspace</string>
     <string name="new_page_top_level_help">Among your private pages</string>
-    <string name="new_subpage">New subpage</string>
     <string name="create_top_level_failed">Notion doesn’t let this token add pages at the top of your workspace. Add the page inside a page instead (⋮ › New subpage in a page).</string>
     <string name="create_failed">Notion couldn’t make the page: %1$s</string>
     <string name="browse_empty_title">Nothing here yet</string>
@@ -184,13 +174,11 @@
     <string name="empty_clear_filters">Clear filters</string>
     <string name="filters">Filters</string>
     <string name="filters_count">Filters · %1$d</string>
-    <string name="sort">Sort</string>
     <string name="sort_notion">Page order</string>
     <string name="sort_custom">Custom order</string>
     <string name="sort_last_edited">Last edited</string>
     <string name="sort_created">Created</string>
     <string name="sort_title">Title</string>
-    <string name="sort_reverse">Reverse order</string>
     <string name="sorted_by_hand">Now in your own order</string>
     <string name="undo">Undo</string>
     <string name="filter_no_values">No values yet</string>
@@ -203,9 +191,11 @@
     <string name="chip_next_7_days">Next 7 days</string>
     <string name="chip_later">Later</string>
     <string name="chip_no_date">No date</string>
-    <string name="chip_rows_help">Each property shown here gets its own row of chips above the notes. Drag by the handle to change the order.</string>
-    <string name="chip_rows_shown">Rows of chips</string>
-    <string name="chip_rows_hidden">Only here</string>
+    <string name="chip_rows_help">Tap the eye to give a filter its own row of chips above the notes. Drag those by the handle to change their order.</string>
     <string name="chip_row_shown">Row of chips for %1$s</string>
     <string name="no_notebooks">No notebooks yet</string>
+    <string name="sort_by">Sort: %1$s</string>
+    <string name="sort_ascending">Ascending</string>
+    <string name="sort_descending">Descending</string>
+    <string name="no_notebooks_body">A notebook shows the notes of a Notion database or the subpages of a page.</string>
 </resources>

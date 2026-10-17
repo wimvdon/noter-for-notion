@@ -20,11 +20,6 @@ data class DatabaseConfig(
     val databaseId: String? = null,
     /** Before [selected]: the options of [chipProperty] selected when the view opened. */
     val filters: List<String> = emptyList(),
-    /**
-     * Pinned to the navigation bar at the bottom (when there is room, see Destinations). Every
-     * view is in the navigation drawer. Views saved before this existed were in the bar.
-     */
-    val inBar: Boolean = true,
     /** Properties whose values are filter chips above the notes (quick filters), one row each, in this order. */
     val quickFilters: List<String> = emptyList(),
     /** The selected filter values per property: a note shows when it has one of each property's. */

@@ -46,10 +46,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-/** A top-level destination: Pinned or a notebook. */
-data class Tab(val key: String, val name: String, val icon: String?) {
-    val isPinned: Boolean get() = key == Destinations.PINNED
-}
+/** A notebook, as a tab under Notebooks. */
+data class Tab(val key: String, val name: String, val icon: String?)
 
 data class MainUiState(
     val ready: Boolean = false,
@@ -59,7 +57,9 @@ data class MainUiState(
      * refuses it to an internal connection).
      */
     val canAddTopLevel: Boolean = false,
+    /** The notebooks, as tabs under Notebooks. */
     val tabs: List<Tab> = emptyList(),
+    /** Pinned, Search, a notebook's ID, or Notebooks without one (see Destinations). */
     val currentTab: String = Destinations.PINNED,
     /** The filter chips above the notes, per property (on Pinned: one group, the sources). */
     val chipGroups: List<ChipGroup> = emptyList(),
@@ -92,6 +92,8 @@ data class MainUiState(
     val filterOptions: List<ChipGroup> = emptyList(),
 ) {
     val isHome: Boolean get() = currentTab == Destinations.PINNED
+
+    val section: Destinations.Section get() = Destinations.section(currentTab)
 
     /** Related databases whose pages name relation chips. */
     val chipRelationDatabases: Set<String>
@@ -217,7 +219,7 @@ class MainViewModel(
     ) { settings, databases, tab, (chips, pageOrders), (pending, offline, key, kind) ->
         val notebooks = settings.databases
         val tabKey = Destinations.valid(tab, notebooks)
-        val tabs = listOf(Tab(Destinations.PINNED, "", null)) + notebooks.map { Tab(it.id, it.name, it.icon) }
+        val tabs = notebooks.map { Tab(it.id, it.name, it.icon) }
         val base = MainUiState(
             ready = true,
             hasKey = key,
@@ -247,6 +249,7 @@ class MainViewModel(
                     refreshing = databases.values.any { it.refreshing },
                 )
             }
+            Destinations.SEARCH, Destinations.NOTEBOOKS -> base
             else -> {
                 val notebook = notebooks.first { it.id == tabKey }
                 val pageOrder = if (notebook.pageId != null) pageOrders[notebook.sourceId] else null
@@ -266,12 +269,22 @@ class MainViewModel(
         return fromViews + others
     }
 
+    /** The notebook seen last, for tapping Notebooks. */
+    private var lastNotebook: String? = null
+
+    /** Shows Pinned, Search or a notebook (its key). */
     fun selectTab(key: String) {
         currentTab.value = key
+        if (Destinations.section(key) == Destinations.Section.NOTEBOOKS && key != Destinations.NOTEBOOKS) lastNotebook = key
         viewModelScope.launch {
             val view = repository.currentSettings().databases.firstOrNull { it.id == key } ?: return@launch
             repository.refresh(view.sourceId, userAsked = false)
         }
+    }
+
+    /** Notebooks in the navigation bar: the notebook seen last, else the first. */
+    fun selectNotebooks() = viewModelScope.launch {
+        selectTab(Destinations.notebook(lastNotebook, repository.currentSettings().databases))
     }
 
     /** Changes the notebook shown, kept on this phone (Notion isn't changed). */

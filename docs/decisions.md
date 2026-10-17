@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: Pinned, Notebooks and Search in the bar; notebooks as tabs
+
+The owner pointed out that notebooks pinned to the bar sat on the same level as Pinned and Notebooks while they belong under Notebooks, and that search is global. Material 3: the navigation bar is for top-level destinations, tabs for peer views within one destination. So the bar has Pinned, Notebooks and Search, and the notebooks are scrollable tabs inside Notebooks (no more pinning to the bar, no Notebooks sheet). Search moves from the top app bar to the bar: it is global, and the app bar is now free for a notebook's Filters (a badge dot while filters are on) and Sort buttons. Sort's Reverse order is gone: tapping the current sort again turns it around, with an arrow for the direction. The Filters panel is one list of properties with an eye and a drag handle each, instead of separate "Rows of chips" and "Only here" sections. "New subpage" is removed from a page's menu (owner's request). Rejected: a navigation rail or drawer for the notebooks (the drawer was hard to reach; a rail is for wide windows).
+
 ## 2026-10-17: Notebooks are a database's raw notes; Notebooks sheet instead of the drawer
 
 The owner found following Notion views too confusing: "take the raw data sources and the user sets up the notebook as they want". Notebooks no longer use Notion's views at all: no view picker when adding one, no "Follow the view" or "Reset to Notion's view", and the app no longer asks Notion for views (`/views` calls removed). A notebook shows all notes of its database, with its own filters and sort on the phone. Notebooks that followed a view keep their name, icon, filters and chip rows and show all notes now; one sorted in the view's order gets the custom order. Rejected: keeping views as an option (the confusing part was the two layers of filters, not the default).

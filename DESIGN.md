@@ -214,16 +214,18 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   properties chosen for cards (up to three; options in Notion's colours, other values in Label
   Medium), or else the filter property's options. "Pinned" and "Others" are Label Large headers spanning
   the grid. A dragged card lifts (shadow, 3% larger, `surfaceContainerHigh`).
-- Navigation: Pinned and the user's notebooks are the top-level destinations, in that order.
-  The navigation bar shows Pinned, the notebooks pinned to it, as many as fit (an item per 80dp;
-  owner's choice, see decisions), and last "Notebooks", which opens a modal bottom sheet with
-  every notebook (navigation drawer items, the current one selected), then Manage notebooks and
-  Settings. There is no drawer or menu button: the bar and the sheet are within reach of the
-  thumb. "Notebooks" is selected while a notebook that isn't in the bar is shown.
-- Filters: a notebook's first chip row holds Filters and Sort; each quick filter has a row of its
-  own below it, starting with the property's name (Label Large, `onSurfaceVariant`). A chip's
-  count of notes sits in a small `surfaceContainerHighest` pill after its label. Search is a screen of its own behind the search button in the top app bar: the
-  query field in the app bar, then "Notes on this phone", "Databases" and "Pages" headers (Title
+- Navigation: the navigation bar has the three top-level destinations, Pinned, Notebooks and
+  Search. The notebooks are peers within Notebooks: a primary scrollable tab row under the top
+  app bar, leading-icon tabs with the notebook's icon. The top app bar's ⋮ menu has Edit
+  notebook, Manage notebooks and Settings; there is no drawer.
+- Filters and sort: icon buttons in a notebook's top app bar. Filters shows a small badge dot
+  while filters are on; Sort opens a menu with a check on the current sort and an arrow (up:
+  ascending, down: descending) that tapping the current sort again turns around. Each quick
+  filter has a row of chips of its own above the notes, starting with the property's name (Label
+  Large, `onSurfaceVariant`). In the Filters panel each property has an eye and, when it has a
+  row, a drag handle on the right. A chip's count of notes sits in a small
+  `surfaceContainerHighest` pill after its label.
+- Search, a destination: a search icon and the query field in the app bar, then "Notes on this phone", "Databases" and "Pages" headers (Title
   Small, primary). A database opened from Search is a child page with an "Add as notebook" text
   button in its app bar, "Edit notebook" once it is one. "Notebook" stays in English in every
   language: it is the app's name for its collections.
