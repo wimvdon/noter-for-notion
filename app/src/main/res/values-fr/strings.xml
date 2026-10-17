@@ -132,20 +132,24 @@
     <string name="privacy_policy">Politique de confidentialité</string>
     <plurals name="status_pending">
         <item quantity="one">%d modification en attente d’envoi vers Notion</item>
+        <item quantity="many">%d modifications en attente d’envoi vers Notion</item>
         <item quantity="other">%d modifications en attente d’envoi vers Notion</item>
     </plurals>
     <plurals name="more_properties">
         <item quantity="one">%d autre propriété</item>
+        <item quantity="many">%d autres propriétés</item>
         <item quantity="other">%d autres propriétés</item>
     </plurals>
     <plurals name="linked_pages">
         <item quantity="one">%d page liée</item>
+        <item quantity="many">%d pages liées</item>
         <item quantity="other">%d pages liées</item>
     </plurals>
     <!-- Manage views and the navigation bar -->
     <string name="manage_views">Gérer les notebooks</string>
     <plurals name="views_count">
         <item quantity="one">%d notebook</item>
+        <item quantity="many">%d notebooks</item>
         <item quantity="other">%d notebooks</item>
     </plurals>
     <string name="icon_search">Rechercher des icônes (en anglais)</string>
