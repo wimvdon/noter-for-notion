@@ -204,6 +204,8 @@
     <string name="notebook_follows">Volgt de Notion-weergave “%1$s”</string>
     <string name="notebook_all_notes">Alle notities van de database</string>
     <string name="notebook_all_notes_help">Geen Notion-weergave: filter en sorteer in het notebook</string>
+    <string name="notebook_subpages">De subpagina’s van een pagina</string>
+    <string name="notebook_pages">Pagina’s</string>
     <string name="empty_error_title">Kon de notities niet laden</string>
     <string name="chip_overdue">Te laat</string>
     <string name="chip_today">Vandaag</string>

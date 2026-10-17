@@ -61,15 +61,18 @@ class NotebookActions(
 @Composable
 internal fun NotebookChips(state: MainUiState, actions: NotebookActions, onOpenFilters: () -> Unit) {
     val notebook = state.notebook ?: return
-    FilterChip(
-        selected = state.filterCount > 0,
-        onClick = onOpenFilters,
-        label = {
-            Text(if (state.filterCount > 0) stringResource(R.string.filters_count, state.filterCount) else stringResource(R.string.filters))
-        },
-        leadingIcon = { Icon(Icons.Rounded.Tune, contentDescription = null, Modifier.size(FilterChipDefaults.IconSize)) },
-    )
-    Spacer(Modifier.width(8.dp))
+    // A page's notebook has nothing to filter by (subpages only have a title).
+    if (state.filterOptions.isNotEmpty() || notebook.viewId != null) {
+        FilterChip(
+            selected = state.filterCount > 0,
+            onClick = onOpenFilters,
+            label = {
+                Text(if (state.filterCount > 0) stringResource(R.string.filters_count, state.filterCount) else stringResource(R.string.filters))
+            },
+            leadingIcon = { Icon(Icons.Rounded.Tune, contentDescription = null, Modifier.size(FilterChipDefaults.IconSize)) },
+        )
+        Spacer(Modifier.width(8.dp))
+    }
     var menu by remember { mutableStateOf(false) }
     val sort = notebook.currentSort
     androidx.compose.foundation.layout.Box {
@@ -82,7 +85,7 @@ internal fun NotebookChips(state: MainUiState, actions: NotebookActions, onOpenF
         )
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             val choices = buildList {
-                if (notebook.viewId != null && notebook.followView) add(NotebookSort(SortKind.NOTION))
+                if (notebook.hasNotionOrder) add(NotebookSort(SortKind.NOTION))
                 add(NotebookSort(SortKind.CUSTOM))
                 add(NotebookSort(SortKind.LAST_EDITED))
                 add(NotebookSort(SortKind.CREATED))

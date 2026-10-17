@@ -146,6 +146,7 @@ fun AppNavigation() {
                         onBack = ::pop,
                         onOpenNote = { push(NOTE + it) },
                         onOpenDatabase = { push(DATABASE + it) },
+                        onAddNotebook = { push(ADD_NOTEBOOK + it) },
                     )
                     top.startsWith(DATABASE) -> DatabaseScreen(
                         databaseId = top.removePrefix(DATABASE),

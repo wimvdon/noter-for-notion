@@ -15,6 +15,7 @@ import be.wimvandonck.noter.data.model.ViewResult
 import be.wimvandonck.noter.data.model.PageContent
 import be.wimvandonck.noter.data.model.PageIcon
 import be.wimvandonck.noter.data.model.PageRef
+import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.model.WorkspaceItem
 import be.wimvandonck.noter.data.notion.BlockCodec
@@ -234,6 +235,10 @@ class NotesRepository(
         val current = _databases.value[databaseId] ?: return
         if (current.refreshing) return
         val kind = SyncPolicy.decide(clock(), current.lastSyncMs, current.lastFullSyncMs, userAsked)
+        if (isPageNotebook(databaseId)) {
+            if (kind != RefreshKind.NONE || databaseId !in _viewResults.value) refreshSubpages(databaseId)
+            return
+        }
         val views = settings.current().databases.filter { it.sourceId == databaseId && it.followView }.mapNotNull { it.viewId }.distinct()
         // A view not asked about yet is asked about now, also when the notes are up to date.
         views.filter { kind != RefreshKind.NONE || it !in _viewResults.value }.forEach { refreshView(it) }
@@ -297,6 +302,70 @@ class NotesRepository(
 
     private fun saveDatabaseCache(id: String, state: DatabaseState) {
         cache.saveDatabase(id, DatabaseCache(state.schema, state.notes, state.lastSyncMs, state.lastFullSyncMs))
+    }
+
+    // ---- Notebooks of a page ----------------------------------------------------------------
+
+    /**
+     * Refreshes a page's notebook ([key], see [pageNotebookKey]): its notes are the page's
+     * subpages (the child pages directly on it), in the page's order, kept like Notion view
+     * results (so "Notion's order" is the page's). A subpage is downloaded again only when it
+     * changed (at most [MAX_SUBPAGE_DOWNLOADS] per refresh; the rest show their title until then).
+     */
+    private suspend fun refreshSubpages(key: String) {
+        setState(key) { it.copy(refreshing = true, error = null) }
+        val started = clock()
+        try {
+            withContext(Dispatchers.IO) {
+                val children = client.blockChildren(pageOf(key)).filter { it.stringOrNull("type") == "child_page" }
+                val existing = _databases.value[key]?.notes.orEmpty().associateBy { it.id.replace("-", "") }
+                var downloads = 0
+                val fetched = children.mapNotNull { block ->
+                    val id = block.stringOrNull("id") ?: return@mapNotNull null
+                    val edited = block.stringOrNull("last_edited_time").orEmpty()
+                    val known = existing[id.replace("-", "")]
+                    when {
+                        known != null && known.lastEditedTime == edited -> known
+                        downloads < MAX_SUBPAGE_DOWNLOADS -> {
+                            downloads++
+                            PropertyCodec.parsePage(client.getPage(id), key)
+                        }
+                        else -> known ?: WorkspaceCodec.childPage(block, key)
+                    }
+                }
+                val ids = fetched.map { it.id }
+                lock.withLock {
+                    val queue = _outbox.value
+                    val pendingTrash = queue.filterIsInstance<PendingOp.TrashPage>().map { it.pageId }.toSet()
+                    val local = _databases.value[key]?.notes.orEmpty().filter { it.isLocal }
+                    val notes = (local + fetched).filter { it.id !in pendingTrash }.map { Outbox.applyPending(it, queue) }
+                    val updated = (_databases.value[key] ?: DatabaseState()).copy(
+                        schema = DatabaseSchema(key, "", listOf(PropertySchema(PAGE_TITLE, PAGE_TITLE, "title"))),
+                        notes = notes,
+                        lastSyncMs = started,
+                        lastFullSyncMs = started,
+                        loaded = true,
+                        refreshing = false,
+                        error = null,
+                    )
+                    // A subpage opened before from a link was kept among the pages on their own: now it is here.
+                    val plainIds = ids.map { it.replace("-", "") }.toSet()
+                    _databases.update { map ->
+                        val pages = map[PAGES]?.let { db -> db.copy(notes = db.notes.filterNot { it.id.replace("-", "") in plainIds }) }
+                        map + (key to updated) + (if (pages != null) mapOf(PAGES to pages) else emptyMap())
+                    }
+                    saveDatabaseCache(key, updated)
+                    _databases.value[PAGES]?.let { saveDatabaseCache(PAGES, it) }
+                    _viewResults.update { it + (key to ViewResult(ids, Instant.ofEpochMilli(started).toString())) }
+                    cache.saveViews(_viewResults.value)
+                }
+            }
+            _offline.value = false
+        } catch (e: NotionException) {
+            if (e.isOffline) _offline.value = true
+            if (e.status == 401) _events.tryEmit(RepoEvent.KeyRejected)
+            setState(key) { it.copy(refreshing = false, loaded = true, error = e.message) }
+        }
     }
 
     // ---- Notion views ---------------------------------------------------------------------
@@ -408,17 +477,17 @@ class NotesRepository(
      * Creates a page on its own on this phone (it is sent to Notion right after): inside page
      * [parentPageId], or at the top of the workspace when that is null. Returns its ID.
      */
-    suspend fun createPage(parentPageId: String?): String = withContext(Dispatchers.IO) {
-        loadDatabase(PAGES)
+    suspend fun createPage(parentPageId: String?, key: String = PAGES): String = withContext(Dispatchers.IO) {
+        loadDatabase(key)
         val id = NoteSummary.LOCAL_PREFIX + UUID.randomUUID()
         val now = Instant.ofEpochMilli(clock()).toString()
         val title = NoteProperty(PAGE_TITLE, "title", PropertyValue.Text(""))
-        val page = NoteSummary(id, PAGES, title = "", createdTime = now, lastEditedTime = now, properties = listOf(title))
+        val page = NoteSummary(id, key, title = "", createdTime = now, lastEditedTime = now, properties = listOf(title))
         lock.withLock {
-            setState(PAGES) { it.copy(notes = listOf(page) + it.notes, loaded = true) }
-            _databases.value[PAGES]?.let { saveDatabaseCache(PAGES, it) }
+            setState(key) { it.copy(notes = listOf(page) + it.notes, loaded = true) }
+            _databases.value[key]?.let { saveDatabaseCache(key, it) }
             cache.saveContent(PageContent(id, blocks = emptyList(), base = emptyList(), nestedLoaded = true))
-            enqueue(PendingOp.CreatePage(id, PAGES, parentPageId?.let(::resolve)))
+            enqueue(PendingOp.CreatePage(id, key, parentPageId?.let(::resolve)))
         }
         scheduleFlush()
         id
@@ -443,6 +512,8 @@ class NotesRepository(
      */
     suspend fun createNote(databaseId: String, preset: List<NoteProperty> = emptyList()): String? =
         withContext(Dispatchers.IO) {
+            // A page's notebook: a new subpage of the page.
+            if (isPageNotebook(databaseId)) return@withContext createPage(pageOf(databaseId), databaseId)
             loadDatabase(databaseId)
             var schema = _databases.value[databaseId]?.schema
             if (schema == null) {
@@ -751,7 +822,7 @@ class NotesRepository(
         val note = findNote(_databases.value, op.pageId) ?: return true
         val sent = note.properties
         val sentEmoji = note.icon?.emoji
-        val page = if (op.databaseId == PAGES) {
+        val page = if (op.databaseId == PAGES || isPageNotebook(op.databaseId)) {
             client.createPageIn(op.parentPageId, PropertyCodec.toCreateRequest(sent), sentEmoji)
         } else {
             client.createPage(resolveSource(op.databaseId), PropertyCodec.toCreateRequest(sent), children = emptyList(), emoji = sentEmoji)
@@ -1139,6 +1210,19 @@ class NotesRepository(
 
         /** The title property of a page on its own (Notion's name for it). */
         const val PAGE_TITLE = "title"
+
+        /** Keys of pages' notebooks: their notes are the page's subpages (see [refreshSubpages]). */
+        private const val PAGE_PREFIX = "page:"
+
+        fun pageNotebookKey(pageId: String): String = PAGE_PREFIX + pageId
+
+        fun isPageNotebook(key: String): Boolean = key.startsWith(PAGE_PREFIX)
+
+        /** The page of a page's notebook [key]. */
+        fun pageOf(key: String): String = key.removePrefix(PAGE_PREFIX)
+
+        /** Subpages downloaded in one refresh of a page's notebook (one request each). */
+        private const val MAX_SUBPAGE_DOWNLOADS = 40
 
         /** Results of one Browse search (one or two requests). */
         private const val BROWSE_LIMIT = 200

@@ -13,6 +13,7 @@ import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.PageRef
 import be.wimvandonck.noter.data.model.NotionView
 import be.wimvandonck.noter.data.model.PropertyLayout
+import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.logic.Notebooks
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -49,6 +50,8 @@ data class ViewsUiState(
     val hasKey: Boolean = false,
     /** Databases the token can see, for "Add notebook" (null while loading). */
     val available: List<PageRef>? = null,
+    /** Pages (not in a database) whose subpages can be a notebook, for "Add notebook". */
+    val availablePages: List<PageRef> = emptyList(),
     val availableError: String? = null,
     val viewChoice: ViewChoice? = null,
     val draft: DatabaseDraft? = null,
@@ -63,15 +66,16 @@ class ViewsViewModel(
     private val availableError = MutableStateFlow<String?>(null)
     private val draft = MutableStateFlow<DatabaseDraft?>(null)
     private val viewChoice = MutableStateFlow<ViewChoice?>(null)
+    private val availablePages = MutableStateFlow<List<PageRef>>(emptyList())
 
     val state: StateFlow<ViewsUiState> = combine(
         repository.settingsFlow(),
         hasKey,
-        combine(available, availableError) { a, e -> a to e },
+        combine(available, availableError, availablePages) { a, e, p -> Triple(a, e, p) },
         viewChoice,
         draft,
-    ) { settings, key, (a, e), choice, d ->
-        ViewsUiState(settings.databases, key, a, e, choice, d)
+    ) { settings, key, (a, e, pages), choice, d ->
+        ViewsUiState(settings.databases, key, a, pages, e, choice, d)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ViewsUiState(hasKey = hasKey.value))
 
     fun loadAvailable() {
@@ -79,6 +83,9 @@ class ViewsViewModel(
         availableError.value = null
         viewModelScope.launch {
             try {
+                // Pages first come from the same search as Browse: those not in a database.
+                availablePages.value = repository.browse("").filter { !it.isDatabase && it.note?.databaseId == NotesRepository.PAGES }
+                    .map { PageRef(it.id, it.title) }
                 available.value = repository.searchDatabases()
             } catch (e: NotionException) {
                 availableError.value = e.message
@@ -103,8 +110,30 @@ class ViewsViewModel(
         }
     }
 
-    /** "Add as notebook" on a database's page: its views to choose from. */
+    /**
+     * A notebook of page [page]: its subpages are the notes, in the page's order. There is no
+     * Notion view to choose and nothing to filter by (subpages only have a title).
+     */
+    fun startAddPage(page: PageRef, roomInBar: Boolean) {
+        val key = NotesRepository.pageNotebookKey(page.id)
+        val config = DatabaseConfig(
+            id = "view-" + UUID.randomUUID(),
+            name = page.title,
+            databaseId = key,
+            inBar = roomInBar,
+            pageId = page.id,
+        )
+        draft.value = DatabaseDraft(config, isNew = true, schema = PAGE_SCHEMA)
+        loadLayout(key)
+    }
+
+    /** "Add as notebook" on a page (its key) or a database's page: the next step. */
     fun chooseViewFor(databaseId: String, roomInBar: Boolean) {
+        if (NotesRepository.isPageNotebook(databaseId)) {
+            val pageId = NotesRepository.pageOf(databaseId)
+            val title = repository.databases.value.values.flatMap { it.notes }.firstOrNull { it.id == pageId }?.title.orEmpty()
+            return startAddPage(PageRef(pageId, title), roomInBar)
+        }
         val title = repository.databases.value[databaseId]?.schema?.title.orEmpty()
         chooseView(PageRef(databaseId, title), roomInBar)
     }
@@ -148,9 +177,9 @@ class ViewsViewModel(
     }
 
     fun startEdit(config: DatabaseConfig) {
-        draft.value = DatabaseDraft(config, isNew = false)
+        draft.value = DatabaseDraft(config, isNew = false, schema = if (config.pageId != null) PAGE_SCHEMA else null)
         loadLayout(config.sourceId)
-        loadSchema(config.sourceId)
+        if (config.pageId == null) loadSchema(config.sourceId)
     }
 
     /** Opens the editor of view [id] (from "Edit view" on a database's page). */
@@ -210,6 +239,9 @@ class ViewsViewModel(
     }
 
     companion object {
+        /** A page's notebook: its notes (subpages) have only a title. */
+        private val PAGE_SCHEMA = DatabaseSchema("page", "", listOf(PropertySchema(NotesRepository.PAGE_TITLE, NotesRepository.PAGE_TITLE, "title")))
+
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as NoterApp

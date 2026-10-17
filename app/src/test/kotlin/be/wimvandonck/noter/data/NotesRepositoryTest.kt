@@ -394,4 +394,33 @@ class NotesRepositoryTest {
         repo.refreshView("gone")
         assertTrue("gone" in repo.missingViews.value)
     }
+
+    @Test
+    fun `a page's notebook has its subpages as notes, in the page's order`() = runBlocking {
+        val child = { id: String, title: String ->
+            """{"object":"block","id":"$id","type":"child_page","has_children":false,"created_time":"2026-10-01T10:00:00.000Z",
+               "last_edited_time":"2026-10-01T10:00:00.000Z","child_page":{"title":"$title"}}"""
+        }
+        notion.respond = { sent ->
+            when {
+                sent.method == "GET" && sent.path.startsWith("/blocks/parent/children") ->
+                    200 to FakeNotion.list(child("s2", "Second"), FakeNotion.todo("t", "Not a page"), child("s1", "First"))
+                sent.method == "GET" && sent.path == "/pages/s1" -> 200 to FakeNotion.page("s1", "parent", "First")
+                sent.method == "GET" && sent.path == "/pages/s2" -> 200 to FakeNotion.page("s2", "parent", "Second")
+                sent.method == "POST" && sent.path == "/pages" -> 200 to FakeNotion.page("s3", "parent", "")
+                else -> 200 to "{}"
+            }
+        }
+        val repo = repository()
+        val key = NotesRepository.pageNotebookKey("parent")
+        repo.refresh(key, userAsked = true)
+        assertEquals(setOf("s1", "s2"), repo.databases.value[key]?.notes?.map { it.id }?.toSet())
+        assertEquals(listOf("s2", "s1"), repo.viewResults.value[key]?.ids)
+
+        // A new note in the notebook is a new subpage of the page.
+        repo.createNote(key)
+        repo.flush()
+        val create = notion.requests.single { it.method == "POST" && it.path == "/pages" }
+        assertTrue(create.body, create.body.contains("\"page_id\":\"parent\""))
+    }
 }

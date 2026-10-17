@@ -260,7 +260,9 @@ class MainViewModel(
                 val missing = notebook.viewId != null && notebook.viewId in missingViews
                 // A view Notion doesn't have any more: all notes, until the notebook is set up again.
                 val shown = if (missing) notebook.copy(followView = false) else notebook
-                notebookContent(base, shown, databases[notebook.sourceId], viewResults[notebook.viewId], settings, missing)
+                // A page's notebook keeps the page's order of its subpages like a view's results.
+                val result = if (notebook.pageId != null) viewResults[notebook.sourceId] else viewResults[notebook.viewId]
+                notebookContent(base, shown, databases[notebook.sourceId], result, settings, missing)
                     .copy(notebook = notebook)
             }
         }
