@@ -99,7 +99,7 @@ fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: Strin
     val views = state.views
     val inBar = Destinations.barViews(views, width).map { it.id }.toSet()
     val room = Destinations.barRoom(views, width)
-    val capacity = Destinations.barCapacity(width) - 2
+    val capacity = Destinations.barCapacity(width) - 1
 
     SettingsScaffold(
         title = stringResource(R.string.manage_views),

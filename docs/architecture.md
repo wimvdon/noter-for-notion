@@ -6,18 +6,15 @@ Noter shows Notion pages as notes, in the style of Google Keep, and edits their 
 properties and content: the pages of databases and pages on their own.
 
 ### Screens
-- **Overview** (`ui/main/`): top-level destinations (`logic/Destinations.kt`). All of them are in
-  the navigation drawer behind the menu button (it opens only from the button; a swipe from the
-  edge stays Android's back gesture), together with Manage views and Settings. The navigation bar
-  at the bottom holds Pinned, Browse and the views pinned to it, as many as fit: one item per
-  80dp of window width (five on a phone).
+- **Overview** (`ui/main/`): top-level destinations (`logic/Destinations.kt`): Pinned and the
+  notebooks. All of them are in the navigation drawer behind the menu button (it opens only from
+  the button; a swipe from the edge stays Android's back gesture), together with Manage notebooks
+  and Settings. The navigation bar at the bottom holds Pinned and the notebooks pinned to it, as
+  many as fit: one item per 80dp of window width (five on a phone).
   - **Pinned**: the pinned notes of everything (databases and pages), filtered by source.
-  - **Browse** (`BrowsePane.kt`): the databases and pages the token can see, from
-    Notion's search, most recently edited first, with a search field. Without a search a
-    database's own pages are left out (they are one tap further); a search finds them too.
-  - **Views**: a database in the navigation with its filter property and the filters that are on
-    when it opens (`DatabaseConfig`, kept under `AppSettings.databases`; views saved before views
-    existed have the database's ID as their own).
+  - **Notebooks**: a database in the navigation with its filter property and the filters that are
+    on when it opens (`DatabaseConfig`, kept under `AppSettings.databases`; the code still calls
+    them views, the screens say "notebook" in every language, as a name of the app's own).
   Notes are cards in a staggered grid with a preview of their content; pinned notes come first
   under "Pinned". Long-press and drag moves a note within its section; a long press without
   moving opens its menu (pin, move to trash). Filters (Material filter chips) come from one
@@ -26,13 +23,16 @@ properties and content: the pages of databases and pages on their own.
   created by / last edited by, date (Overdue, Today, Next 7 days, Later, No date) or formula (a
   yes/no formula like a checkbox, others a chip per value). A new note made with a filter selected
   gets its value where it can (not for computed properties; a date only for Today).
-- **Database** (`DatabaseScreen.kt`): a database opened from Browse or a link in a note, as a
-  child page with its notes and filters; "Add view" makes it a view, after which the button is
-  "Edit view" and opens that view's setup (Manage views), so a database isn't added twice.
-- **New pages**: + on Browse offers a page at the top of the workspace (Notion only allows that
-  for public connections and personal access tokens; when it refuses, the page is removed again
-  and the app explains), a page inside one of the pages listed in Browse, or a note in a database.
-  A page's ⋮ menu has "New subpage".
+- **Search** (`SearchScreen.kt`, the search button in the top bar): the notes on this phone whose
+  title has every word typed (`logic/NoteSearch.kt`, at once and offline), then the databases and
+  pages Notion's search finds; before anything is typed, Notion's most recently edited ones. It
+  replaces the Browse tab: browsing Notion is something to do now and then, not a place to stay.
+- **Database** (`DatabaseScreen.kt`): a database opened from Search or a link in a note, as a
+  child page with its notes and filters; "Add as notebook" makes it a notebook, after which the
+  button is "Edit notebook" and opens its setup (Manage notebooks), so it isn't added twice.
+- **New pages**: + on Pinned offers a note in one of the notebooks and, with a personal access
+  token, a page at the top of the workspace (among the user's private pages; when Notion refuses,
+  the page is removed again and the app explains). A page's ⋮ menu has "New subpage".
 - **Note** (`ui/note/`): header image, icon (tap it, or "Add icon", to choose an emoji in
   `PageIconSheet.kt`: common ones, any other typed with the keyboard (`logic/EmojiInput.kt`), or
   none; sent as `PendingOp.SetIcon`, or with the create for a new note), title, properties (`PropertyEditors.kt`), then the content as a
@@ -48,7 +48,7 @@ properties and content: the pages of databases and pages on their own.
   no previews are downloaded for that database) and up to three properties (else the card shows
   the filter property). All of it is kept per database in `AppSettings.propertyLayouts` (backed
   up), so it applies to every view of that database.
-- **Manage views** (`ui/views/`): the views in their order (up/down), each with a pin for the
+- **Manage notebooks** (`ui/views/`): the notebooks in their order (up/down), each with a pin for the
   navigation bar (`DatabaseConfig.inBar`; disabled when the bar is full); tapping one edits its
   name, icon, bar pin, filter property and filters, and what the cards show; "Add view" picks a
   database. Opens from the
@@ -68,8 +68,7 @@ properties and content: the pages of databases and pages on their own.
   with it, and "New page at the top of your workspace" isn't offered (Notion refuses it). A
   personal access token can't list the workspace's people, so person properties offer the people
   in the notes here and the token's owner (`logic/KnownUsers.kt`).
-- **New note** on Pinned and Browse asks which database (`logic/NoteTargets.kt`): the views'
-  databases, then (on Browse) the other databases listed there. A note made on Pinned is pinned.
+- **New note** on Pinned asks which notebook (`logic/NoteTargets.kt`). A note made on Pinned is pinned.
 - **Empty lists** use the shared `ui/theme/EmptyState.kt`: an icon in a circle, a title, one sentence and, where it helps, a button (Clear filters, Retry). Without an API key the whole screen says "Connect to Notion" with an "Open settings" button, the same words as Time Tracker for Notion (`DESIGN.md`, "Empty and setup states").
 - `ui/AppNavigation.kt`: a small back stack of five screens (no navigation library).
 - **Pages on their own** (not in a database) are kept like a database's notes under the key

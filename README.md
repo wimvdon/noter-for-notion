@@ -1,9 +1,8 @@
 # Noter for Notion
 
 A note app for Android in the style of Google Keep, with your notes kept in **Notion**.
-**Browse** lists your pages and databases; a database you use often becomes
-a **view** in the navigation (with its filters); **Pinned** shows the notes you pinned from all of
-them.
+A database you use becomes a **notebook** in the navigation (with its filters); **Pinned** shows the
+notes you pinned from all of them, and **Search** finds your notes and anything else in Notion.
 
 - Notes as cards with a preview of their content, pinned notes on top, drag and drop to reorder.
 - A note's content is edited like in Notion: text, three heading sizes, bulleted, numbered and
@@ -25,9 +24,9 @@ What the app sends and stores: [`PRIVACY.md`](PRIVACY.md). Rules for Claude Code
 2. In Notion, open <https://www.notion.so/developers/tokens> and make a **personal access token**:
    give it a name, turn on **Notion API**, choose your workspace and an expiry date, and copy it.
    It acts as you, so the app sees the pages you see; there is nothing to share with it.
-3. In the app: **Settings › Connection**, paste the token and tap **Test and save**. Then open
-   **Browse**, tap a database and tap the bookmark icon to add it to the navigation (or
-   **Settings › Views › Add view**).
+3. In the app: **Settings › Connection**, paste the token and tap **Test and save**. Then tap
+   **Search**, open a database and tap **Add as notebook** (or **Settings › Notebooks › Add
+   notebook**).
 
 When the token expires, make a new one and paste it in the same place. An older **internal
 integration** key works too, but then the app only sees the pages you shared with that

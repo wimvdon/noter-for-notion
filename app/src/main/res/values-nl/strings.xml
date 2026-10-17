@@ -2,18 +2,19 @@
 <resources>
     <string name="app_name">Noter</string>
     <string name="tab_home">Vastgezet</string>
-    <string name="tab_browse">Bladeren</string>
-    <string name="browse_search">Zoek in pagina’s en databases</string>
+    <string name="browse_search">Zoeken in Notion</string>
     <string name="browse_databases">Databases</string>
+    <string name="search_notes">Notities op deze telefoon</string>
+    <string name="action_search">Zoeken</string>
     <string name="browse_pages">Pagina’s</string>
-    <string name="browse_empty">Deel in Notion pagina’s en databases met je integratie (⋯ › Verbindingen).</string>
+    <string name="browse_empty">Nog niets in Notion dat dit token kan zien.</string>
     <string name="browse_nothing_found">Niets gevonden</string>
     <string name="browse_edited">Bewerkt %1$s</string>
     <string name="source_pages">Pagina’s</string>
-    <string name="add_view">Weergave toevoegen</string>
-    <string name="view_added">Toegevoegd aan de weergaven. Wijzig het via ☰ › Weergaven beheren.</string>
+    <string name="add_view">Toevoegen als notebook</string>
+    <string name="view_added">Toegevoegd aan je notebooks. Wijzig het via ☰ › Notebooks beheren.</string>
     <string name="view_filters">Alleen tonen</string>
-    <string name="view_filters_help">De filters die aan staan als de weergave opent. Geen: alle notities.</string>
+    <string name="view_filters_help">De filters die aan staan als het notebook opent. Geen: alle notities.</string>
     <string name="view_filtered">%1$s: %2$s</string>
     <string name="page_open_failed">Kon de pagina niet openen. Controleer je verbinding.</string>
     <string name="open_navigation">Navigatie openen</string>
@@ -118,12 +119,12 @@
     <string name="key_removed">Token verwijderd. De notities op deze telefoon zijn gewist.</string>
     <string name="sync_all_saved">Alles is opgeslagen in Notion.</string>
     <string name="sync_now">Nu synchroniseren</string>
-    <string name="section_views">Weergaven</string>
+    <string name="section_views">Notebooks</string>
     <string name="databases_none">Nog geen</string>
-    <string name="databases_help">Weergaven blijven op deze telefoon; Notion verandert niet.</string>
-    <string name="add_database">Weergave toevoegen</string>
-    <string name="edit_database">Weergave bewerken</string>
-    <string name="already_added">Heeft een weergave</string>
+    <string name="databases_help">Notebooks blijven op deze telefoon; Notion verandert niet.</string>
+    <string name="add_database">Notebook toevoegen</string>
+    <string name="edit_database">Notebook bewerken</string>
+    <string name="already_added">Al een notebook</string>
     <string name="no_databases_found">Geen databases gevonden. Deel eerst een database met je integratie in Notion.</string>
     <string name="database_name">Naam</string>
     <string name="database_icon">Pictogram</string>
@@ -137,8 +138,8 @@
     <string name="type_multi_select">Meervoudige selectie</string>
     <string name="type_people">Persoon</string>
     <string name="remove_database">Verwijderen</string>
-    <string name="remove_database_title">Deze weergave verwijderen?</string>
-    <string name="remove_database_body">Hij verdwijnt uit de navigatie. In Notion wordt niets verwijderd.</string>
+    <string name="remove_database_title">Dit notebook verwijderen?</string>
+    <string name="remove_database_body">Het verdwijnt uit de navigatie. In Notion wordt niets verwijderd.</string>
     <string name="section_appearance">Weergave</string>
     <string name="theme">Thema</string>
     <string name="theme_system">Systeem</string>
@@ -161,20 +162,20 @@
         <item quantity="other">%d gekoppelde pagina’s</item>
     </plurals>
     <!-- Manage views and the navigation bar -->
-    <string name="manage_views">Weergaven beheren</string>
+    <string name="manage_views">Notebooks beheren</string>
     <plurals name="views_count">
-        <item quantity="one">%d weergave</item>
-        <item quantity="other">%d weergaven</item>
+        <item quantity="one">%d notebook</item>
+        <item quantity="other">%d notebooks</item>
     </plurals>
     <plurals name="bar_room">
-        <item quantity="one">De balk onderaan heeft op dit scherm plaats voor %d weergave.</item>
-        <item quantity="other">De balk onderaan heeft op dit scherm plaats voor %d weergaven.</item>
+        <item quantity="one">De balk onderaan heeft op dit scherm plaats voor %d notebook.</item>
+        <item quantity="other">De balk onderaan heeft op dit scherm plaats voor %d notebooks.</item>
     </plurals>
     <string name="view_in_bar">In de balk onderaan</string>
     <string name="view_no_room">Vastgezet in de balk, maar er is geen plaats op dit scherm</string>
     <string name="view_in_drawer">In het menu</string>
     <string name="pin_to_bar">Tonen in de balk onderaan</string>
-    <string name="pin_to_bar_help">Als er plaats is. De weergave staat altijd in het menu (☰).</string>
+    <string name="pin_to_bar_help">Als er plaats is. Het notebook staat altijd in het menu (☰).</string>
     <string name="icon_search">Pictogrammen zoeken (in het Engels)</string>
     <string name="icon_none_found">Geen pictogrammen gevonden. Probeer een ander woord, zoals “list”, “food” of “work”.</string>
     <string name="cards_title">Kaarten in het overzicht</string>
@@ -185,17 +186,16 @@
     <string name="chip_checked">%1$s</string>
     <string name="chip_unchecked">Niet %1$s</string>
     <string name="type_checkbox_property">Selectievakje</string>
-    <string name="cards_help">Geldt voor elke weergave van deze database.</string>
+    <string name="cards_help">Geldt voor elk notebook van deze database.</string>
     <string name="cards_properties">Eigenschappen op de kaart (maximaal %1$d)</string>
-    <string name="edit_view">Weergave bewerken</string>
+    <string name="edit_view">Notebook bewerken</string>
     <string name="new_page">Nieuwe pagina</string>
     <string name="new_page_top_level">Bovenaan in je werkruimte</string>
     <string name="new_page_top_level_help">Bij je privépagina’s</string>
-    <string name="new_page_inside">In %1$s</string>
     <string name="new_subpage">Nieuwe subpagina</string>
-    <string name="create_top_level_failed">Notion laat deze koppeling geen pagina’s bovenaan in de werkruimte toevoegen. Voeg de pagina in een pagina toe (+ in Bladeren, of ⋮ › Nieuwe subpagina in een pagina).</string>
+    <string name="create_top_level_failed">Notion laat dit token geen pagina’s bovenaan in je werkruimte toevoegen. Voeg de pagina in een pagina toe (⋮ › Nieuwe subpagina in een pagina).</string>
     <string name="create_failed">Notion kon de pagina niet maken: %1$s</string>
-    <string name="browse_empty_title">Nog niets gedeeld</string>
+    <string name="browse_empty_title">Nog niets te zien</string>
     <string name="empty_no_key_title">Verbind met Notion</string>
     <string name="empty_home_title">Geen vastgezette notities</string>
     <string name="empty_database_title">Nog geen notities</string>

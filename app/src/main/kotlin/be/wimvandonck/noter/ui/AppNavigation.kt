@@ -29,6 +29,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import be.wimvandonck.noter.ui.main.DatabaseScreen
 import be.wimvandonck.noter.ui.main.MainScreen
 import be.wimvandonck.noter.ui.main.MainViewModel
+import be.wimvandonck.noter.ui.main.SearchScreen
 import be.wimvandonck.noter.ui.note.NoteScreen
 import be.wimvandonck.noter.ui.settings.SettingsScreen
 import be.wimvandonck.noter.ui.settings.SettingsViewModel
@@ -72,7 +73,7 @@ private class ScreenOwner(
  */
 @Composable
 fun AppNavigation() {
-    // Entries: "main", "settings", "views", "note:<page id>" or "database:<database id>".
+    // Entries: "main", "search", "settings", "views", "note:<page id>" or "database:<database id>".
     var stack by rememberSaveable { mutableStateOf(listOf(MAIN)) }
     val mainViewModel: MainViewModel = viewModel(factory = MainViewModel.Factory)
     val stores: ScreenStores = viewModel()
@@ -118,10 +119,17 @@ fun AppNavigation() {
                 onOpenDatabase = { push(DATABASE + it) },
                 onOpenSettings = { push(SETTINGS) },
                 onOpenViews = { push(VIEWS) },
+                onOpenSearch = { push(SEARCH) },
             )
         } else {
             CompositionLocalProvider(LocalViewModelStoreOwner provides ScreenOwner(stores.store(top), application)) {
                 when {
+                    top == SEARCH -> SearchScreen(
+                        viewModel = mainViewModel,
+                        onBack = ::pop,
+                        onOpenNote = { push(NOTE + it) },
+                        onOpenDatabase = { push(DATABASE + it) },
+                    )
                     top == SETTINGS -> SettingsScreen(
                         viewModel = viewModel(factory = SettingsViewModel.Factory),
                         onBack = ::pop,
@@ -154,6 +162,7 @@ private const val CLEAR_DELAY_MS = 1_000L
 private const val MAIN = "main"
 private const val SETTINGS = "settings"
 private const val VIEWS = "views"
+private const val SEARCH = "search"
 
 /** Manage views with one view's setup open. */
 private const val EDIT_VIEW = "views:"
