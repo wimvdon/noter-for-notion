@@ -1,6 +1,9 @@
 package be.wimvandonck.noter.ui.main
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Edit
@@ -193,10 +196,11 @@ fun MainScreen(
     }
 
     val notebookActions = NotebookActions(onQuickFilters = viewModel::setQuickFilters, onSort = viewModel::setSort)
-    // The app bar scrolls away with the notes and comes back on the first scroll up; the tabs stay.
-    // Another notebook or destination brings it back (a short list can't scroll it into view).
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    LaunchedEffect(section, state.notebook?.id) { scrollBehavior.state.heightOffset = 0f }
+    // The header (app bar, tabs and rows of chips) scrolls away with the notes and comes back on
+    // the first scroll up. Another notebook or destination brings it back (a short list can't
+    // scroll it into view).
+    val header = rememberQuickReturnHeaderState()
+    LaunchedEffect(section, state.notebook?.id) { header.show() }
     val targets = NoteTargets.of(Notebooks.named(state.views), null)
     val navigationBar: @Composable () -> Unit = {
         NavigationBar {
@@ -245,56 +249,66 @@ fun MainScreen(
     if (section == Destinations.Section.SEARCH) {
         SearchScreen(viewModel = viewModel, onOpenNote = onOpenNote, onOpenDatabase = onOpenDatabase, bottomBar = navigationBar, newButton = newButton)
     } else Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier.nestedScroll(header.connection),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            Column {
-                TopAppBar(
-                    title = {
-                        Text(
-                            stringResource(if (state.isHome) R.string.tab_home else R.string.section_views),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
-                    actions = {
-                        SyncButton(state.pendingCount, state.offline, syncing = false, onSync = viewModel::refresh, alwaysShown = false)
-                        if (state.hasKey) NotebookBarActions(state, notebookActions, onOpenFilters = { filtersOpen = true })
-                        OverflowMenu(
-                            notebookId = state.notebook?.id,
-                            onEditNotebook = onEditNotebook,
-                            onManage = onOpenViews,
-                            onSettings = onOpenSettings,
-                        )
-                    },
-                    // One color with the tabs below it, also while notes scroll underneath.
-                    colors = TopAppBarDefaults.topAppBarColors(scrolledContainerColor = MaterialTheme.colorScheme.surface),
-                    scrollBehavior = scrollBehavior,
-                )
-                // The notebooks are peers within Notebooks: tabs, in the order of Manage notebooks.
-                if (section == Destinations.Section.NOTEBOOKS && state.tabs.isNotEmpty() && state.hasKey) {
-                    val selected = state.tabs.indexOfFirst { it.key == state.currentTab }.coerceAtLeast(0)
-                    PrimaryScrollableTabRow(selectedTabIndex = selected, edgePadding = 16.dp) {
-                        state.tabs.forEach { tab ->
-                            LeadingIconTab(
-                                selected = tab.key == state.currentTab,
-                                onClick = { viewModel.selectTab(tab.key) },
-                                icon = { Icon(DatabaseIcons.icon(tab.icon), contentDescription = null, Modifier.size(18.dp)) },
-                                text = { Text(tab.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            )
-                        }
-                    }
-                    // A notebook of several data sources: one secondary tab per data source.
-                    if (state.subTabs.isNotEmpty()) {
-                        val current = state.subTabs.indexOfFirst { it.key == state.notebook?.id }.coerceAtLeast(0)
-                        SecondaryScrollableTabRow(selectedTabIndex = current, edgePadding = 16.dp) {
-                            state.subTabs.forEach { sub ->
-                                Tab(
-                                    selected = sub.key == state.notebook?.id,
-                                    onClick = { viewModel.selectSubTab(state.currentTab, sub.key) },
-                                    text = { Text(sub.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            // The status bar keeps its place; everything under it scrolls away.
+            Box(
+                Modifier
+                    .background(MaterialTheme.colorScheme.surface)
+                    .windowInsetsPadding(TopAppBarDefaults.windowInsets),
+            ) {
+                QuickReturnHeader(header) {
+                    Column {
+                        TopAppBar(
+                            title = {
+                                Text(
+                                    stringResource(if (state.isHome) R.string.tab_home else R.string.section_views),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
+                            },
+                            actions = {
+                                SyncButton(state.pendingCount, state.offline, syncing = false, onSync = viewModel::refresh, alwaysShown = false)
+                                if (state.hasKey) NotebookBarActions(state, notebookActions, onOpenFilters = { filtersOpen = true })
+                                OverflowMenu(
+                                    notebookId = state.notebook?.id,
+                                    onEditNotebook = onEditNotebook,
+                                    onManage = onOpenViews,
+                                    onSettings = onOpenSettings,
+                                )
+                            },
+                            windowInsets = WindowInsets(0, 0, 0, 0),
+                        )
+                        // The notebooks are peers within Notebooks: tabs, in the order of Manage notebooks.
+                        if (section == Destinations.Section.NOTEBOOKS && state.tabs.isNotEmpty() && state.hasKey) {
+                            val selected = state.tabs.indexOfFirst { it.key == state.currentTab }.coerceAtLeast(0)
+                            PrimaryScrollableTabRow(selectedTabIndex = selected, edgePadding = 16.dp) {
+                                state.tabs.forEach { tab ->
+                                    LeadingIconTab(
+                                        selected = tab.key == state.currentTab,
+                                        onClick = { viewModel.selectTab(tab.key) },
+                                        icon = { Icon(DatabaseIcons.icon(tab.icon), contentDescription = null, Modifier.size(18.dp)) },
+                                        text = { Text(tab.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    )
+                                }
                             }
+                            // A notebook of several data sources: one secondary tab per data source.
+                            if (state.subTabs.isNotEmpty()) {
+                                val current = state.subTabs.indexOfFirst { it.key == state.notebook?.id }.coerceAtLeast(0)
+                                SecondaryScrollableTabRow(selectedTabIndex = current, edgePadding = 16.dp) {
+                                    state.subTabs.forEach { sub ->
+                                        Tab(
+                                            selected = sub.key == state.notebook?.id,
+                                            onClick = { viewModel.selectSubTab(state.currentTab, sub.key) },
+                                            text = { Text(sub.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (state.hasKey && state.chipGroups.isNotEmpty()) {
+                            ChipRows(state, onToggle = viewModel::toggleChip, onClear = viewModel::clearChips, onClearRow = viewModel::clearRow)
                         }
                     }
                 }
@@ -333,6 +347,7 @@ fun MainScreen(
                     onTrash = viewModel::trash,
                     onReordered = viewModel::saveOrder,
                     onClearRow = viewModel::clearRow,
+                    chipsAbove = false,
                 )
             }
         }
@@ -456,6 +471,8 @@ internal fun NotesPane(
     onTrash: (String) -> Unit,
     onReordered: (List<String>) -> Unit,
     onClearRow: ((property: String) -> Unit)? = null,
+    /** False when the rows of chips are in a header of the screen's own (that scrolls away). */
+    chipsAbove: Boolean = true,
 ) {
     var confirmTrash by remember { mutableStateOf<NoteSummary?>(null) }
     LaunchedEffect(state.chipRelationDatabases) { state.chipRelationDatabases.forEach(onLoadChipTitles) }
@@ -464,7 +481,7 @@ internal fun NotesPane(
         onLoadPreviews((state.pinned + state.others).filter { PropertyLayouts.showsContent(state.propertyLayouts[it.databaseId]) })
     }
     Column(Modifier.fillMaxSize()) {
-        if (state.chipGroups.isNotEmpty()) ChipRows(state, onToggle = onToggleChip, onClear = onClearChips, onClearRow = onClearRow)
+        if (chipsAbove && state.chipGroups.isNotEmpty()) ChipRows(state, onToggle = onToggleChip, onClear = onClearChips, onClearRow = onClearRow)
         PullToRefreshBox(
             isRefreshing = state.refreshing && !state.loading,
             onRefresh = onRefresh,
