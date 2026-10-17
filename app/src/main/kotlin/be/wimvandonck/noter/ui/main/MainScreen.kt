@@ -337,6 +337,7 @@ fun MainScreen(
         NotebookFiltersSheet(
             state = state,
             actions = notebookActions,
+            onToggle = { property, key -> viewModel.toggleChip(property, key) },
             onClear = viewModel::clearChips,
             onDismiss = { filtersOpen = false },
         )

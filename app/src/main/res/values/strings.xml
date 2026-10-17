@@ -196,4 +196,5 @@
     <string name="chip_rows_shown">Shown</string>
     <string name="new_subpage">New subpage</string>
     <string name="cards_of">Cards: %1$s</string>
+    <string name="filter_no_values">No values yet</string>
 </resources>
