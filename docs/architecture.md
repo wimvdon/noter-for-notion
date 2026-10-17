@@ -56,7 +56,7 @@ properties and content: the pages of databases and pages on their own.
   views), Appearance; built from the shared `SettingsKit.kt`.
 - **New note** on Pinned and Browse asks which database (`logic/NoteTargets.kt`): the views'
   databases, then (on Browse) the other databases listed there. A note made on Pinned is pinned.
-- **Empty lists** show a large icon, a short text and, where it helps, a button (Show all, Retry).
+- **Empty lists** use the shared `ui/theme/EmptyState.kt`: an icon in a circle, a title, one sentence and, where it helps, a button (Clear filters, Retry). Without an API key the whole screen says "Connect to Notion" with an "Open settings" button, the same words as Time Tracker for Notion (`DESIGN.md`, "Empty and setup states").
 - `ui/AppNavigation.kt`: a small back stack of five screens (no navigation library).
 - **Pages on their own** (not in a database) are kept like a database's notes under the key
   `NotesRepository.PAGES`, so editing, pinning and the trash work the same. Linked pages and

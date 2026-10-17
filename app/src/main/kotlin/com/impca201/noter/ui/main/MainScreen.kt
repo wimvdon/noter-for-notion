@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
@@ -37,6 +35,7 @@ import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
@@ -91,7 +90,6 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -122,6 +120,7 @@ import com.impca201.noter.data.NotesRepository
 import androidx.compose.material.icons.rounded.FilterAltOff
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.automirrored.rounded.StickyNote2
+import com.impca201.noter.ui.theme.EmptyState
 import com.impca201.noter.ui.theme.SkeletonBlock
 import kotlinx.coroutines.launch
 
@@ -281,10 +280,11 @@ fun MainScreen(
                     !state.ready -> Unit
                     !state.hasKey -> EmptyState(
                         Icons.Rounded.Key,
-                        stringResource(R.string.empty_no_key),
-                        stringResource(R.string.empty_no_key_action),
-                        onOpenSettings,
-                    )
+                        stringResource(R.string.empty_no_key_title),
+                        body = stringResource(R.string.empty_no_key),
+                    ) {
+                        Button(onClick = onOpenSettings) { Text(stringResource(R.string.empty_no_key_action)) }
+                    }
                     state.isBrowse -> BrowsePane(
                         state = browse,
                         onSearch = viewModel::search,
@@ -423,10 +423,16 @@ internal fun NotesPane(
             when {
                 state.loading && state.pinned.isEmpty() && state.others.isEmpty() -> LoadingGrid()
                 state.pinned.isEmpty() && state.others.isEmpty() -> when {
-                    state.selectedChips.isNotEmpty() -> EmptyState(Icons.Rounded.FilterAltOff, stringResource(R.string.empty_filtered), stringResource(R.string.chip_all), onClearChips)
-                    state.isHome -> EmptyState(Icons.Rounded.PushPin, stringResource(R.string.empty_home), null, null)
-                    state.error != null -> EmptyState(Icons.Rounded.CloudOff, stringResource(R.string.empty_error, state.error), stringResource(R.string.retry), onRefresh)
-                    else -> EmptyState(Icons.AutoMirrored.Rounded.StickyNote2, stringResource(R.string.empty_database), null, null)
+                    state.selectedChips.isNotEmpty() -> EmptyState(Icons.Rounded.FilterAltOff, stringResource(R.string.empty_filtered)) {
+                        Button(onClick = onClearChips) { Text(stringResource(R.string.empty_clear_filters)) }
+                    }
+                    state.isHome -> EmptyState(Icons.Rounded.PushPin, stringResource(R.string.empty_home_title), body = stringResource(R.string.empty_home))
+                    state.error != null -> LoadFailed(state.error, onRefresh)
+                    else -> EmptyState(
+                        Icons.AutoMirrored.Rounded.StickyNote2,
+                        stringResource(R.string.empty_database_title),
+                        body = stringResource(R.string.empty_database),
+                    )
                 }
                 else -> NoteGrid(
                     state = state,
@@ -863,32 +869,10 @@ private fun LoadingGrid() {
 
 private val SKELETON_HEIGHTS = listOf(120, 88, 96, 140, 72, 110, 88, 120)
 
-/**
- * What an empty list shows: a large icon, a short text and an optional button. It scrolls, so
- * pull-to-refresh also works on an empty screen.
- */
+/** The empty state of a list that couldn't load: the reason and a Retry button. */
 @Composable
-internal fun EmptyState(icon: ImageVector, text: String, action: String?, onAction: (() -> Unit)?) {
-    LazyColumn(
-        Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 32.dp, vertical = 64.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        item {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.outline)
-        }
-        item {
-            Text(
-                text,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth(),
-            )
-        }
-        if (action != null && onAction != null) {
-            item { androidx.compose.material3.FilledTonalButton(onClick = onAction) { Text(action) } }
-        }
+internal fun LoadFailed(reason: String, onRetry: () -> Unit) {
+    EmptyState(Icons.Rounded.CloudOff, stringResource(R.string.empty_error_title), body = reason) {
+        Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
     }
 }

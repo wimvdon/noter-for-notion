@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Description
@@ -41,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.impca201.noter.R
 import com.impca201.noter.data.model.WorkspaceItem
 import com.impca201.noter.logic.NotionDates
+import com.impca201.noter.ui.theme.EmptyState
 import com.impca201.noter.ui.theme.SkeletonLine
 
 /**
@@ -82,13 +82,13 @@ fun BrowsePane(
             when {
                 items == null && state.error == null -> LoadingRows()
                 state.error != null && items.isNullOrEmpty() ->
-                    EmptyState(Icons.Rounded.CloudOff, stringResource(R.string.empty_error, state.error), stringResource(R.string.retry), onRefresh)
-                items.isNullOrEmpty() -> EmptyState(
-                    if (state.query.isBlank()) Icons.Rounded.Explore else Icons.Rounded.SearchOff,
-                    stringResource(if (state.query.isBlank()) R.string.browse_empty else R.string.browse_nothing_found),
-                    null,
-                    null,
+                    LoadFailed(state.error, onRefresh)
+                items.isNullOrEmpty() && state.query.isBlank() -> EmptyState(
+                    Icons.Rounded.Explore,
+                    stringResource(R.string.browse_empty_title),
+                    body = stringResource(R.string.browse_empty),
                 )
+                items.isNullOrEmpty() -> EmptyState(Icons.Rounded.SearchOff, stringResource(R.string.browse_nothing_found))
                 else -> BrowseList(items, onOpenPage, onOpenDatabase)
             }
         }

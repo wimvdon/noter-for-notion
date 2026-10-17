@@ -6,8 +6,8 @@
     <string name="browse_search">Search pages and databases</string>
     <string name="browse_databases">Databases</string>
     <string name="browse_pages">Pages</string>
-    <string name="browse_empty">Nothing here yet. In Notion, share pages and databases with your integration (⋯ › Connections).</string>
-    <string name="browse_nothing_found">Nothing found.</string>
+    <string name="browse_empty">In Notion, share pages and databases with your integration (⋯ › Connections).</string>
+    <string name="browse_nothing_found">Nothing found</string>
     <string name="browse_edited">Edited %1$s</string>
     <string name="source_pages">Pages</string>
     <string name="add_view">Add view</string>
@@ -43,12 +43,11 @@
     <string name="trash_title">Move to trash?</string>
     <string name="trash_body">“%1$s” moves to the trash in Notion. You can restore it there for 30 days.</string>
     <string name="trash_confirm">Move to trash</string>
-    <string name="empty_no_key">Connect Noter to Notion to see your notes.</string>
-    <string name="empty_no_key_action">Connect to Notion</string>
-    <string name="empty_home">Pin notes to see them here. Tap the pin on a note.</string>
-    <string name="empty_database">No notes yet. Tap + to add one.</string>
-    <string name="empty_filtered">No notes match the selected filters.</string>
-    <string name="empty_error">Couldn’t load the notes: %1$s</string>
+    <string name="empty_no_key">Add your Notion API key in Settings to see your notes.</string>
+    <string name="empty_no_key_action">Open settings</string>
+    <string name="empty_home">Tap the pin on a note to see it here.</string>
+    <string name="empty_database">Tap + to add one.</string>
+    <string name="empty_filtered">No notes match the filters</string>
     <string name="status_offline">Offline. Changes are saved on this phone and sent later.</string>
     <string name="status_not_synced">Not in Notion yet</string>
     <string name="sync_failed">Couldn’t save “%1$s” in Notion: %2$s</string>
@@ -184,4 +183,10 @@
     <string name="new_subpage">New subpage</string>
     <string name="create_top_level_failed">Notion doesn’t let this connection add pages at the top of the workspace. Add the page inside a page instead (+ in Browse, or ⋮ › New subpage in a page).</string>
     <string name="create_failed">Notion couldn’t make the page: %1$s</string>
+    <string name="browse_empty_title">Nothing shared yet</string>
+    <string name="empty_no_key_title">Connect to Notion</string>
+    <string name="empty_home_title">No pinned notes</string>
+    <string name="empty_database_title">No notes yet</string>
+    <string name="empty_clear_filters">Clear filters</string>
+    <string name="empty_error_title">Couldn’t load the notes</string>
 </resources>
