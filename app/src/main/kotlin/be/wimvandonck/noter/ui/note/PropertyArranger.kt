@@ -45,14 +45,18 @@ import be.wimvandonck.noter.logic.PropertyLayouts
 /**
  * Arranging a database's properties in place, where they are shown in the note: drag a property
  * by its handle to change the order, and past the "Hidden" line to hide it (or back to show it);
- * the eye does the same with one tap. Applies to every note of the database.
+ * the eye does the same with one tap. Applies to every note of the database. A notebook's Filters
+ * panel uses it too, for which properties have a row of chips ([shownTitle], [hiddenTitle]).
  */
 @Composable
 fun PropertyArranger(
     names: List<String>,
     layout: PropertyLayout?,
     onArrange: (shown: List<String>, hidden: List<String>) -> Unit,
-    onDone: () -> Unit,
+    onDone: (() -> Unit)?,
+    shownTitle: String = stringResource(R.string.properties_shown),
+    hiddenTitle: String = stringResource(R.string.properties_hidden),
+    toggleDescription: @Composable (String) -> String = { stringResource(R.string.property_shown, it) },
 ) {
     val sections = remember(names, layout) { PropertyLayouts.sections(names, layout) }
     // A working copy (shown, the "Hidden" line, hidden), so a dragged row moves at once; it
@@ -86,18 +90,21 @@ fun PropertyArranger(
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                stringResource(R.string.properties_shown),
+                shownTitle,
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f).semantics { heading() },
+                modifier = Modifier
+                    .weight(1f)
+                    .then(if (onDone == null) Modifier.height(ROW_HEIGHT).padding(top = 20.dp) else Modifier)
+                    .semantics { heading() },
             )
-            TextButton(onClick = onDone) { Text(stringResource(R.string.done)) }
+            if (onDone != null) TextButton(onClick = onDone) { Text(stringResource(R.string.done)) }
         }
         entries.forEach { name ->
             key(name) {
                 if (name == HIDDEN_LINE) {
                     Text(
-                        stringResource(R.string.properties_hidden),
+                        hiddenTitle,
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
@@ -178,7 +185,7 @@ fun PropertyArranger(
                         ) {
                             Icon(
                                 if (isShown) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
-                                contentDescription = stringResource(R.string.property_shown, name),
+                                contentDescription = toggleDescription(name),
                                 tint = if (isShown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }

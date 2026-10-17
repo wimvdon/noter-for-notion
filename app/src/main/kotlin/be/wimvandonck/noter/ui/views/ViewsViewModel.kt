@@ -11,7 +11,6 @@ import be.wimvandonck.noter.data.api.NotionException
 import be.wimvandonck.noter.data.model.DatabaseConfig
 import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.PageRef
-import be.wimvandonck.noter.data.model.NotionView
 import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.logic.Notebooks
@@ -36,15 +35,6 @@ data class DatabaseDraft(
     val layout: PropertyLayout? = null,
 )
 
-/** Adding a notebook, second step: which Notion view of [database] it follows. */
-data class ViewChoice(
-    val database: PageRef,
-    val roomInBar: Boolean,
-    /** The database's views (null while loading). */
-    val views: List<NotionView>? = null,
-    val error: String? = null,
-)
-
 data class ViewsUiState(
     val views: List<DatabaseConfig> = emptyList(),
     val hasKey: Boolean = false,
@@ -53,7 +43,6 @@ data class ViewsUiState(
     /** Pages (not in a database) whose subpages can be a notebook, for "Add notebook". */
     val availablePages: List<PageRef> = emptyList(),
     val availableError: String? = null,
-    val viewChoice: ViewChoice? = null,
     val draft: DatabaseDraft? = null,
 )
 
@@ -65,17 +54,15 @@ class ViewsViewModel(
     private val available = MutableStateFlow<List<PageRef>?>(null)
     private val availableError = MutableStateFlow<String?>(null)
     private val draft = MutableStateFlow<DatabaseDraft?>(null)
-    private val viewChoice = MutableStateFlow<ViewChoice?>(null)
     private val availablePages = MutableStateFlow<List<PageRef>>(emptyList())
 
     val state: StateFlow<ViewsUiState> = combine(
         repository.settingsFlow(),
         hasKey,
         combine(available, availableError, availablePages) { a, e, p -> Triple(a, e, p) },
-        viewChoice,
         draft,
-    ) { settings, key, (a, e, pages), choice, d ->
-        ViewsUiState(settings.databases, key, a, pages, e, choice, d)
+    ) { settings, key, (a, e, pages), d ->
+        ViewsUiState(settings.databases, key, a, pages, e, d)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ViewsUiState(hasKey = hasKey.value))
 
     fun loadAvailable() {
@@ -95,24 +82,8 @@ class ViewsViewModel(
     }
 
     /**
-     * Adding a notebook of [database]: first its Notion views to choose from. It goes in the
-     * navigation bar when there is [roomInBar].
-     */
-    fun chooseView(database: PageRef, roomInBar: Boolean) {
-        viewChoice.value = ViewChoice(database, roomInBar)
-        viewModelScope.launch {
-            val result = try {
-                ViewChoice(database, roomInBar, views = repository.viewsOf(database.id))
-            } catch (e: NotionException) {
-                ViewChoice(database, roomInBar, views = emptyList(), error = e.message)
-            }
-            viewChoice.update { if (it?.database == database) result else it }
-        }
-    }
-
-    /**
-     * A notebook of page [page]: its subpages are the notes, in the page's order. There is no
-     * Notion view to choose and nothing to filter by (subpages only have a title).
+     * A notebook of page [page]: its subpages are the notes, in the page's order. There is nothing
+     * to filter by (subpages only have a title).
      */
     fun startAddPage(page: PageRef, roomInBar: Boolean) {
         val key = NotesRepository.pageNotebookKey(page.id)
@@ -127,37 +98,29 @@ class ViewsViewModel(
         loadLayout(key)
     }
 
-    /** "Add as notebook" on a page (its key) or a database's page: the next step. */
-    fun chooseViewFor(databaseId: String, roomInBar: Boolean) {
+    /** "Add as notebook" on a page (its key) or a database's page. */
+    fun startAddFor(databaseId: String, roomInBar: Boolean) {
         if (NotesRepository.isPageNotebook(databaseId)) {
             val pageId = NotesRepository.pageOf(databaseId)
             val title = repository.databases.value.values.flatMap { it.notes }.firstOrNull { it.id == pageId }?.title.orEmpty()
             return startAddPage(PageRef(pageId, title), roomInBar)
         }
         val title = repository.databases.value[databaseId]?.schema?.title.orEmpty()
-        chooseView(PageRef(databaseId, title), roomInBar)
-    }
-
-    fun cancelViewChoice() {
-        viewChoice.value = null
+        startAdd(PageRef(databaseId, title), roomInBar)
     }
 
     /**
-     * Starts the new notebook, set up like Notion [view] (null: all notes of the database): its
-     * quick filters, order and, unless the user arranged them already, how notes show properties.
+     * Starts a new notebook of [database]: all its notes, set up and filtered on this phone (see
+     * Notebooks.newNotebook). It goes in the navigation bar when there is [roomInBar].
      */
-    fun startAdd(choice: ViewChoice, view: NotionView?) {
-        viewChoice.value = null
-        val database = choice.database
-        // Named after the database, or after the view when the database has more than one.
-        val named = view?.name?.takeIf { it.isNotBlank() && choice.views.orEmpty().size > 1 }
+    fun startAdd(database: PageRef, roomInBar: Boolean) {
         val config = DatabaseConfig(
             id = "view-" + UUID.randomUUID(),
-            name = named ?: database.title,
+            name = database.title,
             databaseId = database.id,
-            inBar = choice.roomInBar,
+            inBar = roomInBar,
         )
-        draft.value = DatabaseDraft(config.copy(viewId = view?.id, viewName = view?.name, followView = view != null), isNew = true)
+        draft.value = DatabaseDraft(config, isNew = true)
         viewModelScope.launch {
             val existing = repository.currentSettings().propertyLayouts[database.id]
             try {
@@ -166,8 +129,8 @@ class ViewsViewModel(
                     if (d?.config?.id != config.id) return@update d
                     d.copy(
                         schema = schema,
-                        config = Notebooks.fromView(d.config, view, schema),
-                        layout = Notebooks.layoutFromView(existing, view, schema),
+                        config = Notebooks.newNotebook(d.config, schema),
+                        layout = existing,
                     )
                 }
             } catch (e: NotionException) {

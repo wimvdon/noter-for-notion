@@ -37,7 +37,7 @@ import be.wimvandonck.noter.R
 
 /**
  * A database opened from Search or from a link in a note: a child page with its notes and
- * filters. "Add as notebook" sets it up as a notebook (choosing one of its Notion views); once it
+ * filters. "Add as notebook" sets it up as a notebook (all its notes); once it
  * is one, "Edit notebook" opens its setup.
  */
 @OptIn(ExperimentalMaterial3Api::class)

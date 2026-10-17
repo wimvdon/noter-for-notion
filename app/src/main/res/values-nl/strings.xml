@@ -13,7 +13,6 @@
     <string name="source_pages">Pagina’s</string>
     <string name="add_view">Toevoegen als notebook</string>
     <string name="page_open_failed">Kon de pagina niet openen. Controleer je verbinding.</string>
-    <string name="open_navigation">Navigatie openen</string>
     <string name="settings_title">Instellingen</string>
     <string name="back">Terug</string>
     <string name="cancel">Annuleren</string>
@@ -157,9 +156,9 @@
     </plurals>
     <string name="view_in_bar">In de balk onderaan</string>
     <string name="view_no_room">Vastgezet in de balk, maar er is geen plaats op dit scherm</string>
-    <string name="view_in_drawer">In het menu</string>
+    <string name="view_in_drawer">Onder Notebooks</string>
     <string name="pin_to_bar">Tonen in de balk onderaan</string>
-    <string name="pin_to_bar_help">Als er plaats is. Het notebook staat altijd in het menu (☰).</string>
+    <string name="pin_to_bar_help">Als er plaats is. Het notebook staat altijd onder Notebooks in de balk.</string>
     <string name="icon_search">Pictogrammen zoeken (in het Engels)</string>
     <string name="icon_none_found">Geen pictogrammen gevonden. Probeer een ander woord, zoals “list”, “food” of “work”.</string>
     <string name="cards_title">Kaarten in het overzicht</string>
@@ -186,7 +185,7 @@
     <string name="filters">Filters</string>
     <string name="filters_count">Filters · %1$d</string>
     <string name="sort">Sorteren</string>
-    <string name="sort_notion">Volgorde van Notion</string>
+    <string name="sort_notion">Volgorde van de pagina</string>
     <string name="sort_custom">Eigen volgorde</string>
     <string name="sort_last_edited">Laatst bewerkt</string>
     <string name="sort_created">Aangemaakt</string>
@@ -194,16 +193,8 @@
     <string name="sort_reverse">Omgekeerde volgorde</string>
     <string name="sorted_by_hand">Nu in je eigen volgorde</string>
     <string name="undo">Ongedaan maken</string>
-    <string name="follow_view">“%1$s” volgen</string>
-    <string name="follow_view_help">Alleen de notities die deze weergave in Notion toont, met haar filter.</string>
-    <string name="view_missing">De Notion-weergave “%1$s” bestaat niet meer, dus alle notities worden getoond.</string>
-    <string name="show_as_chips">Chips</string>
     <string name="filter_no_values">Nog geen waarden</string>
-    <string name="reset_to_view">Terug naar de weergave van Notion</string>
-    <string name="choose_view">Begin bij een Notion-weergave</string>
-    <string name="notebook_follows">Volgt de Notion-weergave “%1$s”</string>
     <string name="notebook_all_notes">Alle notities van de database</string>
-    <string name="notebook_all_notes_help">Geen Notion-weergave: filter en sorteer in het notebook</string>
     <string name="notebook_subpages">De subpagina’s van een pagina</string>
     <string name="notebook_pages">Pagina’s</string>
     <string name="empty_error_title">Kon de notities niet laden</string>
@@ -212,4 +203,9 @@
     <string name="chip_next_7_days">Komende 7 dagen</string>
     <string name="chip_later">Later</string>
     <string name="chip_no_date">Geen datum</string>
+    <string name="chip_rows_help">Elke eigenschap hier krijgt een eigen rij chips boven de notities. Sleep aan het handvat om de volgorde te wijzigen.</string>
+    <string name="chip_rows_shown">Rijen chips</string>
+    <string name="chip_rows_hidden">Alleen hier</string>
+    <string name="chip_row_shown">Rij chips voor %1$s</string>
+    <string name="no_notebooks">Nog geen notebooks</string>
 </resources>

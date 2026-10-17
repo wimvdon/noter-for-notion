@@ -5,13 +5,10 @@ import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.NotebookSort
-import be.wimvandonck.noter.data.model.NotionView
-import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.model.SelectOption
 import be.wimvandonck.noter.data.model.SortKind
-import be.wimvandonck.noter.data.model.ViewResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -36,14 +33,6 @@ class NotebooksTest {
     )
 
     @Test
-    fun `a view shows its notes, and the ones Notion can't know about yet`() {
-        val notes = listOf(note("1"), note("2"), note("3", created = "2026-10-10"), NoteSummary("local-x", "db", ""))
-        val result = ViewResult(listOf("1"), fetchedAt = "2026-10-09")
-        assertEquals(listOf("1", "3", "local-x"), Notebooks.inView(notes, result).map { it.id })
-        assertEquals(4, Notebooks.inView(notes, null).size)
-    }
-
-    @Test
     fun `every filtering property must match, any of its values`() {
         val notes = listOf(note("1", "Todo", "Home"), note("2", "Done", "Home"), note("3", "Todo", "Work"))
         val selected = mapOf("Status" to setOf("Todo"), "Tag" to setOf("Home", "Work"))
@@ -62,10 +51,12 @@ class NotebooksTest {
     }
 
     @Test
-    fun `a notebook following a view starts in Notion's order, otherwise in the custom order`() {
-        assertEquals(SortKind.NOTION, DatabaseConfig("n", "N", databaseId = "db", viewId = "v").currentSort.kind)
-        assertEquals(SortKind.CUSTOM, DatabaseConfig("n", "N", databaseId = "db", viewId = "v", followView = false).currentSort.kind)
+    fun `only a page's notebook has Notion's order, a database's starts in the custom order`() {
+        assertEquals(SortKind.NOTION, DatabaseConfig("n", "N", databaseId = "page:p", pageId = "p").currentSort.kind)
         assertEquals(SortKind.CUSTOM, DatabaseConfig("n", "N", databaseId = "db").currentSort.kind)
+        // A notebook that followed a Notion view before, sorted in its order: the custom order now.
+        assertEquals(SortKind.CUSTOM, DatabaseConfig("n", "N", databaseId = "db", sort = NotebookSort(SortKind.NOTION)).currentSort.kind)
+        assertEquals(SortKind.TITLE, DatabaseConfig("n", "N", databaseId = "db", sort = NotebookSort(SortKind.TITLE)).currentSort.kind)
     }
 
     @Test
@@ -88,25 +79,21 @@ class NotebooksTest {
     }
 
     @Test
-    fun `a new notebook takes its quick filters and layout from the Notion view`() {
-        val base = DatabaseConfig("n", "Tasks", databaseId = "db")
-        val board = NotionView("v", "Board", "board", groupBy = "st", properties = listOf("tg" to false, "st" to true), showsCover = true)
-        val fromBoard = Notebooks.fromView(base, board, schema)
-        assertEquals(listOf("Status"), fromBoard.quickFilters)
-        assertEquals("v", fromBoard.viewId)
-        val withQuick = Notebooks.fromView(base, board.copy(quickFilters = listOf("Tag")), schema)
-        assertEquals(listOf("Tag"), withQuick.quickFilters)
-        val layout = Notebooks.layoutFromView(null, board, schema)!!
-        assertEquals(listOf("Tag", "Status"), layout.order)
-        assertEquals(listOf("Tag"), layout.hidden)
-        assertEquals(true, layout.coverOnCard)
-        // Arranged by the user already: kept.
-        val own = PropertyLayout(order = listOf("Status"))
-        assertEquals(own, Notebooks.layoutFromView(own, board, schema))
-        // No view: all notes, a status property as quick filter.
-        val all = Notebooks.fromView(base, null, schema)
-        assertNull(all.viewId)
-        assertEquals(listOf("Status"), all.quickFilters)
+    fun `a new notebook shows all notes with a status property as its first chip row`() {
+        val base = DatabaseConfig("n", "Tasks", databaseId = "db", sort = NotebookSort(SortKind.TITLE))
+        val new = Notebooks.newNotebook(base, schema)
+        assertEquals(listOf("Status"), new.quickFilters)
+        assertNull(new.sort)
+        val noStatus = schema.copy(properties = schema.properties.filter { it.type != "status" })
+        assertEquals(listOf("Tag"), Notebooks.newNotebook(base, noStatus).quickFilters)
+        assertEquals(emptyList<String>(), Notebooks.newNotebook(base, null).quickFilters)
+    }
+
+    @Test
+    fun `chip rows are the quick filters in their order, the other properties after`() {
+        val (rows, others) = Notebooks.chipRows(listOf("Status", "Tag", "Owner"), listOf("Tag", "Gone", "Status"))
+        assertEquals(listOf("Tag", "Status"), rows)
+        assertEquals(listOf("Owner"), others)
     }
 
     @Test

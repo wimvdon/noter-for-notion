@@ -29,8 +29,8 @@ own, no analytics, no advertising and no crash reporting.
   offline. This copy is never included in a backup; Notion is the real copy.
 - **Images you have seen**, in the app's cache folder (up to 100 MB), so they don't have to be
   downloaded again. Android may clear this folder when space runs low; it is never backed up.
-- **Your settings**: your notebooks (their names, icons, database, the Notion view they follow,
-  their filters and sort), pinned
+- **Your settings**: your notebooks (their names, icons, database or page, their filters and
+  sort), pinned
   notes, your own note order, which properties are shown (and in which order) per database,
   theme and dynamic colour. Only these settings may be included in
   Android's own backup (to your Google account, if you turned that on) and in a transfer to a new

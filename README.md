@@ -1,7 +1,7 @@
 # Noter for Notion
 
 A note app for Android in the style of Google Keep, with your notes kept in **Notion**.
-A database (following one of its Notion views) or a page (its subpages are the notes) becomes a
+A database (all its notes) or a page (its subpages are the notes) becomes a
 **notebook** in the navigation, with its own filters and sort on the phone; **Pinned** shows the
 notes you pinned from all of them, and **Search** finds your notes and anything else in Notion.
 

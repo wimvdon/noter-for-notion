@@ -4,10 +4,10 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * A notebook (called a view in the code): a database in the navigation, optionally following one
- * of its Notion views ([viewId]), with its own filters and sort, all kept on this phone (Notion's
- * view isn't changed). Notebooks saved before notebooks existed have the database's ID as [id]
- * and no [databaseId].
+ * A notebook (called a view in the code): a database (or a page's subpages) in the navigation,
+ * with its own filters and sort, all kept on this phone (Notion isn't changed). Notebooks saved
+ * before notebooks existed have the database's ID as [id] and no [databaseId]. Notebooks that
+ * followed a Notion view before show all notes of their database now (the view's ID is ignored).
  */
 @Serializable
 data class DatabaseConfig(
@@ -25,16 +25,11 @@ data class DatabaseConfig(
      * view is in the navigation drawer. Views saved before this existed were in the bar.
      */
     val inBar: Boolean = true,
-    /** The Notion view this notebook started from, and its name (null: all notes of the database). */
-    val viewId: String? = null,
-    val viewName: String? = null,
-    /** Shows only the notes the Notion view shows (its filter, as Notion applies it). */
-    val followView: Boolean = true,
-    /** Properties whose values are filter chips above the notes (quick filters). */
+    /** Properties whose values are filter chips above the notes (quick filters), one row each, in this order. */
     val quickFilters: List<String> = emptyList(),
     /** The selected filter values per property: a note shows when it has one of each property's. */
     val selected: Map<String, List<String>> = emptyMap(),
-    /** The order of the notes (null: Notion's order when following a view, else the custom order). */
+    /** The order of the notes (null: the page's order for a page's notebook, else the custom order). */
     val sort: NotebookSort? = null,
     /**
      * A page's notebook: its notes are this page's subpages ([databaseId] is then the page's key
@@ -56,12 +51,16 @@ data class DatabaseConfig(
         )
     }
 
-    /** The order the notes are in now. */
+    /**
+     * The order the notes are in now. Notion's order only exists for a page's notebook (a
+     * notebook that followed a Notion view before has the custom order instead).
+     */
     val currentSort: NotebookSort
-        get() = sort ?: NotebookSort(if ((viewId != null && followView) || pageId != null) SortKind.NOTION else SortKind.CUSTOM)
+        get() = sort?.takeIf { it.kind != SortKind.NOTION || hasNotionOrder }
+            ?: NotebookSort(if (hasNotionOrder) SortKind.NOTION else SortKind.CUSTOM)
 
-    /** Notion has an order for this notebook: its view's, or the page's order of its subpages. */
-    val hasNotionOrder: Boolean get() = (viewId != null && followView) || pageId != null
+    /** Notion has an order for this notebook: the page's order of its subpages. */
+    val hasNotionOrder: Boolean get() = pageId != null
 
     companion object {
         const val DEFAULT_ICON = "note"
@@ -71,10 +70,7 @@ data class DatabaseConfig(
 /** How a notebook's notes are sorted (pinned notes always come first). */
 @Serializable
 enum class SortKind {
-    /**
-     * As the Notion view sorts them (its sort, or its order dragged by hand in Notion); for a
-     * page's notebook, the order of the subpages on the page.
-     */
+    /** For a page's notebook: the order of the subpages on the page. */
     NOTION,
 
     /** As placed by dragging on this phone; new notes on top. */
@@ -95,27 +91,11 @@ data class NotebookSort(
     val descending: Boolean = kind != SortKind.TITLE,
 )
 
-/** The notes a Notion view shows, in its order, as Notion said when last asked ([fetchedAt], ISO). */
+/** A page's subpages, in the page's order, as Notion said when last asked ([fetchedAt], ISO). */
 @Serializable
 data class ViewResult(
     val ids: List<String>,
     val fetchedAt: String,
-)
-
-/** A Notion view of a database, for choosing what a notebook starts from (see ViewCodec). */
-data class NotionView(
-    val id: String,
-    val name: String,
-    /** Notion's layout: table, board, list, calendar, timeline, gallery, … */
-    val type: String,
-    /** Properties in its filter bar (quick filters), by name or ID as Notion gives them. */
-    val quickFilters: List<String> = emptyList(),
-    /** The property a board or list is grouped by (its ID). */
-    val groupBy: String? = null,
-    /** Its properties in order, by ID, with whether each is visible. */
-    val properties: List<Pair<String, Boolean>> = emptyList(),
-    /** Its cards show the page's header image (galleries and boards). */
-    val showsCover: Boolean = false,
 )
 
 /**
