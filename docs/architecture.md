@@ -33,7 +33,9 @@ properties and content: the pages of databases and pages on their own.
   for public connections and personal access tokens; when it refuses, the page is removed again
   and the app explains), a page inside one of the pages listed in Browse, or a note in a database.
   A page's ⋮ menu has "New subpage".
-- **Note** (`ui/note/`): header image, icon, title, properties (`PropertyEditors.kt`), then the content as a
+- **Note** (`ui/note/`): header image, icon (tap it, or "Add icon", to choose an emoji in
+  `PageIconSheet.kt`: common ones, any other typed with the keyboard (`logic/EmojiInput.kt`), or
+  none; sent as `PendingOp.SetIcon`, or with the create for a new note), title, properties (`PropertyEditors.kt`), then the content as a
   list of blocks, each its own text field. To-do items have an × to delete them. A toolbar above the keyboard changes the block's kind,
   adds a divider or deletes the block. Tapping below the content continues at the end. Moving a
   note to the trash asks first.

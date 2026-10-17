@@ -169,30 +169,48 @@ class NotionClient(
 
     suspend fun getPage(pageId: String): JsonObject = call("GET", "/pages/$pageId")
 
-    suspend fun createPage(dataSourceId: String, properties: Map<String, Any?>, children: List<Map<String, Any?>>): JsonObject =
-        createPage(mapOf("type" to "data_source_id", "data_source_id" to dataSourceId), properties, children)
+    suspend fun createPage(
+        dataSourceId: String,
+        properties: Map<String, Any?>,
+        children: List<Map<String, Any?>>,
+        emoji: String? = null,
+    ): JsonObject =
+        createPage(mapOf("type" to "data_source_id", "data_source_id" to dataSourceId), properties, children, emoji)
 
     /**
      * Creates a page on its own: inside page [parentPageId], or at the top of the workspace when it
      * is null (Notion allows that only for some kinds of connections; others get an error).
      */
-    suspend fun createPageIn(parentPageId: String?, properties: Map<String, Any?>): JsonObject =
+    suspend fun createPageIn(parentPageId: String?, properties: Map<String, Any?>, emoji: String? = null): JsonObject =
         createPage(
             if (parentPageId != null) mapOf("type" to "page_id", "page_id" to parentPageId) else mapOf("type" to "workspace", "workspace" to true),
             properties,
             emptyList(),
+            emoji,
         )
 
-    private suspend fun createPage(parent: Map<String, Any?>, properties: Map<String, Any?>, children: List<Map<String, Any?>>): JsonObject =
+    private suspend fun createPage(
+        parent: Map<String, Any?>,
+        properties: Map<String, Any?>,
+        children: List<Map<String, Any?>>,
+        emoji: String?,
+    ): JsonObject =
         call(
             "POST", "/pages",
             buildMap {
                 put("parent", parent)
                 put("properties", properties)
+                if (emoji != null) put("icon", emojiIcon(emoji))
                 if (children.isNotEmpty()) put("children", children.take(MAX_CHILDREN))
             },
             adds = true,
         )
+
+    /** Sets the page's icon to [emoji], or removes it when that is null. */
+    suspend fun updatePageIcon(pageId: String, emoji: String?): JsonObject =
+        call("PATCH", "/pages/$pageId", mapOf("icon" to emoji?.let(::emojiIcon)))
+
+    private fun emojiIcon(emoji: String) = mapOf("type" to "emoji", "emoji" to emoji)
 
     suspend fun updatePageProperties(pageId: String, properties: Map<String, Any?>): JsonObject =
         call("PATCH", "/pages/$pageId", mapOf("properties" to properties))

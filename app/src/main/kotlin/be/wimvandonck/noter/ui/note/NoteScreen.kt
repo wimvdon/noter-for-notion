@@ -131,6 +131,8 @@ import be.wimvandonck.noter.logic.NestedContent
 import be.wimvandonck.noter.logic.ReadOnlyBlocks
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.Tab
+import androidx.compose.material.icons.rounded.AddReaction
+import androidx.compose.ui.draw.clip
 import be.wimvandonck.noter.logic.PropertyLayouts
 import be.wimvandonck.noter.ui.theme.AppShapes
 import be.wimvandonck.noter.ui.theme.SkeletonLine
@@ -159,6 +161,7 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
     var menu by remember { mutableStateOf(false) }
     var confirmTrash by remember { mutableStateOf(false) }
     var customize by rememberSaveable { mutableStateOf(false) }
+    var choosingIcon by rememberSaveable { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val openFailed by viewModel.openFailed.collectAsStateWithLifecycle()
     val openFailedText = stringResource(R.string.page_open_failed)
@@ -193,6 +196,15 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
             onReorder = viewModel::reorderProperties,
             onToggleShown = viewModel::toggleShown,
             onDismiss = { customize = false },
+        )
+    }
+
+    if (choosingIcon && note != null) {
+        PageIconSheet(
+            hasIcon = note.icon != null,
+            onPick = { emoji -> choosingIcon = false; viewModel.setIcon(emoji) },
+            onRemove = { choosingIcon = false; viewModel.setIcon(null) },
+            onDismiss = { choosingIcon = false },
         )
     }
 
@@ -315,9 +327,26 @@ fun NoteScreen(pageId: String, onBack: () -> Unit, onOpenNote: (String) -> Unit,
                     )
                 }
             }
-            note.icon?.let { icon ->
-                item(key = "__icon") {
-                    PageIconView(icon, size = 48.dp, modifier = Modifier.padding(top = 12.dp))
+            item(key = "__icon") {
+                // The icon, as in Notion: tap it to change it; without one, a button to add one.
+                val icon = note.icon
+                if (icon != null) {
+                    val label = stringResource(R.string.change_icon)
+                    PageIconView(
+                        icon,
+                        size = 48.dp,
+                        modifier = Modifier
+                            .padding(top = 12.dp)
+                            .clip(AppShapes.Item)
+                            .clickable(onClickLabel = label, role = Role.Button) { choosingIcon = true }
+                            .semantics { contentDescription = label },
+                    )
+                } else {
+                    TextButton(onClick = { choosingIcon = true }, modifier = Modifier.padding(top = 4.dp)) {
+                        Icon(Icons.Rounded.AddReaction, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.add_icon))
+                    }
                 }
             }
             item(key = "__title") {
@@ -482,7 +511,7 @@ private fun TrashDialog(title: String, onConfirm: () -> Unit, onDismiss: () -> U
 }
 
 /** Index of the first block in the list (after cover, icon, title, properties and divider). */
-private fun blocksOffset(note: NoteSummary?): Int = 3 + (if (note?.cover != null) 1 else 0) + (if (note?.icon != null) 1 else 0)
+private fun blocksOffset(note: NoteSummary?): Int = 4 + (if (note?.cover != null) 1 else 0)
 
 private val COVER_HEIGHT = 180.dp
 

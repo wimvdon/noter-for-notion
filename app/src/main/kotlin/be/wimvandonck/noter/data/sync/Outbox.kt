@@ -2,6 +2,7 @@ package be.wimvandonck.noter.data.sync
 
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.NoteSummary
+import be.wimvandonck.noter.data.model.PageIcon
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -30,12 +31,17 @@ sealed interface PendingOp {
     @Serializable
     @SerialName("trash")
     data class TrashPage(override val pageId: String) : PendingOp
+
+    /** The page's icon becomes [emoji], or is removed when it is null. */
+    @Serializable
+    @SerialName("icon")
+    data class SetIcon(override val pageId: String, val emoji: String?) : PendingOp
 }
 
 /**
- * The queue of [PendingOp]s, sent in order. Adding keeps it short: a newer value of a property
- * replaces the older one, and a note created on this phone sends its properties and content
- * together with the create, so those edits need no op of their own.
+ * The queue of [PendingOp]s, sent in order. Adding keeps it short: a newer value of a property or
+ * icon replaces the older one, and a note created on this phone sends its properties, icon and
+ * content together with the create, so those edits need no op of their own.
  */
 object Outbox {
     fun add(queue: List<PendingOp>, op: PendingOp): List<PendingOp> {
@@ -53,6 +59,13 @@ object Outbox {
                 }
             is PendingOp.SaveContent ->
                 if (local || queue.any { it is PendingOp.SaveContent && it.pageId == op.pageId }) queue else queue + op
+            is PendingOp.SetIcon ->
+                if (local) {
+                    queue
+                } else {
+                    val existing = queue.indexOfFirst { it is PendingOp.SetIcon && it.pageId == op.pageId }
+                    if (existing >= 0) queue.toMutableList().apply { set(existing, op) } else queue + op
+                }
             is PendingOp.TrashPage ->
                 if (local) {
                     queue.filterNot { it.pageId == op.pageId }
@@ -73,15 +86,22 @@ object Outbox {
                     is PendingOp.SetProperty -> op.copy(pageId = newId)
                     is PendingOp.SaveContent -> op.copy(pageId = newId)
                     is PendingOp.TrashPage -> op.copy(pageId = newId)
+                    is PendingOp.SetIcon -> op.copy(pageId = newId)
                 }
             }
         }
 
-    /** [note] with the property values still waiting to be sent, so a refresh doesn't undo them. */
+    /** [note] with the property values and icon still waiting to be sent, so a refresh doesn't undo them. */
     fun applyPending(note: NoteSummary, queue: List<PendingOp>): NoteSummary {
-        val pending = queue.filterIsInstance<PendingOp.SetProperty>().filter { it.pageId == note.id }
+        val pending = queue.filter { it.pageId == note.id && (it is PendingOp.SetProperty || it is PendingOp.SetIcon) }
         if (pending.isEmpty()) return note
-        return pending.fold(note) { acc, op -> acc.withProperty(op.property) }
+        return pending.fold(note) { acc, op ->
+            when (op) {
+                is PendingOp.SetProperty -> acc.withProperty(op.property)
+                is PendingOp.SetIcon -> acc.copy(icon = op.emoji?.let { PageIcon(emoji = it) })
+                else -> acc
+            }
+        }
     }
 }
 

@@ -269,6 +269,9 @@ class NoteViewModel(
 
     fun togglePin() = viewModelScope.launch { repository.togglePin(pageId) }
 
+    /** Sets the page's icon to [emoji], or removes it when that is null. */
+    fun setIcon(emoji: String?) = viewModelScope.launch { repository.setIcon(pageId, emoji) }
+
     /** Makes a new page inside this one and opens it. */
     fun createSubpage(onCreated: (String) -> Unit) = viewModelScope.launch {
         onCreated(repository.createPage(repository.resolve(pageId)))
