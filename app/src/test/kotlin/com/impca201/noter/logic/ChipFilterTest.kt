@@ -75,4 +75,44 @@ class ChipFilterTest {
         assertEquals(listOf(ChipFilter.CHECKED to 1, ChipFilter.UNCHECKED to 2), chips.map { it.key to it.count })
         assertEquals(listOf("b", "c"), ChipFilter.filter(tasks, "Done", setOf(ChipFilter.UNCHECKED)).map { it.id })
     }
+
+    private val today = java.time.LocalDate.of(2026, 10, 17)
+
+    private fun with(id: String, name: String, type: String, value: PropertyValue) =
+        NoteSummary(id, "db", id, properties = listOf(NoteProperty(name, type, value)))
+
+    @Test
+    fun `dates fall in overdue, today, next 7 days, later or no date`() {
+        val due = PropertySchema(name = "Due", type = "date")
+        val notes = listOf(
+            with("past", "Due", "date", PropertyValue.Date("2026-10-10")),
+            with("now", "Due", "date", PropertyValue.Date("2026-10-17T09:00:00.000+02:00")),
+            with("range", "Due", "date", PropertyValue.Date("2026-10-15", "2026-10-20")),
+            with("soon", "Due", "date", PropertyValue.Date("2026-10-24")),
+            with("far", "Due", "date", PropertyValue.Date("2026-11-30")),
+            with("none", "Due", "date", PropertyValue.Date(null)),
+        )
+        val chips = ChipFilter.chips(due, notes, today)
+        assertEquals(ChipFilter.DATE_KEYS.map { it to (if (it == ChipFilter.TODAY) 2 else 1) }, chips.map { it.key to it.count })
+        assertEquals(listOf("now", "range"), ChipFilter.filter(notes, "Due", setOf(ChipFilter.TODAY), today).map { it.id })
+    }
+
+    @Test
+    fun `relations, created by and formulas make chips from the notes' values`() {
+        val related = listOf(
+            with("a", "Project", "relation", PropertyValue.Relation(listOf("p1", "p2"))),
+            with("b", "Project", "relation", PropertyValue.Relation(listOf("p1"))),
+        )
+        assertEquals(listOf("p1" to 2, "p2" to 1), ChipFilter.chips(PropertySchema(name = "Project", type = "relation"), related, today).map { it.key to it.count })
+
+        val authors = listOf(with("a", "By", "created_by", PropertyValue.ReadOnly("Wim")), with("b", "By", "created_by", PropertyValue.ReadOnly("Ann")))
+        assertEquals(listOf("Ann", "Wim"), ChipFilter.chips(PropertySchema(name = "By", type = "created_by"), authors, today).map { it.label })
+
+        val done = listOf(with("a", "Done?", "formula", PropertyValue.ReadOnly("true")), with("b", "Done?", "formula", PropertyValue.ReadOnly("false")))
+        assertEquals(listOf(ChipFilter.CHECKED, ChipFilter.UNCHECKED), ChipFilter.chips(PropertySchema(name = "Done?", type = "formula"), done, today).map { it.key })
+        assertEquals(listOf("b"), ChipFilter.filter(done, "Done?", setOf(ChipFilter.UNCHECKED), today).map { it.id })
+
+        val texts = listOf(with("a", "Kind", "formula", PropertyValue.ReadOnly("Big")), with("b", "Kind", "formula", PropertyValue.ReadOnly("Small")))
+        assertEquals(listOf("Big", "Small"), ChipFilter.chips(PropertySchema(name = "Kind", type = "formula"), texts, today).map { it.key })
+    }
 }

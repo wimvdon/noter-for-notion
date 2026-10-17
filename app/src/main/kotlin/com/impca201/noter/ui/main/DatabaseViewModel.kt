@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -43,6 +44,13 @@ class DatabaseViewModel(
     hasKey: StateFlow<Boolean>,
 ) : ViewModel() {
     private val selected = MutableStateFlow<Set<String>>(emptySet())
+    private val chipTitles = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    /** Loads the titles of a related database's pages, for the chips of a relation filter. */
+    fun loadChipTitles(databaseId: String) = viewModelScope.launch {
+        val pages = repository.relatedPages(databaseId) ?: return@launch
+        chipTitles.update { it + pages.associate { page -> page.id to page.title } }
+    }
     private val source = MutableStateFlow(openedId)
     private val sources = MutableStateFlow<List<PageRef>?>(null)
     private val databaseId: String get() = source.value
@@ -73,7 +81,8 @@ class DatabaseViewModel(
             sources = list,
             sourceId = databaseId,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DatabaseUiState())
+    }.combine(chipTitles) { state, titles -> state.copy(content = state.content.copy(chipTitles = titles)) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DatabaseUiState())
 
     val previews: StateFlow<Map<String, String>> = repository.previews
 
