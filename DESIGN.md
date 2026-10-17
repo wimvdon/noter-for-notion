@@ -161,6 +161,7 @@ English, Dutch, German, French, Spanish and Italian).
 | Cancel / Save | Cancel / Save | Annuleren / Opslaan | Abbrechen / Speichern | Annuler / Enregistrer | Cancelar / Guardar | Annulla / Salva |
 | Clear | Clear | Wissen | Löschen | Effacer | Borrar | Cancella |
 | Retry | Retry | Opnieuw proberen | Wiederholen | Réessayer | Reintentar | Riprova |
+| Dynamic color, supporting text | Use colors from your wallpaper | Kleuren van je achtergrond gebruiken | Farben deines Hintergrundbilds verwenden | Utiliser les couleurs du fond d’écran | Usar los colores del fondo de pantalla | Usa i colori dello sfondo |
 | Go to settings | Open settings | Naar instellingen | Zu den Einstellungen | Ouvrir les paramètres | Abrir ajustes | Apri impostazioni |
 | Setup needed (Notion apps) | Connect to Notion | Verbind met Notion | Mit Notion verbinden | Connexion à Notion | Conéctate a Notion | Collegati a Notion |
 
@@ -169,6 +170,11 @@ English, Dutch, German, French, Spanish and Italian).
 - Address the user informally in Dutch, German, Spanish and Italian (je, du, tú, tu) and with
   "vous" in French.
 - Labels and buttons in sentence case.
+- Help text only says what the screen doesn't: a consequence ("Your SIMKL lists stay as they
+  are"), where data goes, or a term people may not know. It never restates a label ("Hide
+  specials" needs no "Leave out special episodes"), describes a standard control (drag handles,
+  switches, tapping a row) or explains why the app was built this way. One sentence where
+  possible; longer setup steps go in an `ExpandableSetting` or the user guide.
 - Buttons name the action as briefly as the language allows; drop "mark as", "markeren als",
   "als … markieren" and the like when the screen already makes it clear ("Gezien", not
   "Markeren als gezien").

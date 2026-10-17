@@ -69,7 +69,7 @@
     <string name="customize_properties">Customize properties</string>
     <string name="hide_properties">Hide properties</string>
     <string name="properties_title">Properties</string>
-    <string name="properties_help">Drag to change the order. Shown properties are above the note, the others are collapsed. This applies to every note in the database. What the cards in the overview show is set up in ☰ › Manage views.</string>
+    <string name="properties_help">Shown properties are above the note, the others are folded away. Applies to every note in this database.</string>
     <string name="property_shown">Show %1$s</string>
     <string name="unsupported_block">%1$s (edit in Notion)</string>
     <string name="block_image">Image</string>
@@ -108,7 +108,7 @@
     <string name="sync_now">Sync now</string>
     <string name="section_views">Views</string>
     <string name="databases_none">None yet</string>
-    <string name="databases_help">A view is a database in the navigation, with the filters that are on when it opens. Other pages and databases are in Browse. Pins and order stay on this phone; Notion is not changed.</string>
+    <string name="databases_help">Views stay on this phone; Notion isn’t changed.</string>
     <string name="add_database">Add view</string>
     <string name="edit_database">Edit view</string>
     <string name="already_added">Has a view</string>
@@ -155,8 +155,8 @@
         <item quantity="other">%d views</item>
     </plurals>
     <plurals name="bar_room">
-        <item quantity="one">The bar at the bottom has room for %d view on this screen, next to Pinned and Browse. Every view is also in the menu (☰).</item>
-        <item quantity="other">The bar at the bottom has room for %d views on this screen, next to Pinned and Browse. Every view is also in the menu (☰).</item>
+        <item quantity="one">The bottom bar has room for %d view on this screen.</item>
+        <item quantity="other">The bottom bar has room for %d views on this screen.</item>
     </plurals>
     <string name="view_in_bar">In the bar at the bottom</string>
     <string name="view_no_room">Pinned to the bar, but there’s no room on this screen</string>
@@ -173,7 +173,7 @@
     <string name="chip_checked">%1$s</string>
     <string name="chip_unchecked">Not %1$s</string>
     <string name="type_checkbox_property">Checkbox</string>
-    <string name="cards_help">For every view of this database. Which properties are shown in a note, and in which order, is set in the note itself (the tune button).</string>
+    <string name="cards_help">Applies to every view of this database.</string>
     <string name="cards_properties">Properties on the card (up to %1$d)</string>
     <string name="edit_view">Edit view</string>
     <string name="new_page">New page</string>

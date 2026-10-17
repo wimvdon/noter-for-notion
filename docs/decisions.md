@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: Less help text
+
+The owner found the app over-explanatory; the shared rule is in `DESIGN.md` ("Wording"): help text only says what the screen can't. Shortened: the help above the views list (only "stays on this phone, Notion isn't changed"), the bottom-bar room line, the card-options note and the property-order sheet (no "drag to change the order", no pointer to another screen). Kept: consequences, privacy notes and setup steps. Rejected: removing every hint (the remaining ones say something the screen doesn't).
+
 ## 2026-10-16: Shared empty state, same setup screen as Time Tracker
 
 A Material 3 audit of the sibling apps found empty screens drawn three different ways; this app showed a grey icon with one line of text. Its empty, no-result, failed and "no API key" screens now use the shared `ui/theme/EmptyState.kt` (`DESIGN.md`, "Empty and setup states"): an icon in a circle, a title that says what the state means, one sentence on what to do, and a filled button where there is a next step. The "no API key" screen says "Connect to Notion" with an "Open settings" button, the same words as Time Tracker for Notion, which needs the same key. Filtered-empty now offers "Clear filters" instead of "All". Rejected: keeping a single line of text (it doesn't say whether the state is expected) and illustrations per screen (more to draw and maintain, and they don't help the next step).

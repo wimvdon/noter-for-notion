@@ -69,7 +69,7 @@
     <string name="customize_properties">Eigenschappen aanpassen</string>
     <string name="hide_properties">Eigenschappen verbergen</string>
     <string name="properties_title">Eigenschappen</string>
-    <string name="properties_help">Sleep om de volgorde te veranderen. Getoonde eigenschappen staan boven de notitie, de andere zijn ingeklapt. Dit geldt voor elke notitie in de database. Wat de kaarten in het overzicht tonen, stel je in via ☰ › Weergaven beheren.</string>
+    <string name="properties_help">Getoonde eigenschappen staan boven de notitie, de andere zijn ingeklapt. Geldt voor elke notitie in deze database.</string>
     <string name="property_shown">%1$s tonen</string>
     <string name="unsupported_block">%1$s (bewerken in Notion)</string>
     <string name="block_image">Afbeelding</string>
@@ -108,7 +108,7 @@
     <string name="sync_now">Nu synchroniseren</string>
     <string name="section_views">Weergaven</string>
     <string name="databases_none">Nog geen</string>
-    <string name="databases_help">Een weergave is een database in de navigatie, met de filters die aan staan als hij opent. Andere pagina’s en databases staan bij Bladeren. Vastzetten en volgorde blijven op deze telefoon; Notion verandert niet.</string>
+    <string name="databases_help">Weergaven blijven op deze telefoon; Notion verandert niet.</string>
     <string name="add_database">Weergave toevoegen</string>
     <string name="edit_database">Weergave bewerken</string>
     <string name="already_added">Heeft een weergave</string>
@@ -155,8 +155,8 @@
         <item quantity="other">%d weergaven</item>
     </plurals>
     <plurals name="bar_room">
-        <item quantity="one">De balk onderaan heeft op dit scherm plaats voor %d weergave, naast Vastgezet en Bladeren. Elke weergave staat ook in het menu (☰).</item>
-        <item quantity="other">De balk onderaan heeft op dit scherm plaats voor %d weergaven, naast Vastgezet en Bladeren. Elke weergave staat ook in het menu (☰).</item>
+        <item quantity="one">De balk onderaan heeft op dit scherm plaats voor %d weergave.</item>
+        <item quantity="other">De balk onderaan heeft op dit scherm plaats voor %d weergaven.</item>
     </plurals>
     <string name="view_in_bar">In de balk onderaan</string>
     <string name="view_no_room">Vastgezet in de balk, maar er is geen plaats op dit scherm</string>
@@ -173,7 +173,7 @@
     <string name="chip_checked">%1$s</string>
     <string name="chip_unchecked">Niet %1$s</string>
     <string name="type_checkbox_property">Selectievakje</string>
-    <string name="cards_help">Voor elke weergave van deze database. Welke eigenschappen een notitie toont, en in welke volgorde, stel je in de notitie zelf in (de regelknop).</string>
+    <string name="cards_help">Geldt voor elke weergave van deze database.</string>
     <string name="cards_properties">Eigenschappen op de kaart (maximaal %1$d)</string>
     <string name="edit_view">Weergave bewerken</string>
     <string name="new_page">Nieuwe pagina</string>
