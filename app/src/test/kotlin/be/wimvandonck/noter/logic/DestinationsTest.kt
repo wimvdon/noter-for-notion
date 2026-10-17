@@ -34,14 +34,6 @@ class DestinationsTest {
     }
 
     @Test
-    fun `a view opens with its own filters until the user picks others`() {
-        val view = DatabaseConfig("v", "Todo", databaseId = "db", chipProperty = "Status", filters = listOf("Todo"))
-        assertEquals(setOf("Todo"), Destinations.selectedFilters(view, null))
-        assertEquals(emptySet<String>(), Destinations.selectedFilters(view, emptySet()))
-        assertEquals(setOf("Done"), Destinations.selectedFilters(view, setOf("Done")))
-    }
-
-    @Test
     fun `views saved before views existed show their own database`() {
         assertEquals("db", DatabaseConfig("db", "Notes").sourceId)
         assertEquals("db", DatabaseConfig("v", "Notes", databaseId = "db").sourceId)

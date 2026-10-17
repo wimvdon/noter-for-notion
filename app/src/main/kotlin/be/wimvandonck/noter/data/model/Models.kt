@@ -4,33 +4,108 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * A view: a database pinned to the navigation, optionally with filters selected when it opens.
- * Views saved before views existed have the database's ID as [id] and no [databaseId].
+ * A notebook (called a view in the code): a database in the navigation, optionally following one
+ * of its Notion views ([viewId]), with its own filters and sort, all kept on this phone (Notion's
+ * view isn't changed). Notebooks saved before notebooks existed have the database's ID as [id]
+ * and no [databaseId].
  */
 @Serializable
 data class DatabaseConfig(
     val id: String,
     val name: String,
     val icon: String = DEFAULT_ICON,
-    /** Property whose values become the filters (see ChipFilter for the kinds of properties). */
+    /** Before quick filters: the one property whose values were the filters (see [normalized]). */
     val chipProperty: String? = null,
     /** The database shown; null for views saved before views existed ([id] is then the database). */
     val databaseId: String? = null,
-    /** Filters (options of [chipProperty]) selected when the view opens. */
+    /** Before [selected]: the options of [chipProperty] selected when the view opened. */
     val filters: List<String> = emptyList(),
     /**
      * Pinned to the navigation bar at the bottom (when there is room, see Destinations). Every
      * view is in the navigation drawer. Views saved before this existed were in the bar.
      */
     val inBar: Boolean = true,
+    /** The Notion view this notebook started from, and its name (null: all notes of the database). */
+    val viewId: String? = null,
+    val viewName: String? = null,
+    /** Shows only the notes the Notion view shows (its filter, as Notion applies it). */
+    val followView: Boolean = true,
+    /** Properties whose values are filter chips above the notes (quick filters). */
+    val quickFilters: List<String> = emptyList(),
+    /** The selected filter values per property: a note shows when it has one of each property's. */
+    val selected: Map<String, List<String>> = emptyMap(),
+    /** The order of the notes (null: Notion's order when following a view, else the custom order). */
+    val sort: NotebookSort? = null,
 ) {
     /** The database this view shows. */
     val sourceId: String get() = databaseId ?: id
+
+    /** The notebook in today's terms: a filter property from before becomes a quick filter. */
+    fun normalized(): DatabaseConfig {
+        val old = chipProperty ?: return this
+        return copy(
+            chipProperty = null,
+            filters = emptyList(),
+            quickFilters = quickFilters.ifEmpty { listOf(old) },
+            selected = if (filters.isEmpty() || old in selected) selected else selected + (old to filters),
+        )
+    }
+
+    /** The order the notes are in now. */
+    val currentSort: NotebookSort
+        get() = sort ?: NotebookSort(if (viewId != null && followView) SortKind.NOTION else SortKind.CUSTOM)
 
     companion object {
         const val DEFAULT_ICON = "note"
     }
 }
+
+/** How a notebook's notes are sorted (pinned notes always come first). */
+@Serializable
+enum class SortKind {
+    /** As the Notion view sorts them (its sort, or its order dragged by hand in Notion). */
+    NOTION,
+
+    /** As placed by dragging on this phone; new notes on top. */
+    CUSTOM,
+    LAST_EDITED,
+    CREATED,
+    TITLE,
+
+    /** By a date property ([NotebookSort.property]); notes without a date last. */
+    DATE,
+}
+
+@Serializable
+data class NotebookSort(
+    val kind: SortKind,
+    val property: String? = null,
+    /** Newest (or Z) first; for [SortKind.NOTION] and [SortKind.CUSTOM] it doesn't apply. */
+    val descending: Boolean = kind != SortKind.TITLE,
+)
+
+/** The notes a Notion view shows, in its order, as Notion said when last asked ([fetchedAt], ISO). */
+@Serializable
+data class ViewResult(
+    val ids: List<String>,
+    val fetchedAt: String,
+)
+
+/** A Notion view of a database, for choosing what a notebook starts from (see ViewCodec). */
+data class NotionView(
+    val id: String,
+    val name: String,
+    /** Notion's layout: table, board, list, calendar, timeline, gallery, … */
+    val type: String,
+    /** Properties in its filter bar (quick filters), by name or ID as Notion gives them. */
+    val quickFilters: List<String> = emptyList(),
+    /** The property a board or list is grouped by (its ID). */
+    val groupBy: String? = null,
+    /** Its properties in order, by ID, with whether each is visible. */
+    val properties: List<Pair<String, Boolean>> = emptyList(),
+    /** Its cards show the page's header image (galleries and boards). */
+    val showsCover: Boolean = false,
+)
 
 /**
  * How a database's properties are shown, chosen by the user (kept on this phone, backed up). As in

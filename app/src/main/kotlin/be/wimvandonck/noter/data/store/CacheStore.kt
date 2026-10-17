@@ -1,5 +1,6 @@
 package be.wimvandonck.noter.data.store
 
+import be.wimvandonck.noter.data.model.ViewResult
 import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.NotionUser
@@ -109,6 +110,13 @@ class CacheStore(private val dir: File) {
     fun savePages(databaseId: String, cache: PagesCache) =
         write("pages_${safe(databaseId)}.json", PagesCache.serializer(), cache)
 
+    /** The notes each followed Notion view showed when last asked, by view ID. */
+    @Synchronized
+    fun views(): Map<String, ViewResult> = read(VIEWS, MapSerializer(String.serializer(), ViewResult.serializer())).orEmpty()
+
+    @Synchronized
+    fun saveViews(views: Map<String, ViewResult>) = write(VIEWS, MapSerializer(String.serializer(), ViewResult.serializer()), views)
+
     /** Removes everything (another Notion workspace was connected). */
     @Synchronized
     fun clear() {
@@ -119,5 +127,6 @@ class CacheStore(private val dir: File) {
         const val OUTBOX = "outbox.json"
         const val USERS = "users.json"
         const val SOURCES = "sources.json"
+        const val VIEWS = "views.json"
     }
 }

@@ -10,6 +10,8 @@ import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.NotionUser
+import be.wimvandonck.noter.data.model.NotionView
+import be.wimvandonck.noter.data.model.ViewResult
 import be.wimvandonck.noter.data.model.PageContent
 import be.wimvandonck.noter.data.model.PageIcon
 import be.wimvandonck.noter.data.model.PageRef
@@ -20,6 +22,7 @@ import be.wimvandonck.noter.data.notion.InlineMarkdown
 import be.wimvandonck.noter.data.notion.PropertyCodec
 import be.wimvandonck.noter.data.notion.TokenCodec
 import be.wimvandonck.noter.data.notion.TokenInfo
+import be.wimvandonck.noter.data.notion.ViewCodec
 import be.wimvandonck.noter.data.notion.WorkspaceCodec
 import be.wimvandonck.noter.data.store.AppSettings
 import be.wimvandonck.noter.data.store.CacheStore
@@ -126,6 +129,16 @@ class NotesRepository(
     val previews: StateFlow<Map<String, String>> = _previews.asStateFlow()
     private val previewLock = Mutex()
 
+    private val _viewResults = MutableStateFlow<Map<String, ViewResult>>(emptyMap())
+
+    /** What each followed Notion view shows, by view ID (see [refreshView]). */
+    val viewResults: StateFlow<Map<String, ViewResult>> = _viewResults.asStateFlow()
+
+    private val _missingViews = MutableStateFlow<Set<String>>(emptySet())
+
+    /** Followed Notion views that Notion doesn't have (any more): their notebooks show all notes. */
+    val missingViews: StateFlow<Set<String>> = _missingViews.asStateFlow()
+
     private val _events = MutableSharedFlow<RepoEvent>(extraBufferCapacity = 8)
     val events: SharedFlow<RepoEvent> = _events
 
@@ -147,7 +160,10 @@ class NotesRepository(
 
     fun start() {
         scope.launch(Dispatchers.IO) {
-            lock.withLock { _outbox.value = cache.outbox() }
+            lock.withLock {
+                _outbox.value = cache.outbox()
+                _viewResults.value = cache.views()
+            }
             outboxLoaded.complete(Unit)
             loadDatabase(PAGES)
             // Databases opened from Browse stay loaded too; they are only a copy.
@@ -208,13 +224,19 @@ class NotesRepository(
     private fun findNote(map: Map<String, DatabaseState>, id: String): NoteSummary? =
         map.values.firstNotNullOfOrNull { db -> db.notes.firstOrNull { it.id == id } }
 
-    /** Refreshes one database from Notion when [SyncPolicy] says it is due (always when [userAsked]). */
+    /**
+     * Refreshes one database from Notion when [SyncPolicy] says it is due (always when [userAsked]),
+     * and with it what the Notion views its notebooks follow show.
+     */
     suspend fun refresh(databaseId: String, userAsked: Boolean) {
         if (!hasKey() || databaseId == PAGES) return
         loadDatabase(databaseId)
         val current = _databases.value[databaseId] ?: return
         if (current.refreshing) return
         val kind = SyncPolicy.decide(clock(), current.lastSyncMs, current.lastFullSyncMs, userAsked)
+        val views = settings.current().databases.filter { it.sourceId == databaseId && it.followView }.mapNotNull { it.viewId }.distinct()
+        // A view not asked about yet is asked about now, also when the notes are up to date.
+        views.filter { kind != RefreshKind.NONE || it !in _viewResults.value }.forEach { refreshView(it) }
         if (kind == RefreshKind.NONE) return
         setState(databaseId) { it.copy(refreshing = true, error = null) }
         val started = clock()
@@ -275,6 +297,37 @@ class NotesRepository(
 
     private fun saveDatabaseCache(id: String, state: DatabaseState) {
         cache.saveDatabase(id, DatabaseCache(state.schema, state.notes, state.lastSyncMs, state.lastFullSyncMs))
+    }
+
+    // ---- Notion views ---------------------------------------------------------------------
+
+    /**
+     * Asks Notion which notes view [viewId] shows, in its order (its own filter and sort, exactly
+     * as Notion applies them), and keeps the answer on this phone for offline use.
+     */
+    suspend fun refreshView(viewId: String) = withContext(Dispatchers.IO) {
+        try {
+            val ids = client.queryView(viewId)
+            val result = ViewResult(ids, Instant.ofEpochMilli(clock()).toString())
+            lock.withLock {
+                _viewResults.update { it + (viewId to result) }
+                cache.saveViews(_viewResults.value)
+            }
+            _missingViews.update { it - viewId }
+        } catch (e: NotionException) {
+            if (e.isOffline) _offline.value = true
+            if (e.isNotFound) _missingViews.update { it + viewId }
+        }
+    }
+
+    /**
+     * The Notion views over data source [dataSourceId] that a notebook can follow (not forms, charts
+     * or dashboards), for setting one up. Throws when Notion can't be reached.
+     */
+    suspend fun viewsOf(dataSourceId: String): List<NotionView> = withContext(Dispatchers.IO) {
+        client.listViews(resolveSource(dataSourceId)).take(MAX_VIEWS).mapNotNull { id ->
+            runCatching { ViewCodec.parse(client.getView(id)) }.getOrNull()
+        }.filter(ViewCodec::isNotebookKind)
     }
 
     // ---- Data sources ---------------------------------------------------------------------
@@ -1094,6 +1147,9 @@ class NotesRepository(
         private const val RETRY_OFFLINE_MAX_MS = 60_000L
         private const val LOOKUP_TTL_MS = 24 * 60 * 60_000L
         private const val RELATED_TTL_MS = 10 * 60_000L
+
+        /** Views of one database read when setting up a notebook (one request each). */
+        private const val MAX_VIEWS = 25
 
         /** How deep nested blocks are downloaded (deeper ones stay in Notion, as nested content). */
         const val MAX_DEPTH = 5

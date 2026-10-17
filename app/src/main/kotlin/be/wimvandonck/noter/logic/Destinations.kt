@@ -33,10 +33,4 @@ object Destinations {
 
     /** The destination to show: [current] while it exists, else Pinned (a removed view). */
     fun valid(current: String, views: List<DatabaseConfig>): String = if (current in keys(views)) current else PINNED
-
-    /**
-     * The filters selected in a view: what the user picked since opening the app, else the
-     * view's own filters.
-     */
-    fun selectedFilters(view: DatabaseConfig?, picked: Set<String>?): Set<String> = picked ?: view?.filters.orEmpty().toSet()
 }

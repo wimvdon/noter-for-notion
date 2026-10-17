@@ -11,6 +11,7 @@ import be.wimvandonck.noter.data.api.NotionException
 import be.wimvandonck.noter.data.model.PageRef
 import be.wimvandonck.noter.data.model.DatabaseConfig
 import be.wimvandonck.noter.data.model.NoteSummary
+import be.wimvandonck.noter.logic.Notebooks
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +19,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 data class DatabaseUiState(
     val title: String = "",
@@ -43,7 +43,8 @@ class DatabaseViewModel(
     private val repository: NotesRepository,
     hasKey: StateFlow<Boolean>,
 ) : ViewModel() {
-    private val selected = MutableStateFlow<Set<String>>(emptySet())
+    /** Filters picked here (a database on its own keeps them until it closes). */
+    private val selected = MutableStateFlow<Map<String, List<String>>>(emptyMap())
     private val chipTitles = MutableStateFlow<Map<String, String>>(emptyMap())
 
     /** Loads the titles of a related database's pages, for the chips of a relation filter. */
@@ -73,9 +74,17 @@ class DatabaseViewModel(
             propertyLayouts = settings.propertyLayouts,
             pendingCount = pending,
         )
+        // Shown like a notebook that isn't saved: its quick filter, the custom order.
+        val unsaved = DatabaseConfig(
+            id = databaseId,
+            name = db?.schema?.title.orEmpty(),
+            databaseId = databaseId,
+            quickFilters = listOfNotNull(defaultChipProperty(databaseId, settings, db)?.name),
+            selected = chips,
+        )
         DatabaseUiState(
             title = db?.schema?.title.orEmpty(),
-            content = databaseContent(base, databaseId, db, defaultChipProperty(databaseId, settings, db), chips, settings),
+            content = notebookContent(base, unsaved, db, null, settings),
             viewCount = settings.databases.count { it.sourceId == databaseId },
             viewId = settings.databases.firstOrNull { it.sourceId == databaseId }?.id,
             sources = list,
@@ -104,18 +113,18 @@ class DatabaseViewModel(
     fun selectSource(id: String) {
         if (id == source.value) return
         source.value = id
-        selected.value = emptySet()
+        selected.value = emptyMap()
         viewModelScope.launch { repository.openDatabase(id) }
     }
 
     fun loadPreviews(notes: List<NoteSummary>) = repository.loadPreviews(notes)
 
-    fun toggleChip(key: String) {
-        selected.value = selected.value.let { if (key in it) it - key else it + key }
+    fun toggleChip(property: String?, key: String) {
+        if (property != null) selected.value = Notebooks.toggle(selected.value, property, key)
     }
 
     fun clearChips() {
-        selected.value = emptySet()
+        selected.value = emptyMap()
     }
 
     fun refresh() = viewModelScope.launch {
@@ -132,26 +141,10 @@ class DatabaseViewModel(
     fun createNote(onCreated: (String) -> Unit) {
         val ui = state.value.content
         viewModelScope.launch {
-            val chipKey = ui.selectedChips.firstOrNull()
-            val schema = ui.chipProperty?.let { repository.databases.value[databaseId]?.schema?.property(it) }
-            val chip = ui.chips.firstOrNull { it.key == chipKey }
-            val preset = if (schema != null && chip != null) listOfNotNull(presetFor(schema, chip)) else emptyList()
+            val preset = presets(ui.filterOptions, selected.value.mapValues { it.value.toSet() })
             val id = repository.createNote(databaseId, preset) ?: return@launch
             onCreated(id)
         }
-    }
-
-    /** Adds this database to the navigation as a view, with the filters selected now. */
-    fun addView(name: String) {
-        val ui = state.value.content
-        val view = DatabaseConfig(
-            id = "view-" + UUID.randomUUID(),
-            name = name,
-            chipProperty = ui.chipProperty,
-            databaseId = databaseId,
-            filters = ui.selectedChips.toList(),
-        )
-        viewModelScope.launch { repository.saveDatabase(view) }
     }
 
     companion object {

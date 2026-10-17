@@ -11,7 +11,9 @@ import be.wimvandonck.noter.data.api.NotionException
 import be.wimvandonck.noter.data.model.DatabaseConfig
 import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.PageRef
+import be.wimvandonck.noter.data.model.NotionView
 import be.wimvandonck.noter.data.model.PropertyLayout
+import be.wimvandonck.noter.logic.Notebooks
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -33,12 +35,22 @@ data class DatabaseDraft(
     val layout: PropertyLayout? = null,
 )
 
+/** Adding a notebook, second step: which Notion view of [database] it follows. */
+data class ViewChoice(
+    val database: PageRef,
+    val roomInBar: Boolean,
+    /** The database's views (null while loading). */
+    val views: List<NotionView>? = null,
+    val error: String? = null,
+)
+
 data class ViewsUiState(
     val views: List<DatabaseConfig> = emptyList(),
     val hasKey: Boolean = false,
-    /** Databases shared with the integration, for "Add view" (null while loading). */
+    /** Databases the token can see, for "Add notebook" (null while loading). */
     val available: List<PageRef>? = null,
     val availableError: String? = null,
+    val viewChoice: ViewChoice? = null,
     val draft: DatabaseDraft? = null,
 )
 
@@ -50,15 +62,16 @@ class ViewsViewModel(
     private val available = MutableStateFlow<List<PageRef>?>(null)
     private val availableError = MutableStateFlow<String?>(null)
     private val draft = MutableStateFlow<DatabaseDraft?>(null)
+    private val viewChoice = MutableStateFlow<ViewChoice?>(null)
 
     val state: StateFlow<ViewsUiState> = combine(
         repository.settingsFlow(),
         hasKey,
-        available,
-        availableError,
+        combine(available, availableError) { a, e -> a to e },
+        viewChoice,
         draft,
-    ) { settings, key, a, e, d ->
-        ViewsUiState(settings.databases, key, a, e, d)
+    ) { settings, key, (a, e), choice, d ->
+        ViewsUiState(settings.databases, key, a, e, choice, d)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ViewsUiState(hasKey = hasKey.value))
 
     fun loadAvailable() {
@@ -74,17 +87,64 @@ class ViewsViewModel(
         }
     }
 
-    /** Starts a new view of [database]; it goes in the navigation bar when there is [roomInBar]. */
-    fun startAdd(database: PageRef, roomInBar: Boolean) {
+    /**
+     * Adding a notebook of [database]: first its Notion views to choose from. It goes in the
+     * navigation bar when there is [roomInBar].
+     */
+    fun chooseView(database: PageRef, roomInBar: Boolean) {
+        viewChoice.value = ViewChoice(database, roomInBar)
+        viewModelScope.launch {
+            val result = try {
+                ViewChoice(database, roomInBar, views = repository.viewsOf(database.id))
+            } catch (e: NotionException) {
+                ViewChoice(database, roomInBar, views = emptyList(), error = e.message)
+            }
+            viewChoice.update { if (it?.database == database) result else it }
+        }
+    }
+
+    /** "Add as notebook" on a database's page: its views to choose from. */
+    fun chooseViewFor(databaseId: String, roomInBar: Boolean) {
+        val title = repository.databases.value[databaseId]?.schema?.title.orEmpty()
+        chooseView(PageRef(databaseId, title), roomInBar)
+    }
+
+    fun cancelViewChoice() {
+        viewChoice.value = null
+    }
+
+    /**
+     * Starts the new notebook, set up like Notion [view] (null: all notes of the database): its
+     * quick filters, order and, unless the user arranged them already, how notes show properties.
+     */
+    fun startAdd(choice: ViewChoice, view: NotionView?) {
+        viewChoice.value = null
+        val database = choice.database
+        // Named after the database, or after the view when the database has more than one.
+        val named = view?.name?.takeIf { it.isNotBlank() && choice.views.orEmpty().size > 1 }
         val config = DatabaseConfig(
             id = "view-" + UUID.randomUUID(),
-            name = database.title,
+            name = named ?: database.title,
             databaseId = database.id,
-            inBar = roomInBar,
+            inBar = choice.roomInBar,
         )
-        draft.value = DatabaseDraft(config, isNew = true)
-        loadLayout(database.id)
-        loadSchema(database.id)
+        draft.value = DatabaseDraft(config.copy(viewId = view?.id, viewName = view?.name, followView = view != null), isNew = true)
+        viewModelScope.launch {
+            val existing = repository.currentSettings().propertyLayouts[database.id]
+            try {
+                val schema = repository.fetchSchema(database.id)
+                draft.update { d ->
+                    if (d?.config?.id != config.id) return@update d
+                    d.copy(
+                        schema = schema,
+                        config = Notebooks.fromView(d.config, view, schema),
+                        layout = Notebooks.layoutFromView(existing, view, schema),
+                    )
+                }
+            } catch (e: NotionException) {
+                draft.update { d -> if (d?.config?.id == config.id) d.copy(schemaError = e.message, layout = existing) else d }
+            }
+        }
     }
 
     fun startEdit(config: DatabaseConfig) {
@@ -112,17 +172,7 @@ class ViewsViewModel(
         viewModelScope.launch {
             try {
                 val schema = repository.fetchSchema(id)
-                draft.update { d ->
-                    if (d?.config?.sourceId != id) return@update d
-                    // Suggest a status or select property for the chips when there is none yet.
-                    val chip = d.config.chipProperty ?: if (d.isNew) {
-                        schema.properties.firstOrNull { it.type == "status" }?.name
-                            ?: schema.properties.firstOrNull { it.type == "select" }?.name
-                    } else {
-                        null
-                    }
-                    d.copy(schema = schema, config = d.config.copy(chipProperty = chip))
-                }
+                draft.update { d -> if (d?.config?.sourceId != id) d else d.copy(schema = schema) }
             } catch (e: NotionException) {
                 draft.update { d -> if (d?.config?.sourceId == id) d.copy(schemaError = e.message) else d }
             }

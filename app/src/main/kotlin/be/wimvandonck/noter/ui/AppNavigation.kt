@@ -135,10 +135,11 @@ fun AppNavigation() {
                         onBack = ::pop,
                         onOpenViews = { push(VIEWS) },
                     )
-                    top == VIEWS || top.startsWith(EDIT_VIEW) -> ViewsScreen(
+                    top == VIEWS || top.startsWith(EDIT_VIEW) || top.startsWith(ADD_NOTEBOOK) -> ViewsScreen(
                         viewModel = viewModel(factory = ViewsViewModel.Factory),
                         onBack = ::pop,
                         editViewId = top.removePrefix(EDIT_VIEW).takeIf { top.startsWith(EDIT_VIEW) },
+                        addDatabaseId = top.removePrefix(ADD_NOTEBOOK).takeIf { top.startsWith(ADD_NOTEBOOK) },
                     )
                     top.startsWith(NOTE) -> NoteScreen(
                         pageId = top.removePrefix(NOTE),
@@ -151,6 +152,7 @@ fun AppNavigation() {
                         onBack = ::pop,
                         onOpenNote = { push(NOTE + it) },
                         onEditView = { push(EDIT_VIEW + it) },
+                        onAddNotebook = { push(ADD_NOTEBOOK + it) },
                     )
                 }
             }
@@ -164,7 +166,10 @@ private const val SETTINGS = "settings"
 private const val VIEWS = "views"
 private const val SEARCH = "search"
 
-/** Manage views with one view's setup open. */
+/** Manage notebooks with one notebook's setup open. */
 private const val EDIT_VIEW = "views:"
+
+/** Manage notebooks, adding a notebook of a database (choosing its Notion view first). */
+private const val ADD_NOTEBOOK = "add-notebook:"
 private const val NOTE = "note:"
 private const val DATABASE = "database:"

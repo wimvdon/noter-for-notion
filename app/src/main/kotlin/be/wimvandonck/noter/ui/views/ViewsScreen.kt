@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,6 +23,14 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.automirrored.rounded.ViewList
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.Map
+import androidx.compose.material.icons.rounded.SelectAll
+import androidx.compose.material.icons.rounded.TableChart
+import androidx.compose.material.icons.rounded.ViewKanban
+import androidx.compose.material.icons.rounded.ViewTimeline
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,7 +43,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,8 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import be.wimvandonck.noter.R
 import be.wimvandonck.noter.data.model.DatabaseConfig
-import be.wimvandonck.noter.data.model.PropertySchema
-import be.wimvandonck.noter.logic.ChipFilter
+import be.wimvandonck.noter.data.model.NotionView
 import be.wimvandonck.noter.logic.Destinations
 import be.wimvandonck.noter.logic.PropertyLayouts
 import be.wimvandonck.noter.data.model.PropertyLayout
@@ -80,25 +85,28 @@ fun rememberWindowWidthDp(): Int {
 }
 
 /**
- * Manage views: the views in their order, each in the navigation drawer and, when pinned, in the
- * navigation bar (as many as fit). Tapping a view edits it; "Add view" picks a database.
+ * Manage notebooks: the notebooks in their order, each in the navigation drawer and, when pinned,
+ * in the navigation bar (as many as fit). Tapping one edits it; "Add notebook" picks a database,
+ * then one of its Notion views to start from.
  */
 @Composable
-fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: String? = null) {
+fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: String? = null, addDatabaseId: String? = null) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // Opened from "Edit view": that view's setup, once.
-    var editOpened by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(editViewId) {
-        if (editViewId != null && !editOpened) {
-            editOpened = true
-            viewModel.startEdit(editViewId)
-        }
-    }
     var addingDatabase by remember { mutableStateOf(false) }
     val width = rememberWindowWidthDp()
     val views = state.views
     val inBar = Destinations.barViews(views, width).map { it.id }.toSet()
     val room = Destinations.barRoom(views, width)
+    // Opened from "Edit notebook" or "Add as notebook" on a database's page: that step, once.
+    var opened by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(editViewId, addDatabaseId) {
+        if (opened) return@LaunchedEffect
+        opened = true
+        when {
+            editViewId != null -> viewModel.startEdit(editViewId)
+            addDatabaseId != null -> viewModel.chooseViewFor(addDatabaseId, roomInBar = room > 0)
+        }
+    }
     val capacity = Destinations.barCapacity(width) - 1
 
     SettingsScaffold(
@@ -159,8 +167,15 @@ fun ViewsScreen(viewModel: ViewsViewModel, onBack: () -> Unit, editViewId: Strin
             onDismiss = { addingDatabase = false },
             onPick = {
                 addingDatabase = false
-                viewModel.startAdd(it, roomInBar = room > 0)
+                viewModel.chooseView(it, roomInBar = room > 0)
             },
+        )
+    }
+    state.viewChoice?.let { choice ->
+        ViewChoiceSheet(
+            choice = choice,
+            onPick = { view -> viewModel.startAdd(choice, view) },
+            onDismiss = viewModel::cancelViewChoice,
         )
     }
     state.draft?.let { draft ->
@@ -186,12 +201,10 @@ private fun DatabaseRow(
     onMove: (Boolean) -> Unit,
     onPin: (Boolean) -> Unit,
 ) {
-    val filters = config.chipProperty?.let { property ->
-        if (config.filters.isEmpty()) {
-            stringResource(R.string.chips_from, property)
-        } else {
-            stringResource(R.string.view_filtered, property, config.filters.joinToString(", "))
-        }
+    val filters = if (config.viewId != null && config.followView) {
+        stringResource(R.string.notebook_follows, config.viewName.orEmpty())
+    } else {
+        stringResource(R.string.notebook_all_notes)
     }
     val place = when {
         shownInBar -> stringResource(R.string.view_in_bar)
@@ -320,68 +333,18 @@ private fun DatabaseEditorSheet(
                 Spacer(Modifier.width(16.dp))
                 Switch(checked = draft.config.inBar, onCheckedChange = null)
             }
-            Text(stringResource(R.string.chip_property), style = MaterialTheme.typography.titleSmall)
+            // Filters and sort are set in the notebook itself (Filters, Sort); here only where it starts from.
             Text(
-                stringResource(R.string.chip_property_help),
+                if (draft.config.viewId != null) {
+                    stringResource(R.string.notebook_follows, draft.config.viewName.orEmpty())
+                } else {
+                    stringResource(R.string.notebook_all_notes)
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            val schema = draft.schema
-            when {
-                draft.schemaError != null -> Text(stringResource(R.string.key_failed, draft.schemaError), color = MaterialTheme.colorScheme.error)
-                schema == null -> CircularProgressIndicator(Modifier.size(24.dp))
-                else -> {
-                    val candidates = schema.properties.filter { it.isChipCandidate }
-                    ChipChoice(null, stringResource(R.string.chip_none), draft.config.chipProperty == null) {
-                        onChange { it.copy(chipProperty = null) }
-                    }
-                    candidates.forEach { prop ->
-                        ChipChoice(prop, prop.name, draft.config.chipProperty == prop.name) {
-                            onChange { if (it.chipProperty == prop.name) it else it.copy(chipProperty = prop.name, filters = emptyList()) }
-                        }
-                    }
-                    if (candidates.isEmpty()) {
-                        Text(stringResource(R.string.chip_property_none_available), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    // The filters selected when the view opens (status and select options; people vary).
-                    val chipSchema = draft.config.chipProperty?.let { schema.property(it) }
-                    // (key, label): the options, or checked and not checked for a checkbox.
-                    val options = when (chipSchema?.type) {
-                        "checkbox" -> listOf(
-                            ChipFilter.CHECKED to stringResource(R.string.chip_checked, chipSchema.name),
-                            ChipFilter.UNCHECKED to stringResource(R.string.chip_unchecked, chipSchema.name),
-                        )
-                        "date" -> listOf(
-                            ChipFilter.OVERDUE to stringResource(R.string.chip_overdue),
-                            ChipFilter.TODAY to stringResource(R.string.chip_today),
-                            ChipFilter.NEXT_7_DAYS to stringResource(R.string.chip_next_7_days),
-                            ChipFilter.LATER to stringResource(R.string.chip_later),
-                            ChipFilter.NO_DATE to stringResource(R.string.chip_no_date),
-                        )
-                        // Relations, people and formulas: their values come from the notes (choose them in the view).
-                        else -> chipSchema?.options.orEmpty().map { it.name to it.name }
-                    }
-                    if (options.isNotEmpty()) {
-                        Text(stringResource(R.string.view_filters), style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            stringResource(R.string.view_filters_help),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            options.forEach { (key, label) ->
-                                val selected = key in draft.config.filters
-                                FilterChip(
-                                    selected = selected,
-                                    onClick = {
-                                        onChange { c -> c.copy(filters = if (selected) c.filters - key else c.filters + key) }
-                                    },
-                                    label = { Text(label) },
-                                )
-                            }
-                        }
-                    }
-                }
+            if (draft.schemaError != null) {
+                Text(stringResource(R.string.key_failed, draft.schemaError), color = MaterialTheme.colorScheme.error)
             }
             CardOptions(draft, onLayout)
             Spacer(Modifier.height(8.dp))
@@ -461,40 +424,65 @@ private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
     }
 }
 
+/**
+ * Adding a notebook, second step: which of the database's Notion views it starts from (its
+ * filter, order, quick filters and property layout), or all its notes.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ChipChoice(property: PropertySchema?, label: String, selected: Boolean, onSelect: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(selected = selected, onClick = null)
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text(label, style = MaterialTheme.typography.bodyLarge)
-            if (property != null) {
-                Text(
-                    stringResource(
-                        when (property.type) {
-                            "status" -> R.string.type_status
-                            "select" -> R.string.type_select
-                            "multi_select" -> R.string.type_multi_select
-                            "checkbox" -> R.string.type_checkbox_property
-                            "relation" -> R.string.type_relation
-                            "created_by" -> R.string.type_created_by
-                            "last_edited_by" -> R.string.type_last_edited_by
-                            "date" -> R.string.type_date
-                            "formula" -> R.string.type_formula
-                            else -> R.string.type_people
-                        },
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+private fun ViewChoiceSheet(choice: ViewChoice, onPick: (NotionView?) -> Unit, onDismiss: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
+            Text(
+                stringResource(R.string.choose_view),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            )
+            Text(
+                choice.database.title.ifBlank { stringResource(R.string.untitled) },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 24.dp),
+            )
+            val views = choice.views
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                when {
+                    views == null -> Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                    else -> {
+                        views.forEach { view ->
+                            ListItem(
+                                headlineContent = { Text(view.name.ifBlank { stringResource(R.string.untitled) }) },
+                                leadingContent = { Icon(viewTypeIcon(view.type), contentDescription = null) },
+                                modifier = Modifier.clickable { onPick(view) },
+                            )
+                        }
+                        ListItem(
+                            headlineContent = { Text(stringResource(R.string.notebook_all_notes)) },
+                            supportingContent = { Text(stringResource(R.string.notebook_all_notes_help)) },
+                            leadingContent = { Icon(Icons.Rounded.SelectAll, contentDescription = null) },
+                            modifier = Modifier.clickable { onPick(null) },
+                        )
+                        if (choice.error != null) {
+                            Text(
+                                stringResource(R.string.key_failed, choice.error),
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(horizontal = 24.dp),
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
+/** Notion's view layouts, drawn with the closest Material icon. */
+private fun viewTypeIcon(type: String) = when (type) {
+    "board" -> Icons.Rounded.ViewKanban
+    "gallery" -> Icons.Rounded.GridView
+    "list" -> Icons.AutoMirrored.Rounded.ViewList
+    "calendar" -> Icons.Rounded.CalendarMonth
+    "timeline" -> Icons.Rounded.ViewTimeline
+    "map" -> Icons.Rounded.Map
+    else -> Icons.Rounded.TableChart
+}

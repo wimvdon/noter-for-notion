@@ -57,7 +57,9 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -149,6 +151,19 @@ fun MainScreen(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
+    val sortedByHand = stringResource(R.string.sorted_by_hand)
+    val undo = stringResource(R.string.undo)
+    LaunchedEffect(viewModel) {
+        viewModel.mainEvents.collect { event ->
+            when (event) {
+                is MainEvent.SortedByHand -> {
+                    // Dragging changed the order; the old one is a tap away.
+                    val result = snackbar.showSnackbar(sortedByHand, actionLabel = undo, duration = SnackbarDuration.Long)
+                    if (result == SnackbarResult.ActionPerformed) viewModel.undoSortedByHand(event)
+                }
+            }
+        }
+    }
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             val text = when (event) {
@@ -294,6 +309,12 @@ fun MainScreen(
                         state = state,
                         previews = previews,
                         onLoadPreviews = viewModel::loadPreviews,
+                        notebookActions = NotebookActions(
+                            onQuickFilter = viewModel::setQuickFilter,
+                            onFollowView = viewModel::setFollowView,
+                            onSort = viewModel::setSort,
+                            onResetToView = viewModel::resetToView,
+                        ),
                         onToggleChip = viewModel::toggleChip,
                         onClearChips = viewModel::clearChips,
                         onLoadChipTitles = { viewModel.loadChipTitles(it) },
@@ -370,8 +391,9 @@ private fun Tab.iconVector(): ImageVector = when {
 }
 
 /**
- * The notes of Pinned, a view or a database: filters on top, then the notes as cards, with
- * pull-to-refresh, loading placeholders and empty states. Moving a note to the trash asks first.
+ * The notes of Pinned, a notebook or a database: filters on top (a notebook's start with Filters
+ * and Sort), then the notes as cards, with pull-to-refresh, loading placeholders and empty
+ * states. Moving a note to the trash asks first.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -379,7 +401,7 @@ internal fun NotesPane(
     state: MainUiState,
     previews: Map<String, String>,
     onLoadPreviews: (List<NoteSummary>) -> Unit,
-    onToggleChip: (String) -> Unit,
+    onToggleChip: (property: String?, key: String) -> Unit,
     onClearChips: () -> Unit,
     onLoadChipTitles: (String) -> Unit,
     onRefresh: () -> Unit,
@@ -387,16 +409,19 @@ internal fun NotesPane(
     onTogglePin: (String) -> Unit,
     onTrash: (String) -> Unit,
     onReordered: (List<String>) -> Unit,
+    notebookActions: NotebookActions? = null,
 ) {
     var confirmTrash by remember { mutableStateOf<NoteSummary?>(null) }
-    LaunchedEffect(state.chipRelationDatabase) { state.chipRelationDatabase?.let(onLoadChipTitles) }
+    var filtersOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(state.chipRelationDatabases) { state.chipRelationDatabases.forEach(onLoadChipTitles) }
     // Previews are only downloaded for cards that show the content.
     LaunchedEffect(state.pinned, state.others, state.propertyLayouts) {
         onLoadPreviews((state.pinned + state.others).filter { PropertyLayouts.showsContent(state.propertyLayouts[it.databaseId]) })
     }
     Column(Modifier.fillMaxSize()) {
-        if (state.chips.isNotEmpty()) {
-            ChipRow(state, onToggle = onToggleChip, onClear = onClearChips)
+        val actions = notebookActions?.takeIf { state.notebook != null }
+        if (state.chipGroups.isNotEmpty() || actions != null) {
+            ChipRow(state, actions, onToggle = onToggleChip, onClear = onClearChips, onOpenFilters = { filtersOpen = true })
         }
         PullToRefreshBox(
             isRefreshing = state.refreshing && !state.loading,
@@ -406,7 +431,8 @@ internal fun NotesPane(
             when {
                 state.loading && state.pinned.isEmpty() && state.others.isEmpty() -> LoadingGrid()
                 state.pinned.isEmpty() && state.others.isEmpty() -> when {
-                    state.selectedChips.isNotEmpty() -> EmptyState(Icons.Rounded.FilterAltOff, stringResource(R.string.empty_filtered)) {
+                    state.filterCount > 0 || state.chipGroups.any { it.selected.isNotEmpty() } ->
+                        EmptyState(Icons.Rounded.FilterAltOff, stringResource(R.string.empty_filtered)) {
                         Button(onClick = onClearChips) { Text(stringResource(R.string.empty_clear_filters)) }
                     }
                     state.isHome -> EmptyState(Icons.Rounded.PushPin, stringResource(R.string.empty_home_title), body = stringResource(R.string.empty_home))
@@ -428,6 +454,15 @@ internal fun NotesPane(
             }
         }
     }
+    if (filtersOpen && notebookActions != null) {
+        NotebookFiltersSheet(
+            state = state,
+            actions = notebookActions,
+            onToggle = { property, key -> onToggleChip(property, key) },
+            onClear = onClearChips,
+            onDismiss = { filtersOpen = false },
+        )
+    }
     confirmTrash?.let { note ->
         AlertDialog(
             onDismissRequest = { confirmTrash = null },
@@ -445,45 +480,63 @@ internal fun NotesPane(
 }
 
 @Composable
-private fun ChipRow(state: MainUiState, onToggle: (String) -> Unit, onClear: () -> Unit) {
+private fun ChipRow(
+    state: MainUiState,
+    actions: NotebookActions?,
+    onToggle: (property: String?, key: String) -> Unit,
+    onClear: () -> Unit,
+    onOpenFilters: () -> Unit,
+) {
+    val anySelected = state.chipGroups.any { it.selected.isNotEmpty() }
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        item(key = "__all") {
-            FilterChip(
-                selected = state.selectedChips.isEmpty(),
-                onClick = onClear,
-                label = { Text(stringResource(R.string.chip_all)) },
-            )
+        if (actions != null) {
+            // A notebook: Filters and Sort first; "Clear filters" is in the Filters panel.
+            item(key = "__notebook") { Row { NotebookChips(state, actions, onOpenFilters) } }
+        } else {
+            item(key = "__all") {
+                FilterChip(
+                    selected = !anySelected,
+                    onClick = onClear,
+                    label = { Text(stringResource(R.string.chip_all)) },
+                )
+            }
         }
-        items(state.chips, key = { it.key }) { chip ->
-            val selected = chip.key in state.selectedChips
-            val icon = if (state.isHome) state.databaseIcons[chip.key] else null
-            val label = chipLabel(chip, state)
-            FilterChip(
-                selected = selected,
-                onClick = { onToggle(chip.key) },
-                label = { Text(if (chip.count > 0) "$label  ${chip.count}" else label) },
-                leadingIcon = if (state.isHome) {
-                    { Icon(DatabaseIcons.icon(icon), contentDescription = null, Modifier.size(FilterChipDefaults.IconSize)) }
-                } else if (chip.isCheckbox || chip.isDate || chip.label.isEmpty()) {
-                    null
-                } else {
-                    { OptionDot(chip.color) }
-                },
-            )
+        state.chipGroups.forEach { group ->
+            val property = group.property
+            items(group.chips, key = { (property?.name ?: "") + "/" + it.key }) { chip ->
+                val selected = chip.key in group.selected
+                val icon = if (state.isHome) state.databaseIcons[chip.key] else null
+                val label = chipLabel(chip, property?.name, state)
+                FilterChip(
+                    selected = selected,
+                    onClick = { onToggle(property?.name, chip.key) },
+                    label = { Text(if (chip.count > 0) "$label  ${chip.count}" else label) },
+                    leadingIcon = if (state.isHome) {
+                        { Icon(DatabaseIcons.icon(icon), contentDescription = null, Modifier.size(FilterChipDefaults.IconSize)) }
+                    } else if (chip.isCheckbox || chip.isDate || chip.label.isEmpty()) {
+                        null
+                    } else {
+                        { OptionDot(chip.color) }
+                    },
+                )
+            }
         }
     }
 }
 
-/** A chip's words: fixed ones for checkbox and date filters, a linked page's title, else its own label. */
+/**
+ * A chip's words: fixed ones for checkbox and date filters (named after [property]), a linked
+ * page's title, else its own label.
+ */
 @Composable
-internal fun chipLabel(chip: Chip, state: MainUiState): String {
-    val property = state.chipProperty.orEmpty()
+internal fun chipLabel(chip: Chip, property: String?, state: MainUiState): String {
+    val name = property.orEmpty()
     return when (chip.key) {
-        ChipFilter.CHECKED -> stringResource(R.string.chip_checked, property)
-        ChipFilter.UNCHECKED -> stringResource(R.string.chip_unchecked, property)
+        ChipFilter.CHECKED -> stringResource(R.string.chip_checked, name)
+        ChipFilter.UNCHECKED -> stringResource(R.string.chip_unchecked, name)
         ChipFilter.OVERDUE -> stringResource(R.string.chip_overdue)
         ChipFilter.TODAY -> stringResource(R.string.chip_today)
         ChipFilter.NEXT_7_DAYS -> stringResource(R.string.chip_next_7_days)
@@ -599,7 +652,7 @@ internal fun NoteGrid(
                         preview = previews[key],
                         showDatabaseIcon = state.isHome,
                         databaseIcon = state.databaseIcons[item.note.databaseId],
-                        chipProperty = state.chipProperty,
+                        chipProperty = state.cardProperty,
                         layout = state.propertyLayouts[item.note.databaseId],
                         lifted = isDragging,
                         // The card's own click also ends a long press; that one opened the menu or moved the card.
