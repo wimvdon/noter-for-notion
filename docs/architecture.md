@@ -82,7 +82,9 @@ properties and content: the pages of databases and pages on their own.
   `PageIconSheet.kt`: common ones, any other typed with the keyboard (`logic/EmojiInput.kt`), or
   none; sent as `PendingOp.SetIcon`, or with the create for a new note), title, properties (`PropertyEditors.kt`; the
   picker of a select or multi-select can add an option: type a name, tap Add, and Notion makes the
-  option when the note is saved, `logic/NewOptions.kt`), then the content as a
+  option when the note is saved, `logic/NewOptions.kt`; an option any cached note has is added to
+  the database's properties at once, `logic/SchemaOptions.kt`, and opening a note downloads its
+  database's properties again so options added in Notion show), then the content as a
   list of blocks, each its own text field. To-do items have an × to delete them. A toolbar above the keyboard changes the block's kind,
   adds a divider or deletes the block. Tapping below the content continues at the end. Moving a
   note to the trash asks first.

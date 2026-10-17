@@ -47,6 +47,7 @@ import be.wimvandonck.noter.logic.KnownUsers
 import be.wimvandonck.noter.logic.NoteOrdering
 import be.wimvandonck.noter.logic.Notebooks
 import be.wimvandonck.noter.logic.NotePreviews
+import be.wimvandonck.noter.logic.SchemaOptions
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -266,7 +267,7 @@ class NotesRepository(
                         .map { Outbox.applyPending(it, queue) }
                     val full = kind == RefreshKind.FULL
                     val updated = (_databases.value[databaseId] ?: DatabaseState()).copy(
-                        schema = schema,
+                        schema = schema?.let { SchemaOptions.withValues(it, merged) },
                         notes = merged,
                         lastSyncMs = started,
                         lastFullSyncMs = if (full) started else current.lastFullSyncMs,
@@ -553,7 +554,9 @@ class NotesRepository(
             val databaseId = findNote(_databases.value, id)?.databaseId ?: return@withLock
             val now = Instant.ofEpochMilli(clock()).toString()
             setState(databaseId) { db ->
-                db.copy(notes = db.notes.map { if (it.id == id) it.withProperty(property).copy(lastEditedTime = now) else it })
+                val notes = db.notes.map { if (it.id == id) it.withProperty(property).copy(lastEditedTime = now) else it }
+                // An option added here shows in every note's picker at once (Notion makes it on sending).
+                db.copy(notes = notes, schema = db.schema?.let { SchemaOptions.withValues(it, notes) })
             }
             _databases.value[databaseId]?.let { saveDatabaseCache(databaseId, it) }
             enqueue(PendingOp.SetProperty(id, property))
@@ -700,7 +703,10 @@ class NotesRepository(
 
     private suspend fun replaceNote(databaseId: String, fresh: NoteSummary) = lock.withLock {
         val note = Outbox.applyPending(fresh, _outbox.value)
-        setState(databaseId) { db -> db.copy(notes = db.notes.map { if (it.id == note.id) note else it }) }
+        setState(databaseId) { db ->
+            val notes = db.notes.map { if (it.id == note.id) note else it }
+            db.copy(notes = notes, schema = db.schema?.let { SchemaOptions.withValues(it, notes) })
+        }
         _databases.value[databaseId]?.let { saveDatabaseCache(databaseId, it) }
     }
 
@@ -1142,7 +1148,21 @@ class NotesRepository(
 
     suspend fun fetchSchema(databaseId: String): DatabaseSchema = withContext(Dispatchers.IO) {
         PropertyCodec.parseSchema(client.getDataSource(resolveSource(databaseId))).also { schema ->
-            if (_databases.value.containsKey(databaseId)) setState(databaseId) { it.copy(schema = schema) }
+            if (_databases.value.containsKey(databaseId)) setState(databaseId) { it.copy(schema = SchemaOptions.withValues(schema, it.notes)) }
+        }
+    }
+
+    /**
+     * Downloads the properties (and their options) of the database note [pageId] is in again, so
+     * options added in Notion since show in its pickers. Nothing for a page's subpages.
+     */
+    suspend fun refreshSchemaOf(pageId: String) {
+        val databaseId = findNote(_databases.value, resolve(pageId))?.databaseId ?: return
+        if (databaseId == PAGES || isPageNotebook(databaseId) || !hasKey()) return
+        try {
+            fetchSchema(databaseId)
+        } catch (e: NotionException) {
+            if (e.isOffline) _offline.value = true
         }
     }
 

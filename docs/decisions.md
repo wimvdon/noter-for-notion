@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-17: Pickers show new options at once
+
+The owner opened a note and didn't see options made recently until going back and refreshing: the options a picker offers came from the database's properties as last downloaded (a full refresh). Now an option any note on the phone has is added to them straight away (also one just added on the phone, before it reaches Notion), and opening a note downloads its database's properties again in the background (one request), so options added in Notion show too. Rejected: downloading the properties each time a picker opens (a wait on every tap).
+
 ## 2026-10-17: Adding options to select and multi-select properties
 
 The picker of a select or multi-select property has a "Search or add" field: a name that isn't an option yet can be added and is picked at once. Notion makes the option itself when the note is saved with a name it doesn't know (if the connection may edit the database), so it works offline and needs no extra request. Not for other properties: a status option can only be added by sending Notion the whole list of options, and an option missing from that list would be deleted from every note, which is too risky for a picker; people come from the workspace; a relation would need a new page in the other database (possible later). Names with a comma aren't offered (Notion doesn't allow them), nor a name that exists in another case.
