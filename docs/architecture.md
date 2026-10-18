@@ -113,7 +113,19 @@ properties and content: the pages of databases and pages on their own.
   set (4 229 icons) from `assets/material_symbols.txt` (name, categories and SVG path data per icon,
   from RSS Reader), drawn as vectors, for the closest match to a Notion icon (`logic/PageIcons.kt`).
 - **Settings** (`ui/settings/`): Connection (a personal access token, with the steps to make one,
-  and sync status) and Appearance; built from the shared `SettingsKit.kt`.
+  and sync status), Other workspaces (once there is a token) and Appearance; built from the shared `SettingsKit.kt`.
+- **Other workspaces** (#58): a token belongs to one workspace, so tokens for other workspaces can
+  be added next to the main one (`ApiKeyStore.extras`, encrypted like it and never backed up;
+  the list itself is `logic/WorkspaceTokens.kt`). Each is tested with `GET /users/me` and shown
+  with its workspace's name. `NotionClient` gets every token: a request about a page, block,
+  database or data source goes with the token that worked for that ID before (`logic/KeyRouter.kt`,
+  in memory; IDs come from the path or a new page's parent and from the answers, see
+  `data/api/NotionRoutes.kt`), else with each token in turn until one isn't answered 404 (or 401/403).
+  Search and the people list ask every workspace and merge (newest first); a refused token only
+  drops its own results. Things without an ID (a page at the top of the workspace, `/users/me`)
+  use the main token. The rest of the app doesn't know about workspaces: Notion's IDs are unique,
+  so cache files and pins stay as they are. Removing a token keeps the notes on the phone; Notion
+  answers "not found" for them from then on.
 - **Which data source** (`NotesRepository.resolveSource`): a key is asked about as a database first
   (its first data source), then as a data source, because Notion may answer for a database's ID
   as if it were a data source. The answers are kept in `sources_v2.json`.

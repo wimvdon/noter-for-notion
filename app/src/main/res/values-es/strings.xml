@@ -189,4 +189,11 @@
     <string name="delete_lines_confirm">Eliminar</string>
     <string name="action_select_text">Seleccionar texto</string>
     <string name="close">Cerrar</string>
+    <string name="section_workspaces">Otros espacios de trabajo</string>
+    <string name="workspaces_help">Añade un token de acceso personal de otro espacio de trabajo para ver también sus notas aquí. Créalo en ese espacio de trabajo, igual que arriba.</string>
+    <string name="workspaces_guests">Los invitados no pueden crear tokens. Un miembro de ese espacio de trabajo puede compartir las páginas con una conexión y darte su token.</string>
+    <string name="workspace_token">Token de otro espacio de trabajo</string>
+    <string name="add_workspace">Añadir espacio de trabajo</string>
+    <string name="remove_workspace">Quitar</string>
+    <string name="workspace_added">Se añadió %1$s.</string>
 </resources>

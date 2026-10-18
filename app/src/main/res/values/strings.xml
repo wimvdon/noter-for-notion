@@ -186,4 +186,11 @@
     <string name="delete_lines_confirm">Delete</string>
     <string name="action_select_text">Select text</string>
     <string name="close">Close</string>
+    <string name="section_workspaces">Other workspaces</string>
+    <string name="workspaces_help">Add a personal access token from another workspace to see its notes here too. Make it in that workspace, the same way as above.</string>
+    <string name="workspaces_guests">Guests can’t make tokens. A member of that workspace can share the pages with a connection and give you its token.</string>
+    <string name="workspace_token">Token for another workspace</string>
+    <string name="add_workspace">Add workspace</string>
+    <string name="remove_workspace">Remove</string>
+    <string name="workspace_added">Added %1$s.</string>
 </resources>

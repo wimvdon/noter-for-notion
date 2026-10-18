@@ -7,6 +7,8 @@ import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import be.wimvandonck.noter.data.notion.TokenKind
+import be.wimvandonck.noter.logic.WorkspaceToken
+import be.wimvandonck.noter.logic.WorkspaceTokens
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -84,8 +86,21 @@ class ApiKeyStore(private val context: Context) {
         _avatar.value = url
     }
 
+    private val _extras by lazy { MutableStateFlow(WorkspaceTokens.decode(prefs.getString(EXTRAS, null))) }
+
+    /** Tokens for other workspaces (#58), next to the main one. Encrypted like it, never backed up. */
+    val extras: StateFlow<List<WorkspaceToken>> get() = _extras
+
+    fun extraTokens(): List<String> = _extras.value.map { it.token }
+
+    fun setExtras(list: List<WorkspaceToken>) {
+        prefs.edit { putString(EXTRAS, WorkspaceTokens.encode(list)) }
+        _extras.value = list
+    }
+
     private companion object {
         const val TAG = "ApiKeyStore"
+        const val EXTRAS = "extra_workspace_tokens"
         const val KEY = "api_key"
         const val KIND = "token_kind"
         const val AVATAR = "owner_avatar_url"

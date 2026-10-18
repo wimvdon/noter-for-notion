@@ -189,4 +189,11 @@
     <string name="delete_lines_confirm">Supprimer</string>
     <string name="action_select_text">Sélectionner du texte</string>
     <string name="close">Fermer</string>
+    <string name="section_workspaces">Autres espaces de travail</string>
+    <string name="workspaces_help">Ajoutez un jeton d’accès personnel d’un autre espace de travail pour voir aussi ses notes ici. Créez-le dans cet espace de travail, comme ci-dessus.</string>
+    <string name="workspaces_guests">Les invités ne peuvent pas créer de jetons. Un membre de cet espace de travail peut partager les pages avec une connexion et vous donner son jeton.</string>
+    <string name="workspace_token">Jeton pour un autre espace de travail</string>
+    <string name="add_workspace">Ajouter l’espace de travail</string>
+    <string name="remove_workspace">Retirer</string>
+    <string name="workspace_added">%1$s ajouté.</string>
 </resources>

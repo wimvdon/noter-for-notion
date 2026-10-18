@@ -186,4 +186,11 @@
     <string name="delete_lines_confirm">Verwijderen</string>
     <string name="action_select_text">Tekst selecteren</string>
     <string name="close">Sluiten</string>
+    <string name="section_workspaces">Andere werkruimtes</string>
+    <string name="workspaces_help">Voeg een persoonlijk toegangstoken van een andere werkruimte toe om ook die notities hier te zien. Maak het in die werkruimte, zoals hierboven.</string>
+    <string name="workspaces_guests">Gasten kunnen geen tokens maken. Een lid van die werkruimte kan de pagina’s met een koppeling delen en je het token daarvan geven.</string>
+    <string name="workspace_token">Token voor een andere werkruimte</string>
+    <string name="add_workspace">Werkruimte toevoegen</string>
+    <string name="remove_workspace">Verwijderen</string>
+    <string name="workspace_added">%1$s toegevoegd.</string>
 </resources>
