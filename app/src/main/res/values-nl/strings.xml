@@ -175,4 +175,13 @@
     <string name="source_missing_body">Misschien is ze verwijderd of naar de prullenbak verplaatst, of heeft de koppeling er geen toegang meer toe.</string>
     <string name="action_new">Nieuw</string>
     <string name="section_recent">Databases en pagina’s</string>
+    <string name="action_share">Delen</string>
+    <string name="action_select_lines">Regels selecteren</string>
+    <string name="action_select_all">Alles selecteren</string>
+    <string name="action_copy">Kopiëren</string>
+    <string name="copied">Gekopieerd</string>
+    <string name="selected_count">%1$d geselecteerd</string>
+    <string name="delete_lines_title">Geselecteerde regels verwijderen?</string>
+    <string name="delete_lines_body">Ze worden uit de notitie verwijderd, ook in Notion.</string>
+    <string name="delete_lines_confirm">Verwijderen</string>
 </resources>

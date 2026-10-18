@@ -8,10 +8,10 @@ properties and content: the pages of databases and pages on their own.
 ### Screens
 - **Home** (`ui/main/MainScreen.kt`, `MainViewModel`): no navigation bar. On top a large, rounded
   search bar ("Search Notion") with the sync button (while changes wait or the phone is offline)
-  and Settings at its end; tapping it opens Search. Below it, one scrolling grid:
+  and Settings at its end (the profile picture of the person the token acts as when Notion tells it, else a cogwheel); tapping it opens Search. Below it, one scrolling grid:
   - **Pinned**: the pinned databases as rows (`AppSettings.pinnedDatabases`: the key that opens
     each, with its name and icon as last seen, so Home shows them offline; a pinned database keeps
-    Notion's name and icon each time it is opened), then the pinned notes and pages as cards
+    Notion's name and icon each time it is opened; a long press and drag moves one among the others, a long press without moving opens its menu, Unpin; `NotesRepository.savePinnedDatabaseOrder`), then the pinned notes and pages as cards
     (`AppSettings.pinned`, `logic/NoteLists.kt`), in the order they were pinned unless dragged.
     Every database with a copy on this phone is read when the app starts, so they show at once;
     coming to the front refreshes the databases the pinned notes are in (`pinnedSources`).
@@ -39,10 +39,10 @@ properties and content: the pages of databases and pages on their own.
   of chips (`DatabaseSetups.initial`). The top app bar has the sync button, **Filters** (a dot on
   the button while filters are on: the panel lists the properties it can filter by, arranged like
   a note's properties with `PropertyArranger` ("Shown" ones have a row of chips above the notes, in
-  that order; dragged past the "Hidden" line, or the eye, it loses its row), each with its values
+  that order; dragged past the "Hidden" line, or the eye, it loses its row; the order of the hidden ones is kept too, `DatabaseSetup.filterOrder`), each with its values
   to filter by right below it (`PropertyArranger`'s `below`; also the hidden ones); Clear
   filters), **Sort** (a menu: tapping the current sort again turns it around, an arrow shows which
-  way) and ⋮: Pin (or Unpin) and Cards (the header image (off by default), the start of the
+  way) and ⋮: Pin (or Unpin), Share (Notion's link to the database) and Cards (the header image (off by default), the start of the
   content (on; when off, no previews are downloaded for it) and up to three properties, else the
   card shows the first row's property). Above the notes, one row of chips per quick filter,
   each starting with the property's name and, while something in it is selected, ending in ×; a
@@ -98,7 +98,7 @@ properties and content: the pages of databases and pages on their own.
   the database's properties at once, `logic/SchemaOptions.kt`, and opening a note downloads its
   database's properties again so options added in Notion show), then the content as a
   list of blocks, each its own text field. To-do items have an × to delete them. A toolbar above the keyboard changes the block's kind,
-  adds a divider or deletes the block. Tapping below the content continues at the end. Moving a
+  adds a divider, deletes the block or starts selecting lines (a tap selects a line; the bar then has Select all, Copy as Markdown text and Delete, `logic/BlockSelection.kt`). A new line is scrolled into view just above the keyboard and no further (`logic/Reveal.kt`). The title row ends in the button that arranges the properties; the ⋮ menu has Share (the page's Notion link). Tapping below the content continues at the end. Moving a
   note to the trash asks first.
 - **Properties per database** (`logic/PropertyLayouts.kt`, `ui/note/PropertyArranger.kt`): as in
   Notion, every property is shown until the user hides it; hidden ones are folded away under "N
@@ -122,8 +122,8 @@ properties and content: the pages of databases and pages on their own.
   no data source), said in the user's language; other errors keep Notion's own (English) message.
 - **Token kind** (`data/notion/TokenCodec.kt`): Notion's `GET /users/me` says whether the token
   is a personal access token (a bot owned by a person) or an internal connection's (owned by the
-  workspace). It is kept with the token (`ApiKeyStore.kind`; keys saved before are checked once
-  at start). With a connection's token, Settings warns that the app only sees the pages shared
+  workspace). It is kept with the token (`ApiKeyStore.kind`) and asked again at each start, together with the profile picture of the person
+  it acts as (`TokenInfo.avatarUrl`, kept in `ApiKeyStore.avatarUrl`, shown on Home). With a connection's token, Settings warns that the app only sees the pages shared
   with it, and "New page at the top of your workspace" isn't offered (Notion refuses it). A
   personal access token can't list the workspace's people, so person properties offer the people
   in the notes here and the token's owner (`logic/KnownUsers.kt`).

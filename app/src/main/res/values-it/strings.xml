@@ -178,4 +178,13 @@
     <string name="source_missing_body">Forse è stata eliminata o spostata nel cestino, oppure la connessione non vi ha più accesso.</string>
     <string name="action_new">Nuovo</string>
     <string name="section_recent">Database e pagine</string>
+    <string name="action_share">Condividi</string>
+    <string name="action_select_lines">Seleziona righe</string>
+    <string name="action_select_all">Seleziona tutto</string>
+    <string name="action_copy">Copia</string>
+    <string name="copied">Copiato</string>
+    <string name="selected_count">Selezionate: %1$d</string>
+    <string name="delete_lines_title">Eliminare le righe selezionate?</string>
+    <string name="delete_lines_body">Vengono rimosse dalla nota, anche in Notion.</string>
+    <string name="delete_lines_confirm">Elimina</string>
 </resources>

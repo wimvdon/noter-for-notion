@@ -58,8 +58,8 @@ import be.wimvandonck.noter.ui.note.PropertyArranger
 
 /** What the Filters panel and the Sort menu change in the database shown. */
 class SetupActions(
-    /** The properties with a row of chips above the notes, in this order. */
-    val onQuickFilters: (List<String>) -> Unit,
+    /** The Filters panel was arranged: the properties with a row of chips above the notes, then the hidden ones, each in order. */
+    val onArrangeFilters: (shown: List<String>, hidden: List<String>) -> Unit,
     val onSort: (NoteSort) -> Unit,
 )
 
@@ -152,7 +152,7 @@ internal fun FiltersSheet(
 ) {
     val setup = state.setup ?: return
     val candidates = state.filterOptions.map { it.property.name }
-    val (rows, others) = DatabaseSetups.chipRows(candidates, setup.quickFilters)
+    val (rows, others) = DatabaseSetups.chipRows(candidates, setup.quickFilters, setup.filterOrder)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(
             Modifier
@@ -170,7 +170,7 @@ internal fun FiltersSheet(
             PropertyArranger(
                 names = candidates,
                 layout = PropertyLayout(order = rows + others, hidden = others),
-                onArrange = { shown, _ -> actions.onQuickFilters(shown) },
+                onArrange = actions.onArrangeFilters,
                 onDone = null,
                 shownTitle = stringResource(R.string.chip_rows_shown),
                 below = { name ->

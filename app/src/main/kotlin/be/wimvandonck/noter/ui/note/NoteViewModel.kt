@@ -174,6 +174,9 @@ class NoteViewModel(
 
     fun delete(key: String) = apply(editor.delete(blocks.value, key))
 
+    /** Deletes the selected lines (see BlockSelection), each with what is nested in it. */
+    fun deleteBlocks(keys: Set<String>) = apply(editor.deleteMany(blocks.value, keys))
+
     /** Tapping below the content: a text line at the end to type in. */
     fun addLineAtEnd() {
         if (!editable()) return

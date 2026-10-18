@@ -69,6 +69,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.util.UUID
+import be.wimvandonck.noter.logic.NoteLists
 
 /** One database's notes as the screens see them. */
 data class DatabaseState(
@@ -1168,6 +1169,14 @@ class NotesRepository(
         settings.update { s ->
             val pinned = s.pinnedDatabases.any { plain(it.id) == plain(pin.id) }
             s.copy(pinnedDatabases = if (pinned) s.pinnedDatabases.filterNot { plain(it.id) == plain(pin.id) } else listOf(pin) + s.pinnedDatabases)
+        }
+    }
+
+    /** Keeps the order the user dragged Home's pinned databases to ([ids], first on top). */
+    suspend fun savePinnedDatabaseOrder(ids: List<String>) {
+        settings.update { s ->
+            val ordered = NoteLists.reorderDatabases(s.pinnedDatabases, ids)
+            if (ordered == s.pinnedDatabases) s else s.copy(pinnedDatabases = ordered)
         }
     }
 

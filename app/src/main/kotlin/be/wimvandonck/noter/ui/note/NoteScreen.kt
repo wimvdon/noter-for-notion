@@ -146,6 +146,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import be.wimvandonck.noter.data.notion.BlockCodec
 import be.wimvandonck.noter.data.notion.InlineMarkdown
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.os.Build
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.SelectAll
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.launch
+import be.wimvandonck.noter.logic.Reveal
+import be.wimvandonck.noter.logic.BlockSelection
+import be.wimvandonck.noter.ui.common.shareLink
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -163,6 +178,10 @@ fun NoteScreen(
     var confirmTrash by remember { mutableStateOf(false) }
     var arranging by rememberSaveable { mutableStateOf(false) }
     var choosingIcon by rememberSaveable { mutableStateOf(false) }
+    // Selecting several lines (to copy or delete them), see BlockSelection.
+    var selecting by remember { mutableStateOf(false) }
+    var selected by remember { mutableStateOf(emptySet<String>()) }
+    var confirmDeleteLines by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val openFailed by viewModel.openFailed.collectAsStateWithLifecycle()
     val openFailedText = stringResource(R.string.page_open_failed)
@@ -177,17 +196,53 @@ fun NoteScreen(
     val focusManager = LocalFocusManager.current
     val listState = rememberLazyListState()
     val note = state.note
+    val scope = rememberCoroutineScope()
+    val copiedText = stringResource(R.string.copied)
+
+    fun stopSelecting() {
+        selecting = false
+        selected = emptySet()
+    }
+    BackHandler(enabled = selecting) { stopSelecting() }
+
+    fun copySelected() {
+        val text = BlockSelection.asText(state.blocks, selected)
+        context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText(null, text))
+        // From Android 13 the system says it itself.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) scope.launch { snackbar.showSnackbar(copiedText) }
+        stopSelecting()
+    }
 
     LaunchedEffect(note?.id) { note?.let { viewModel.loadRelatedFor(it, state.schema) } }
 
-    // Keep the line with the cursor on screen after Enter adds one at the bottom.
+    // Keep the line with the cursor on screen after Enter adds one at the bottom: scrolled just far
+    // enough to show it above the keyboard (not to the top of the list, which made the note jump).
+    val revealMargin = with(LocalDensity.current) { REVEAL_MARGIN.roundToPx() }
     LaunchedEffect(focus) {
         val target = focus ?: return@LaunchedEffect
         val index = state.blocks.indexOfFirst { it.key == target.key }
         if (index < 0) return@LaunchedEffect
         val itemIndex = index + blocksOffset(note)
-        val visible = listState.layoutInfo.visibleItemsInfo.map { it.index }
-        if (itemIndex !in visible || itemIndex >= (visible.maxOrNull() ?: 0)) listState.animateScrollToItem(itemIndex)
+        fun visibleItem() = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == itemIndex }
+        // A new line is laid out a frame later.
+        withFrameNanos { }
+        val item = visibleItem() ?: run {
+            // Far away: bring it in, then fine-tune.
+            listState.scrollToItem(itemIndex)
+            withFrameNanos { }
+            visibleItem()
+        }
+        if (item != null) {
+            val layout = listState.layoutInfo
+            val delta = Reveal.scrollBy(
+                top = item.offset,
+                bottom = item.offset + item.size,
+                viewStart = layout.viewportStartOffset + layout.beforeContentPadding,
+                viewEnd = layout.viewportEndOffset - layout.afterContentPadding,
+                margin = revealMargin,
+            )
+            if (delta != 0f) listState.animateScrollBy(delta)
+        }
     }
 
     if (choosingIcon && note != null) {
@@ -207,11 +262,36 @@ fun NoteScreen(
         )
     }
 
+    if (confirmDeleteLines) {
+        AlertDialog(
+            onDismissRequest = { confirmDeleteLines = false },
+            title = { Text(stringResource(R.string.delete_lines_title)) },
+            text = { Text(stringResource(R.string.delete_lines_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDeleteLines = false
+                    viewModel.deleteBlocks(selected)
+                    stopSelecting()
+                }) { Text(stringResource(R.string.delete_lines_confirm)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDeleteLines = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+
     Scaffold(
         contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            TopAppBar(
+            if (selecting) {
+                SelectionBar(
+                    count = selected.size,
+                    canDelete = selected.isNotEmpty() && state.editable,
+                    onClose = { stopSelecting() },
+                    onSelectAll = { selected = BlockSelection.all(state.blocks) },
+                    onCopy = { copySelected() },
+                    onDelete = { confirmDeleteLines = true },
+                )
+            } else TopAppBar(
                 title = {},
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -240,6 +320,14 @@ fun NoteScreen(
                                         onClick = {
                                             menu = false
                                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, note.url.toUri())) }
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.action_share)) },
+                                        leadingIcon = { Icon(Icons.Rounded.Share, null) },
+                                        onClick = {
+                                            menu = false
+                                            shareLink(context, InlineMarkdown.stripped(note.title), note.url)
                                         },
                                     )
                                 }
@@ -278,6 +366,12 @@ fun NoteScreen(
                         onIndent = { viewModel.indent(block.key) },
                         onOutdent = { viewModel.outdent(block.key) },
                         onAddDivider = { viewModel.insertAfter(block.key, BlockType.DIVIDER) },
+                        onSelect = {
+                            selected = setOf(block.key)
+                            selecting = true
+                            keyboard?.hide()
+                            focusManager.clearFocus()
+                        },
                         onDelete = { viewModel.delete(block.key) },
                         onDone = { keyboard?.hide(); focusManager.clearFocus() },
                     )
@@ -333,19 +427,51 @@ fun NoteScreen(
                             .semantics { contentDescription = label },
                     )
                 } else {
-                    TextButton(onClick = { choosingIcon = true }, modifier = Modifier.padding(top = 4.dp)) {
-                        Icon(Icons.Rounded.AddReaction, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.add_icon))
+                    // Quiet, so it doesn't take a line of its own: small and in the body's grey, no button.
+                    Row(
+                        Modifier
+                            .padding(top = 4.dp)
+                            .clip(AppShapes.Item)
+                            .clickable(role = Role.Button) { choosingIcon = true }
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Rounded.AddReaction,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            stringResource(R.string.add_icon),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }
             item(key = "__title") {
-                TitleField(
-                    note = note,
-                    onChange = { text -> titleProperty?.let { viewModel.setProperty(it.copy(value = PropertyValue.Text(text)), debounce = true) } },
-                    onEnter = { state.blocks.firstOrNull()?.let { viewModel.focusBlock(it.key, 0) } },
-                )
+                // The button that arranges the properties sits at the end of the title row, so it
+                // never takes a line of its own.
+                Row(verticalAlignment = Alignment.Top) {
+                    Box(Modifier.weight(1f)) {
+                        TitleField(
+                            note = note,
+                            onChange = { text -> titleProperty?.let { viewModel.setProperty(it.copy(value = PropertyValue.Text(text)), debounce = true) } },
+                            onEnter = { state.blocks.firstOrNull()?.let { viewModel.focusBlock(it.key, 0) } },
+                        )
+                    }
+                    if (!arranging && note.properties.any { it.type != "title" }) {
+                        IconButton(onClick = { arranging = true }, modifier = Modifier.padding(top = 2.dp)) {
+                            Icon(
+                                Icons.Rounded.Tune,
+                                contentDescription = stringResource(R.string.customize_properties),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
             }
             item(key = "__properties") {
                 if (arranging) {
@@ -356,7 +482,7 @@ fun NoteScreen(
                         onDone = { arranging = false },
                     )
                 } else {
-                    PropertiesPanel(note, state, lookups, onArrange = { arranging = true }) { prop, debounce ->
+                    PropertiesPanel(note, state, lookups) { prop, debounce ->
                         viewModel.setProperty(prop, debounce)
                     }
                 }
@@ -383,7 +509,13 @@ fun NoteScreen(
                 }
                 itemsIndexed(state.blocks, key = { _, it -> it.key }) { index, block ->
                     // Nested blocks are indented, as in Notion; columns are shown one below the other.
-                    Column(Modifier.animateItem().padding(start = NEST_INDENT * (visualDepths.getOrNull(index) ?: block.depth))) {
+                    val isSelected = block.key in selected
+                    Box(Modifier.animateItem()) {
+                    Column(
+                        Modifier
+                            .then(if (selecting && isSelected) Modifier.background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f), AppShapes.Item) else Modifier)
+                            .padding(start = NEST_INDENT * (visualDepths.getOrNull(index) ?: block.depth)),
+                    ) {
                         BlockRow(
                             block = block,
                             previousRawType = state.blocks.getOrNull(index - 1)?.rawType,
@@ -410,6 +542,15 @@ fun NoteScreen(
                                 }
                             },
                         )
+                    }
+                    // While selecting, a tap on a line selects it (instead of placing the cursor in it).
+                    if (selecting && BlockSelection.selectable(block)) {
+                        Box(
+                            Modifier
+                                .matchParentSize()
+                                .toggleable(value = isSelected, role = Role.Checkbox) { selected = BlockSelection.toggle(selected, block.key) },
+                        )
+                    }
                     }
                 }
                 item(key = "__footer") {
@@ -510,10 +651,37 @@ private fun TrashDialog(title: String, onConfirm: () -> Unit, onDismiss: () -> U
     )
 }
 
+/** The bar that replaces the app bar while lines are selected: how many, Select all, Copy, Delete. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SelectionBar(
+    count: Int,
+    canDelete: Boolean,
+    onClose: () -> Unit,
+    onSelectAll: () -> Unit,
+    onCopy: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    TopAppBar(
+        title = { Text(stringResource(R.string.selected_count, count)) },
+        navigationIcon = {
+            IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cancel)) }
+        },
+        actions = {
+            IconButton(onClick = onSelectAll) { Icon(Icons.Rounded.SelectAll, contentDescription = stringResource(R.string.action_select_all)) }
+            IconButton(onClick = onCopy, enabled = count > 0) { Icon(Icons.Rounded.ContentCopy, contentDescription = stringResource(R.string.action_copy)) }
+            IconButton(onClick = onDelete, enabled = canDelete) { Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.action_delete_line)) }
+        },
+    )
+}
+
 /** Index of the first block in the list (after cover, icon, title, properties and divider). */
 private fun blocksOffset(note: NoteSummary?): Int = 4 + (if (note?.cover != null) 1 else 0)
 
 private val COVER_HEIGHT = 180.dp
+
+/** How much room a line scrolled into view keeps above the keyboard. */
+private val REVEAL_MARGIN = 16.dp
 
 /** How far each level of nested blocks is indented. */
 private val NEST_INDENT = 24.dp
@@ -576,7 +744,6 @@ private fun PropertiesPanel(
     note: NoteSummary,
     state: NoteUiState,
     lookups: PropertyLookups,
-    onArrange: () -> Unit,
     onChange: (NoteProperty, Boolean) -> Unit,
 ) {
     val arranged = remember(note.properties, state.layout) { PropertyLayouts.arrange(note.properties, state.layout) }
@@ -590,35 +757,26 @@ private fun PropertiesPanel(
                 arranged.hidden.forEach { prop -> PropertyRow(prop, state.schema?.property(prop.name), lookups, onChange) }
             }
         }
-        // The hidden properties, and the button to arrange them (in place, see PropertyArranger).
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            if (arranged.hidden.isNotEmpty()) {
-                val rotation by animateFloatAsState(if (showHidden) 180f else 0f, label = "chevron")
-                Row(
-                    Modifier
-                        .weight(1f)
-                        .clickable(role = Role.Button) { showHidden = !showHidden }
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        if (showHidden) {
-                            stringResource(R.string.hide_properties)
-                        } else {
-                            pluralStringResource(R.plurals.more_properties, arranged.hidden.size, arranged.hidden.size)
-                        },
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Icon(Icons.Rounded.ExpandMore, contentDescription = null, modifier = Modifier.rotate(rotation), tint = MaterialTheme.colorScheme.primary)
-                }
-            } else {
-                Spacer(Modifier.weight(1f))
-            }
-            if (arranged.shown.isNotEmpty() || arranged.hidden.isNotEmpty()) {
-                IconButton(onClick = onArrange) {
-                    Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.customize_properties), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+        // The hidden properties, folded away (arranging them is the button at the end of the title row).
+        if (arranged.hidden.isNotEmpty()) {
+            val rotation by animateFloatAsState(if (showHidden) 180f else 0f, label = "chevron")
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(role = Role.Button) { showHidden = !showHidden }
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    if (showHidden) {
+                        stringResource(R.string.hide_properties)
+                    } else {
+                        pluralStringResource(R.plurals.more_properties, arranged.hidden.size, arranged.hidden.size)
+                    },
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Icon(Icons.Rounded.ExpandMore, contentDescription = null, modifier = Modifier.rotate(rotation), tint = MaterialTheme.colorScheme.primary)
             }
         }
     }
@@ -823,6 +981,7 @@ private fun FormatToolbar(
     onIndent: () -> Unit,
     onOutdent: () -> Unit,
     onAddDivider: () -> Unit,
+    onSelect: () -> Unit,
     onDelete: () -> Unit,
     onDone: () -> Unit,
 ) {
@@ -871,6 +1030,7 @@ private fun FormatToolbar(
                 Icon(Icons.AutoMirrored.Rounded.FormatIndentIncrease, contentDescription = stringResource(R.string.action_indent))
             }
             IconButton(onClick = onAddDivider) { Icon(Icons.Rounded.HorizontalRule, contentDescription = stringResource(R.string.insert_divider)) }
+            IconButton(onClick = onSelect) { Icon(Icons.Rounded.SelectAll, contentDescription = stringResource(R.string.action_select_lines)) }
             IconButton(onClick = onDelete) { Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.action_delete_line)) }
             IconButton(onClick = onDone) { Icon(Icons.Rounded.KeyboardHide, contentDescription = stringResource(R.string.action_hide_keyboard)) }
         }

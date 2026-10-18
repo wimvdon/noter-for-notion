@@ -55,6 +55,9 @@ import be.wimvandonck.noter.ui.common.PageIconView
 import be.wimvandonck.noter.ui.common.SMALL_PAGE_ICON
 import be.wimvandonck.noter.ui.common.SyncButton
 import be.wimvandonck.noter.ui.theme.EmptyState
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.rounded.Share
+import be.wimvandonck.noter.ui.common.shareLink
 
 /**
  * A database, opened from Home, Search or a link in a note: its notes with rows of filter chips.
@@ -78,7 +81,8 @@ fun DatabaseScreen(
     var filtersOpen by remember { mutableStateOf(false) }
     var cardsOpen by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
-    val actions = SetupActions(onQuickFilters = viewModel::setQuickFilters, onSort = viewModel::setSort)
+    val context = LocalContext.current
+    val actions = SetupActions(onArrangeFilters = viewModel::arrangeFilters, onSort = viewModel::setSort)
 
     val sortedByHand = stringResource(R.string.sorted_by_hand)
     val undo = stringResource(R.string.undo)
@@ -137,6 +141,14 @@ fun DatabaseScreen(
                                             onClick = {
                                                 menu = false
                                                 viewModel.togglePinDatabase()
+                                            },
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.action_share)) },
+                                            leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
+                                            onClick = {
+                                                menu = false
+                                                shareLink(context, state.title, viewModel.shareUrl())
                                             },
                                         )
                                         DropdownMenuItem(

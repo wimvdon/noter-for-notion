@@ -12,6 +12,11 @@ import kotlinx.serialization.Serializable
 data class DatabaseSetup(
     /** Properties whose values are filter chips above the notes (quick filters), one row each, in this order. */
     val quickFilters: List<String> = emptyList(),
+    /**
+     * The order of every property the Filters panel lists, the ones with a row of chips and the
+     * hidden ones (empty: the database's order). [quickFilters] are the shown ones among them.
+     */
+    val filterOrder: List<String> = emptyList(),
     /** The selected filter values per property: a note shows when it has one of each property's. */
     val selected: Map<String, List<String>> = emptyMap(),
     /** The order of the notes (null: the custom order). */

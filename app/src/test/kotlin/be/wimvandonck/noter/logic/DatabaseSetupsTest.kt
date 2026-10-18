@@ -103,6 +103,26 @@ class DatabaseSetupsTest {
     }
 
     @Test
+    fun `the other properties keep the order the user gave them`() {
+        val candidates = listOf("Status", "Tag", "Owner", "Due")
+        val (rows, others) = DatabaseSetups.chipRows(candidates, listOf("Status"), filterOrder = listOf("Status", "Due", "Gone", "Tag"))
+        assertEquals(listOf("Status"), rows)
+        // "Due" and "Tag" as placed, then "Owner", which wasn't placed yet.
+        assertEquals(listOf("Due", "Tag", "Owner"), others)
+    }
+
+    @Test
+    fun `arranging the filters keeps the shown ones as rows and the order of all of them`() {
+        val setup = DatabaseSetups.arranged(DatabaseSetup(selected = mapOf("Tag" to listOf("Home"))), shown = listOf("Tag", "Status"), hidden = listOf("Due", "Owner"))
+        assertEquals(listOf("Tag", "Status"), setup.quickFilters)
+        assertEquals(listOf("Tag", "Status", "Due", "Owner"), setup.filterOrder)
+        assertEquals(mapOf("Tag" to listOf("Home")), setup.selected)
+        val (rows, others) = DatabaseSetups.chipRows(listOf("Status", "Tag", "Owner", "Due"), setup.quickFilters, setup.filterOrder)
+        assertEquals(listOf("Tag", "Status"), rows)
+        assertEquals(listOf("Due", "Owner"), others)
+    }
+
+    @Test
     fun `a row of chips only shows once a note has a value for it`() {
         val setup = DatabaseSetup(quickFilters = listOf("Status", "Tag"))
         val withoutTags = listOf(note("1", "Todo"), note("2", "Done"))
