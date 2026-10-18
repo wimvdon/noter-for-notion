@@ -124,6 +124,33 @@ object BlockCodec {
     }
 
     /**
+     * The body for creating [block], also an image or a bookmark made from a link (shared to the
+     * app, #63, see SharedNotes); null for other read-only blocks, which are never written.
+     */
+    fun createRequestOrNull(block: Block): Map<String, Any?>? {
+        if (block.type != BlockType.UNSUPPORTED) return toCreateRequest(block)
+        val url = block.url ?: return null
+        return when (block.rawType) {
+            "image" -> mapOf("object" to "block", "type" to "image", "image" to mapOf("type" to "external", "external" to mapOf("url" to url)))
+            "bookmark" -> mapOf("object" to "block", "type" to "bookmark", "bookmark" to mapOf("url" to url))
+            else -> null
+        }
+    }
+
+    /**
+     * What to send with a new page made from shared content ([blocks]), best first: everything;
+     * without the images (Notion refuses an image link it can't use, and then the whole page);
+     * without the bookmark too; nothing. Each list once.
+     */
+    fun createAttempts(blocks: List<Block>): List<List<Map<String, Any?>>> =
+        listOf(
+            blocks,
+            blocks.filterNot { it.type == BlockType.UNSUPPORTED && it.rawType == "image" },
+            blocks.filter { it.type != BlockType.UNSUPPORTED },
+            emptyList(),
+        ).map { list -> list.mapNotNull { createRequestOrNull(it) } }.distinct()
+
+    /**
      * The body for updating [block] in place (same type). Only the text and checked state are
      * sent, so what the app doesn't edit (a callout's icon, a code block's language, colours)
      * stays as it is in Notion.

@@ -1,13 +1,13 @@
 # Privacy policy
 
-_Last updated: 2026-10-18 (workspaces)_
+_Last updated: 2026-10-18 (sharing to the app)_
 
 Noter for Notion shows and edits notes in **your own Notion workspace**. It has no server of its
 own, no analytics, no advertising and no crash reporting.
 
 ## What the app sends, and where
 
-- The app talks only to **Notion's API** (`api.notion.com`), with the personal access token you
+- The app talks to **Notion's API** (`api.notion.com`), with the personal access token you
   make yourself in Notion (or the key of an integration you made). With a personal access token it
   can read the pages and databases you can see in Notion; with an integration's key only the ones
   you shared with it. If you add tokens for several workspaces (Settings › Workspaces), each
@@ -20,6 +20,12 @@ own, no analytics, no advertising and no crash reporting.
   image links to. Those websites see an ordinary image request from your phone (its IP address),
   as a browser would; nothing about you or your notes is sent with it. Files, videos and links
   in a note are only opened (in your browser) when you tap them.
+- **Links you share to the app**: when you share a web link to Noter from another app, Noter
+  downloads that one page from its website, once, to copy its text and images into the new note
+  (the images themselves stay on that website, and Notion and your phone load them from there).
+  The website sees an ordinary request from your phone (its IP address), as a browser would; no
+  cookies, nothing about you or your notes is sent with it. Nothing is downloaded for text without
+  a link, and no link is ever opened without you sharing it.
 - Nothing else leaves your phone. Notion's own privacy policy applies to the data in your
   workspace: <https://www.notion.so/notion/Privacy-Policy-3468d120cf614d4c9014c09f6adc9091>.
 
@@ -41,8 +47,8 @@ own, no analytics, no advertising and no crash reporting.
 
 ## Permissions
 
-- **Internet**, to reach Notion's API and download the images in your notes. No other
-  permissions.
+- **Internet**, to reach Notion's API, download the images in your notes and download a page
+  you share to the app. No other permissions.
 
 ## Deleting your data
 

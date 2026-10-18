@@ -162,6 +162,8 @@
     <string name="source_missing_body">Vielleicht wurde sie gelöscht oder in den Papierkorb verschoben, oder die Verbindung hat keinen Zugriff mehr darauf.</string>
     <string name="action_new">Neu</string>
     <string name="section_recent">Datenbanken und Seiten</string>
+    <string name="share_save_to">Speichern in</string>
+    <string name="share_saving">Wird gespeichert…</string>
     <string name="tree_show_more">Mehr anzeigen</string>
     <string name="tree_show_inside">Seiten darin anzeigen</string>
     <string name="tree_hide_inside">Seiten darin ausblenden</string>

@@ -55,6 +55,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -111,6 +112,8 @@ import be.wimvandonck.noter.logic.ChipFilter
 import be.wimvandonck.noter.logic.FilterChip as Chip
 import be.wimvandonck.noter.logic.NotionDates
 import be.wimvandonck.noter.logic.PropertyLayouts
+import be.wimvandonck.noter.logic.SharedContent
+import be.wimvandonck.noter.logic.TargetGroup
 import be.wimvandonck.noter.logic.TreeNode
 import be.wimvandonck.noter.ui.common.NotionImage
 import be.wimvandonck.noter.ui.common.OptionChip
@@ -295,6 +298,88 @@ fun MainScreen(
                 }
                 Spacer(Modifier.padding(bottom = 24.dp))
             }
+        }
+    }
+
+    // Something shared from another app (#63): where to save it.
+    val sharing by viewModel.sharing.collectAsStateWithLifecycle()
+    val savingShare by viewModel.savingShare.collectAsStateWithLifecycle()
+    val shared = sharing
+    if (shared != null && notes.hasKey) {
+        ShareSheet(
+            shared = shared,
+            groups = state.targetGroups,
+            severalWorkspaces = state.severalWorkspaces,
+            saving = savingShare,
+            onSave = { databaseId, workspace -> viewModel.saveShared(databaseId, workspace, onOpenNote) },
+            onDismiss = viewModel::dismissShare,
+        )
+    }
+}
+
+/**
+ * Where to save what another app shared (#63): the same places as +, a page at the top of a
+ * workspace or a note in a database. While the link is downloaded and the note made, a progress
+ * bar instead.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ShareSheet(
+    shared: SharedContent,
+    groups: List<TargetGroup>,
+    severalWorkspaces: Boolean,
+    saving: Boolean,
+    onSave: (databaseId: String?, workspace: String?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.verticalScroll(rememberScrollState())) {
+            SheetHeader(stringResource(R.string.share_save_to))
+            Text(
+                shared.title.ifBlank { shared.url ?: shared.text },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
+            )
+            if (saving) {
+                LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp))
+                Text(
+                    stringResource(R.string.share_saving),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
+            } else {
+                groups.forEach { group ->
+                    if (severalWorkspaces) {
+                        SheetHeader(group.workspace?.name?.ifBlank { null } ?: stringResource(if (group.workspace == null) R.string.new_note_in else R.string.workspace_unnamed))
+                    }
+                    if (group.topLevel) {
+                        ListItem(
+                            headlineContent = { Text(stringResource(if (severalWorkspaces) R.string.new_page_at_top else R.string.new_page_top_level)) },
+                            leadingContent = { Icon(Icons.Rounded.Workspaces, contentDescription = null) },
+                            modifier = Modifier.clickable { onSave(null, group.workspace?.id) },
+                        )
+                    }
+                    group.targets.forEach { target ->
+                        ListItem(
+                            headlineContent = { Text(target.name.ifBlank { stringResource(R.string.untitled) }) },
+                            leadingContent = {
+                                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                                    if (target.icon != null) {
+                                        PageIconView(target.icon, size = 24.dp)
+                                    } else {
+                                        Icon(Icons.Rounded.TableChart, contentDescription = null)
+                                    }
+                                }
+                            },
+                            modifier = Modifier.clickable { onSave(target.databaseId, null) },
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.padding(bottom = 24.dp))
         }
     }
 }

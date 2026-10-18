@@ -7,6 +7,8 @@ and cards you choose there are kept for it on the phone, without setting anythin
 
 - Notes as cards with a preview of their content, pinned notes on top, drag and drop to reorder.
 - Pin any database, page or note to Home; **+** makes a note in a database or a new page.
+- Share text or a link to Noter from any app: it becomes a note, with the web page's text and
+  images copied in.
 - A note's content is edited like in Notion: text, three heading sizes, bulleted, numbered and
   to-do lists, toggles, quotes, callouts, code and dividers, with Notion's Markdown shortcuts
   (`# `, `- `, `[] `, `> `, `" `, ```` ``` ````, `---`) and bold, italic, strikethrough, code and links.

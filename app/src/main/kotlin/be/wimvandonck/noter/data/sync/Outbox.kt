@@ -1,5 +1,6 @@
 package be.wimvandonck.noter.data.sync
 
+import be.wimvandonck.noter.data.model.Block
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.PageIcon
@@ -23,6 +24,8 @@ sealed interface PendingOp {
         val parentPageId: String? = null,
         /** A page at the top of a workspace: which one (Workspaces.id; null: the main one). */
         val workspace: String? = null,
+        /** Content made with the page: what another app shared (#63, SharedNotes). */
+        val children: List<Block> = emptyList(),
     ) : PendingOp
 
     @Serializable

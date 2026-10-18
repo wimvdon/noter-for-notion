@@ -40,6 +40,20 @@ properties and content: the pages of databases and pages on their own.
     goes with that workspace's token (`PendingOp.CreatePage.workspace`). A new note opens at once.
   Without a token the screen says "Connect to Notion" with "Open settings" (`DESIGN.md`, "Empty
   and setup states"). Back on Home leaves the app.
+- **Sharing to the app** (#63): `MainActivity` takes text shared from another app (Android's send
+  action, `text/plain`) and keeps it in `NoterApp.shares` (`logic/SharedText.kt`: the subject or a
+  short line before the link is the title, the first web link the link). The app goes back to Home,
+  which shows a sheet "Save to" with the places + offers (`MainScreen.ShareSheet`). On a tap,
+  `NotesRepository.saveShared` downloads the link's page (`data/web/WebPageClient.kt`, one GET,
+  2 MB at most; the only request outside Notion's API besides images, see `PRIVACY.md`), reads its
+  title, headings, paragraphs, list items, quotes, code and images (`logic/WebArticles.kt`, a small
+  reader of its own: no HTML library), and makes the note (`logic/SharedNotes.kt`): the title, then
+  the link as a bookmark (Notion shows its preview), the shared text and the page's content, at
+  most 100 blocks. Images stay links to the website (external image blocks). The content goes
+  with the page when Notion makes it (`PendingOp.CreatePage.children`); when Notion refuses it
+  (status 400, mostly an image link it can't use), the page is made again without the images,
+  then without the bookmark, then empty (`BlockCodec.createAttempts`). Offline, the link isn't
+  downloaded (the note gets the bookmark and text) and the note is made once the phone is online.
 - **Database** (`DatabaseScreen.kt`, `DatabaseViewModel`): a database opened from Home, Search or a
   link in a note. All notes of its data source (Notion's views aren't used), shown as its setup
   says (`DatabaseSetup` in `AppSettings.setups`, per data source; `logic/DatabaseSetups.kt`): the

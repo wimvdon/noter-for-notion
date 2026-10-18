@@ -5,6 +5,7 @@ import be.wimvandonck.noter.data.model.BlockType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class BlockCodecTest {
@@ -119,5 +120,31 @@ class BlockCodecTest {
             ),
         )
         assertEquals(listOf(listOf("Name", "Age"), listOf("Ann", "")), rows)
+    }
+
+    @Test
+    fun `images and bookmarks from a share are written as links, other read-only blocks not`() {
+        val image = Block("i", type = BlockType.UNSUPPORTED, rawType = "image", url = "https://example.com/a.jpg")
+        val bookmark = Block("b", type = BlockType.UNSUPPORTED, rawType = "bookmark", url = "https://example.com")
+        assertEquals(
+            mapOf("object" to "block", "type" to "image", "image" to mapOf("type" to "external", "external" to mapOf("url" to "https://example.com/a.jpg"))),
+            BlockCodec.createRequestOrNull(image),
+        )
+        assertEquals(mapOf("object" to "block", "type" to "bookmark", "bookmark" to mapOf("url" to "https://example.com")), BlockCodec.createRequestOrNull(bookmark))
+        assertNull(BlockCodec.createRequestOrNull(Block("t", type = BlockType.UNSUPPORTED, rawType = "table")))
+        assertNull(BlockCodec.createRequestOrNull(Block("n", type = BlockType.UNSUPPORTED, rawType = "image")))
+        val text = Block("p", text = "Hi")
+        assertEquals(BlockCodec.toCreateRequest(text), BlockCodec.createRequestOrNull(text))
+    }
+
+    @Test
+    fun `a shared page is tried with less each time Notion refuses it`() {
+        val image = Block("i", type = BlockType.UNSUPPORTED, rawType = "image", url = "https://example.com/a.jpg")
+        val bookmark = Block("b", type = BlockType.UNSUPPORTED, rawType = "bookmark", url = "https://example.com")
+        val text = Block("p", text = "Hi")
+        val attempts = BlockCodec.createAttempts(listOf(bookmark, text, image))
+        assertEquals(listOf(listOf("bookmark", "paragraph", "image"), listOf("bookmark", "paragraph"), listOf("paragraph"), emptyList()), attempts.map { list -> list.map { it["type"] } })
+        // Nothing shared: one try, with nothing.
+        assertEquals(listOf(emptyList<Map<String, Any?>>()), BlockCodec.createAttempts(emptyList()))
     }
 }
