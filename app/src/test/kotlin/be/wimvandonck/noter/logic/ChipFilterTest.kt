@@ -41,34 +41,32 @@ class ChipFilterTest {
         assertEquals(1, ChipFilter.filter(withPeople, "Who", setOf("u2")).size)
     }
 
-    private fun notebook(selected: List<String>) =
-        be.wimvandonck.noter.data.model.DatabaseConfig("n", "N", databaseId = "db", quickFilters = listOf("Status"), selected = mapOf("Status" to selected))
+    private fun setup(selected: List<String>) =
+        be.wimvandonck.noter.data.model.DatabaseSetup(quickFilters = listOf("Status"), selected = mapOf("Status" to selected))
 
     private val schema = be.wimvandonck.noter.data.model.DatabaseSchema("db", "Tasks", listOf(status))
 
     @Test
-    fun `a notebook puts pinned notes first and applies the chips`() {
-        val content = Notebooks.content(notes, schema, notebook(listOf("Todo")), null, pinned = listOf("d"), customOrder = emptyList())
+    fun `a database puts pinned notes first and applies the chips`() {
+        val content = DatabaseSetups.content(notes, schema, setup(listOf("Todo")), pinned = listOf("d"), customOrder = emptyList())
         assertEquals(listOf("d"), content.pinned.map { it.id })
         assertEquals(listOf("a"), content.others.map { it.id })
     }
 
     @Test
     fun `a chip that no longer exists is ignored`() {
-        val content = Notebooks.content(notes, schema, notebook(listOf("Gone")), null, pinned = emptyList(), customOrder = emptyList())
+        val content = DatabaseSetups.content(notes, schema, setup(listOf("Gone")), pinned = emptyList(), customOrder = emptyList())
         assertEquals(4, content.others.size)
         assertEquals(0, content.filterCount)
     }
 
     @Test
-    fun `home shows pinned notes of all databases, newest pin first`() {
-        val dbs = listOf(NoteSource("db", "One"), NoteSource("db2", "Two"))
-        val byDb = mapOf("db" to notes, "db2" to listOf(note("x", null, "db2")))
-        val content = NoteLists.home(dbs, byDb, pinned = listOf("x", "a"), order = emptyList(), selectedDatabases = emptySet())
-        assertEquals(listOf("x", "a"), content.pinned.map { it.id })
-        assertEquals(listOf("db", "db2"), content.chips.map { it.key })
-        val filtered = NoteLists.home(dbs, byDb, pinned = listOf("x", "a"), order = emptyList(), selectedDatabases = setOf("db2"))
-        assertEquals(listOf("x"), filtered.pinned.map { it.id })
+    fun `home shows pinned notes of all databases, newest pin first unless placed by hand`() {
+        val all = notes + note("x", null, "db2")
+        assertEquals(listOf("x", "a"), NoteLists.pinned(all, pinned = listOf("x", "a"), order = emptyList()).map { it.id })
+        assertEquals(listOf("a", "x"), NoteLists.pinned(all, pinned = listOf("x", "a"), order = listOf("a", "x")).map { it.id })
+        // A note kept twice (opened from a link before its database) shows once.
+        assertEquals(listOf("a"), NoteLists.pinned(all + note("a", null, "pages"), pinned = listOf("a"), order = emptyList()).map { it.id })
     }
 
     @Test

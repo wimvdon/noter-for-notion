@@ -2,7 +2,6 @@ package be.wimvandonck.noter.data.sync
 
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.store.AppSettings
-import be.wimvandonck.noter.logic.Notebooks
 
 /**
  * The app keeps a database's notes under the ID of its data source (a database can have several;
@@ -10,11 +9,12 @@ import be.wimvandonck.noter.logic.Notebooks
  * database's ID; once Notion says which data source that is, the old key is renamed everywhere.
  */
 object SourceKeys {
-    /** [settings] with database [old] renamed to data source [new]: views, note order and property layouts. */
+    /** [settings] with database [old] renamed to data source [new]: setups, pins, note order and property layouts. */
     fun renameInSettings(settings: AppSettings, old: String, new: String): AppSettings {
         if (old == new) return settings
         return settings.copy(
-            databases = Notebooks.mapLeaves(settings.databases) { if (it.sourceId == old) it.copy(databaseId = new) else it },
+            setups = renameKey(settings.setups, old, new),
+            pinnedDatabases = settings.pinnedDatabases.map { if (it.id == old) it.copy(id = new) else it }.distinctBy { it.id },
             order = renameKey(settings.order, old, new),
             propertyLayouts = renameKey(settings.propertyLayouts, old, new),
         )

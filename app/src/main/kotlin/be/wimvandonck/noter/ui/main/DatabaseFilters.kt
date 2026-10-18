@@ -33,9 +33,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.FilterChip
@@ -43,26 +43,33 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import be.wimvandonck.noter.R
-import be.wimvandonck.noter.data.model.NotebookSort
+import be.wimvandonck.noter.data.model.CardLayout
+import be.wimvandonck.noter.data.model.PropertySchema
+import be.wimvandonck.noter.logic.PropertyLayouts
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.Switch
+import androidx.compose.ui.semantics.Role
+import be.wimvandonck.noter.data.model.NoteSort
 import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.data.model.SortKind
-import be.wimvandonck.noter.logic.Notebooks
+import be.wimvandonck.noter.logic.DatabaseSetups
 import be.wimvandonck.noter.ui.note.PropertyArranger
 
-/** What the Filters panel and the Sort menu change in the notebook shown. */
-class NotebookActions(
+/** What the Filters panel and the Sort menu change in the database shown. */
+class SetupActions(
     /** The properties with a row of chips above the notes, in this order. */
     val onQuickFilters: (List<String>) -> Unit,
-    val onSort: (NotebookSort) -> Unit,
+    val onSort: (NoteSort) -> Unit,
 )
 
 /**
- * The notebook's buttons in the top app bar: Filters (opens the panel; a dot while filters are
- * on) and Sort (a menu). A page's notebook has nothing to filter by (subpages only have a title).
+ * The database's buttons in the top app bar: Filters (opens the panel; a dot while filters are
+ * on) and Sort (a menu).
  */
 @Composable
-internal fun NotebookBarActions(state: MainUiState, actions: NotebookActions, onOpenFilters: () -> Unit) {
-    val notebook = state.notebook ?: return
+internal fun SetupBarActions(state: NotesUiState, actions: SetupActions, onOpenFilters: () -> Unit) {
+    val setup = state.setup ?: return
     if (state.filterOptions.isNotEmpty()) {
         val description = if (state.filterCount > 0) stringResource(R.string.filters_count, state.filterCount) else stringResource(R.string.filters)
         IconButton(onClick = onOpenFilters) {
@@ -72,25 +79,24 @@ internal fun NotebookBarActions(state: MainUiState, actions: NotebookActions, on
         }
     }
     var menu by remember { mutableStateOf(false) }
-    val sort = notebook.currentSort
+    val sort = setup.currentSort
     Box {
         IconButton(onClick = { menu = true }) {
             Icon(Icons.Rounded.SwapVert, contentDescription = stringResource(R.string.sort_by, sortLabel(sort)))
         }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             val choices = buildList {
-                if (notebook.hasNotionOrder) add(NotebookSort(SortKind.NOTION))
-                add(NotebookSort(SortKind.CUSTOM))
-                add(NotebookSort(SortKind.LAST_EDITED))
-                add(NotebookSort(SortKind.CREATED))
-                add(NotebookSort(SortKind.TITLE))
-                state.filterOptions.mapNotNull { it.property }.filter { it.type == "date" }.forEach {
-                    add(NotebookSort(SortKind.DATE, it.name, descending = false))
+                add(NoteSort(SortKind.CUSTOM))
+                add(NoteSort(SortKind.LAST_EDITED))
+                add(NoteSort(SortKind.CREATED))
+                add(NoteSort(SortKind.TITLE))
+                state.filterOptions.map { it.property }.filter { it.type == "date" }.forEach {
+                    add(NoteSort(SortKind.DATE, it.name, descending = false))
                 }
             }
             choices.forEach { choice ->
                 val current = choice.kind == sort.kind && choice.property == sort.property
-                val directional = choice.kind != SortKind.NOTION && choice.kind != SortKind.CUSTOM
+                val directional = choice.kind != SortKind.CUSTOM
                 DropdownMenuItem(
                     text = { Text(sortLabel(choice)) },
                     leadingIcon = { if (current) Icon(Icons.Rounded.Check, contentDescription = null) else Spacer(Modifier.size(24.dp)) },
@@ -122,9 +128,8 @@ internal fun NotebookBarActions(state: MainUiState, actions: NotebookActions, on
 }
 
 @Composable
-private fun sortLabel(sort: NotebookSort): String = when (sort.kind) {
-    SortKind.NOTION -> stringResource(R.string.sort_notion)
-    SortKind.CUSTOM -> stringResource(R.string.sort_custom)
+private fun sortLabel(sort: NoteSort): String = when (sort.kind) {
+    SortKind.CUSTOM, SortKind.NOTION -> stringResource(R.string.sort_custom)
     SortKind.LAST_EDITED -> stringResource(R.string.sort_last_edited)
     SortKind.CREATED -> stringResource(R.string.sort_created)
     SortKind.TITLE -> stringResource(R.string.sort_title)
@@ -132,22 +137,22 @@ private fun sortLabel(sort: NotebookSort): String = when (sort.kind) {
 }
 
 /**
- * The notebook's Filters panel: which properties have a row of chips above the notes, arranged
+ * The database's Filters panel: which properties have a row of chips above the notes, arranged
  * like a note's properties (drag by the handle, past the "Hidden" line, or the eye), each with its
  * values to filter by below it, and Clear filters. Everything is kept on this phone.
  */
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-internal fun NotebookFiltersSheet(
-    state: MainUiState,
-    actions: NotebookActions,
+internal fun FiltersSheet(
+    state: NotesUiState,
+    actions: SetupActions,
     onToggle: (property: String, key: String) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val notebook = state.notebook ?: return
-    val candidates = state.filterOptions.mapNotNull { it.property?.name }
-    val (rows, others) = Notebooks.chipRows(candidates, notebook.quickFilters)
+    val setup = state.setup ?: return
+    val candidates = state.filterOptions.map { it.property.name }
+    val (rows, others) = DatabaseSetups.chipRows(candidates, setup.quickFilters)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(
             Modifier
@@ -161,7 +166,7 @@ internal fun NotebookFiltersSheet(
             }
             // One list: each property with a handle, its name and an eye (its row of chips above the
             // notes), and below it the values to filter by (also while its row is hidden).
-            val groups = state.filterOptions.mapNotNull { group -> group.property?.let { it.name to group } }.toMap()
+            val groups = state.filterOptions.associateBy { it.property.name }
             PropertyArranger(
                 names = candidates,
                 layout = PropertyLayout(order = rows + others, hidden = others),
@@ -217,5 +222,61 @@ internal fun ChipText(label: String, count: Int) {
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
                 .padding(horizontal = 6.dp),
         )
+    }
+}
+
+/**
+ * What the database's cards show: the header image, the start of the content, and up to three
+ * properties. Kept on this phone at once.
+ */
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+internal fun CardsSheet(
+    cards: CardLayout,
+    properties: List<PropertySchema>,
+    onCards: ((CardLayout) -> CardLayout) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(stringResource(R.string.cards_title), style = MaterialTheme.typography.titleLarge)
+            SwitchRow(stringResource(R.string.card_cover), cards.cover) { on -> onCards { it.copy(cover = on) } }
+            SwitchRow(stringResource(R.string.card_content), cards.content) { on -> onCards { it.copy(content = on) } }
+            val shown = properties.filter { it.type != "title" }
+            if (shown.isNotEmpty()) {
+                Text(stringResource(R.string.cards_properties, PropertyLayouts.MAX_ON_CARD), style = MaterialTheme.typography.bodyLarge)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    shown.forEach { property ->
+                        val selected = property.name in cards.properties
+                        FilterChip(
+                            selected = selected,
+                            enabled = selected || cards.properties.size < PropertyLayouts.MAX_ON_CARD,
+                            onClick = { onCards { PropertyLayouts.toggleOnCard(it, property.name) } },
+                            label = { Text(property.name) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A switch row; the whole row toggles. */
+@Composable
+private fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = null)
     }
 }

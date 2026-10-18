@@ -1,11 +1,12 @@
 # Noter for Notion
 
 A note app for Android in the style of Google Keep, with your notes kept in **Notion**.
-A database (all its notes) or a page (its subpages are the notes) becomes a
-**notebook** in the navigation, with its own filters and sort on the phone; **Pinned** shows the
-notes you pinned from all of them, and **Search** finds your notes and anything else in Notion.
+**Home** has a large search bar, everything you pinned (databases, pages and notes) and the
+databases and pages you edited last in Notion. Open a database to see its notes: the filters, sort
+and cards you choose there are kept for it on the phone, without setting anything up first.
 
 - Notes as cards with a preview of their content, pinned notes on top, drag and drop to reorder.
+- Pin any database, page or note to Home; **+** makes a note in a database or a new page.
 - A note's content is edited like in Notion: text, three heading sizes, bulleted, numbered and
   to-do lists, toggles, quotes, callouts, code and dividers, with Notion's Markdown shortcuts
   (`# `, `- `, `[] `, `> `, `" `, ```` ``` ````, `---`) and bold, italic, strikethrough, code and links.
@@ -26,8 +27,8 @@ What the app sends and stores: [`PRIVACY.md`](PRIVACY.md). Rules for Claude Code
    give it a name, turn on **Notion API**, choose your workspace and an expiry date, and copy it.
    It acts as you, so the app sees the pages you see; there is nothing to share with it.
 3. In the app: **Settings › Connection**, paste the token and tap **Test and save**. Then tap
-   **Search**, open a database and tap **Add as notebook** (or **Settings › Notebooks › Add
-   notebook**).
+   **Home** lists your databases and pages; open a database and pin it with **⋮ › Pin** to keep it
+   at the top of Home.
 
 When the token expires, make a new one and paste it in the same place. An older **internal
 integration** key works too, but then the app only sees the pages you shared with that

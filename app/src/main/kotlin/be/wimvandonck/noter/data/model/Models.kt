@@ -4,10 +4,42 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * A notebook (called a view in the code): a database (or a page's subpages) in the navigation,
- * with its own filters and sort, all kept on this phone (Notion isn't changed). Notebooks saved
- * before notebooks existed have the database's ID as [id] and no [databaseId]. Notebooks that
- * followed a Notion view before show all notes of their database now (the view's ID is ignored).
+ * How one data source's notes are shown, kept on this phone per data source (Notion isn't
+ * changed): the values filtering them, the properties with a row of chips above them, their order
+ * and what their cards show. Changed in the database itself; there is nothing to save.
+ */
+@Serializable
+data class DatabaseSetup(
+    /** Properties whose values are filter chips above the notes (quick filters), one row each, in this order. */
+    val quickFilters: List<String> = emptyList(),
+    /** The selected filter values per property: a note shows when it has one of each property's. */
+    val selected: Map<String, List<String>> = emptyMap(),
+    /** The order of the notes (null: the custom order). */
+    val sort: NoteSort? = null,
+    /** What the cards show (null: what the database's cards showed before, see PropertyLayouts.cards). */
+    val cards: CardLayout? = null,
+) {
+    /** The order the notes are in now ([SortKind.NOTION] from before reads as the custom order). */
+    val currentSort: NoteSort
+        get() = sort?.takeIf { it.kind != SortKind.NOTION } ?: NoteSort(SortKind.CUSTOM)
+}
+
+/**
+ * A database pinned on Home: [id] is what opens it (a data source, or a database of several data
+ * sources), with its name and icon as last seen, for Home to show without asking Notion.
+ */
+@Serializable
+data class PinnedDatabase(
+    val id: String,
+    val title: String,
+    val icon: PageIcon? = null,
+)
+
+/**
+ * A notebook from before the redesign: a database (or a page's subpages) set up as a tab, with its
+ * own filters and sort. Only read once, to turn it into a [DatabaseSetup] and a pin (see
+ * LegacyNotebooks). Notebooks saved before notebooks existed have the database's ID as [id] and no
+ * [databaseId].
  */
 @Serializable
 data class DatabaseConfig(
@@ -20,33 +52,19 @@ data class DatabaseConfig(
     val databaseId: String? = null,
     /** Before [selected]: the options of [chipProperty] selected when the view opened. */
     val filters: List<String> = emptyList(),
-    /** Properties whose values are filter chips above the notes (quick filters), one row each, in this order. */
     val quickFilters: List<String> = emptyList(),
-    /** The selected filter values per property: a note shows when it has one of each property's. */
     val selected: Map<String, List<String>> = emptyMap(),
-    /** The order of the notes (null: the page's order for a page's notebook, else the custom order). */
-    val sort: NotebookSort? = null,
-    /**
-     * A page's notebook: its notes are this page's subpages ([databaseId] is then the page's key
-     * in the repository, see NotesRepository.pageNotebookKey).
-     */
+    val sort: NoteSort? = null,
+    /** A page's notebook: its notes were this page's subpages. */
     val pageId: String? = null,
-    /**
-     * What this notebook's cards show (null: what the database's cards showed before cards were
-     * set per notebook, see PropertyLayouts.cards).
-     */
     val cards: CardLayout? = null,
-    /**
-     * A database with several data sources: one sub-notebook per data source, each with its own
-     * filters, sort and cards (shown as tabs inside this notebook). Empty for a notebook of one
-     * data source or a page.
-     */
+    /** A database with several data sources: one sub-notebook per data source. */
     val children: List<DatabaseConfig> = emptyList(),
 ) {
-    /** The notebooks that show notes: the sub-notebooks, else this one. */
+    /** The notebooks that showed notes: the sub-notebooks, else this one. */
     val leaves: List<DatabaseConfig> get() = children.ifEmpty { listOf(this) }
 
-    /** The database this view shows. */
+    /** The database (or data source) this notebook showed. */
     val sourceId: String get() = databaseId ?: id
 
     /** The notebook in today's terms: a filter property from before becomes a quick filter. */
@@ -61,26 +79,15 @@ data class DatabaseConfig(
         )
     }
 
-    /**
-     * The order the notes are in now. Notion's order only exists for a page's notebook (a
-     * notebook that followed a Notion view before has the custom order instead).
-     */
-    val currentSort: NotebookSort
-        get() = sort?.takeIf { it.kind != SortKind.NOTION || hasNotionOrder }
-            ?: NotebookSort(if (hasNotionOrder) SortKind.NOTION else SortKind.CUSTOM)
-
-    /** Notion has an order for this notebook: the page's order of its subpages. */
-    val hasNotionOrder: Boolean get() = pageId != null
-
     companion object {
         const val DEFAULT_ICON = "note"
     }
 }
 
-/** How a notebook's notes are sorted (pinned notes always come first). */
+/** How a database's notes are sorted (pinned notes always come first). */
 @Serializable
 enum class SortKind {
-    /** For a page's notebook: the order of the subpages on the page. */
+    /** From before: a page's notebook in the page's order (read as [CUSTOM] now). */
     NOTION,
 
     /** As placed by dragging on this phone; new notes on top. */
@@ -89,26 +96,19 @@ enum class SortKind {
     CREATED,
     TITLE,
 
-    /** By a date property ([NotebookSort.property]); notes without a date last. */
+    /** By a date property ([NoteSort.property]); notes without a date last. */
     DATE,
 }
 
 @Serializable
-data class NotebookSort(
+data class NoteSort(
     val kind: SortKind,
     val property: String? = null,
     /** Newest (or Z) first; for [SortKind.NOTION] and [SortKind.CUSTOM] it doesn't apply. */
     val descending: Boolean = kind != SortKind.TITLE,
 )
 
-/** A page's subpages, in the page's order, as Notion said when last asked ([fetchedAt], ISO). */
-@Serializable
-data class ViewResult(
-    val ids: List<String>,
-    val fetchedAt: String,
-)
-
-/** What a notebook's cards in the overview show. */
+/** What a database's cards show. */
 @Serializable
 data class CardLayout(
     /** The note's header image (Notion's cover) on top of its card. */
@@ -130,8 +130,8 @@ data class PropertyLayout(
     /** Properties hidden in the note (folded away under "N more properties"). */
     val hidden: List<String> = emptyList(),
     /**
-     * What the cards show: stored here before cards were set per notebook ([CardLayout]); the
-     * overview fills these in from the notebook shown (PropertyLayouts.cardLayouts).
+     * What the cards show: stored here before cards were set per database ([CardLayout]); the
+     * lists fill these in from each database's setup (PropertyLayouts.cardLayouts).
      */
     val onCard: List<String> = emptyList(),
     val coverOnCard: Boolean = false,
@@ -167,7 +167,8 @@ data class PageIcon(
     val color: String? = null,
 )
 
-/** Something shared with the integration, for the Browse list. */
+/** Something shared with the integration, for Search and Home's list (kept on this phone for Home). */
+@Serializable
 data class WorkspaceItem(
     val id: String,
     val isDatabase: Boolean,

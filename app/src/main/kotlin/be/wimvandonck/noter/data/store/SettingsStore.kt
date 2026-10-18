@@ -8,8 +8,11 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import be.wimvandonck.noter.data.model.DatabaseConfig
+import be.wimvandonck.noter.data.model.DatabaseSetup
+import be.wimvandonck.noter.data.model.PinnedDatabase
 import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.data.model.ThemeMode
+import be.wimvandonck.noter.logic.LegacyNotebooks
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -21,8 +24,11 @@ private val Context.settingsDataStore: DataStore<Preferences> by preferencesData
 /** Everything the user set up, backed up with Android's backup. Notion is never changed by these. */
 @Serializable
 data class AppSettings(
-    val databases: List<DatabaseConfig> = emptyList(),
-    /** Pinned note IDs: shown on Home and on top of their database. */
+    /** How each database's notes are shown (filters, rows of chips, sort, cards), by data source ID. */
+    val setups: Map<String, DatabaseSetup> = emptyMap(),
+    /** Databases pinned on Home, newest first. */
+    val pinnedDatabases: List<PinnedDatabase> = emptyList(),
+    /** Pinned note and page IDs: shown on Home and on top of their database. */
     val pinned: List<String> = emptyList(),
     /** Custom note order per database ID, and for Home under [HOME]. */
     val order: Map<String, List<String>> = emptyMap(),
@@ -30,8 +36,8 @@ data class AppSettings(
     val propertyLayouts: Map<String, PropertyLayout> = emptyMap(),
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = false,
-    /** The navigation bar's order, as names of Destinations.Section (Search is always last). */
-    val navigation: List<String> = emptyList(),
+    /** Notebooks from before the redesign: turned into [setups] and pins when read (LegacyNotebooks). */
+    val databases: List<DatabaseConfig> = emptyList(),
 ) {
     companion object {
         const val HOME = "home"
@@ -57,8 +63,8 @@ class SettingsStore(private val dataStore: DataStore<Preferences>) {
         val stored = prefs[key]?.let { runCatching { json.decodeFromString(AppSettings.serializer(), it) }.getOrNull() }
             ?: AppSettings()
         val theme = prefs[darkKey]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM
-        // Notebooks saved before quick filters are read in today's terms.
-        return stored.copy(databases = stored.databases.map { it.normalized() }, themeMode = theme, dynamicColor = prefs[dynamicKey] ?: false)
+        // Notebooks from before are read as setups and pins (saved that way with the next change).
+        return LegacyNotebooks.migrate(stored).copy(themeMode = theme, dynamicColor = prefs[dynamicKey] ?: false)
     }
 
     suspend fun current(): AppSettings = settings.first()

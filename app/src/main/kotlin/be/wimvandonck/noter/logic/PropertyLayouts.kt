@@ -1,7 +1,7 @@
 package be.wimvandonck.noter.logic
 
 import be.wimvandonck.noter.data.model.CardLayout
-import be.wimvandonck.noter.data.model.DatabaseConfig
+import be.wimvandonck.noter.data.model.DatabaseSetup
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.PropertyLayout
 
@@ -45,11 +45,11 @@ object PropertyLayouts {
     }
 
     /**
-     * What [notebook]'s cards show: its own choice, else what its database's cards showed before
-     * cards were set per notebook ([layout]).
+     * What a database's cards show: its setup's choice ([setup]), else what its cards showed before
+     * cards were part of the setup ([layout]).
      */
-    fun cards(notebook: DatabaseConfig?, layout: PropertyLayout?): CardLayout =
-        notebook?.cards ?: CardLayout(layout?.coverOnCard == true, layout?.contentOnCard != false, layout?.onCard.orEmpty())
+    fun cards(setup: DatabaseSetup?, layout: PropertyLayout?): CardLayout =
+        setup?.cards ?: CardLayout(layout?.coverOnCard == true, layout?.contentOnCard != false, layout?.onCard.orEmpty())
 
     /** Puts [name] on the card or takes it off; nothing changes when the card already has [MAX_ON_CARD]. */
     fun toggleOnCard(cards: CardLayout, name: String): CardLayout = when {
@@ -58,18 +58,12 @@ object PropertyLayouts {
         else -> cards.copy(properties = cards.properties + name)
     }
 
-    /**
-     * Each database's layout with what its cards show filled in, for the overview: from [current]
-     * (the notebook shown) for its database, else from the first notebook of the database.
-     */
-    fun cardLayouts(layouts: Map<String, PropertyLayout>, notebooks: List<DatabaseConfig>, current: DatabaseConfig? = null): Map<String, PropertyLayout> {
-        val sources = layouts.keys + notebooks.map { it.sourceId }
-        return sources.associateWith { source ->
-            val notebook = current?.takeIf { it.sourceId == source } ?: notebooks.firstOrNull { it.sourceId == source }
-            val cards = cards(notebook, layouts[source])
+    /** Each database's layout with what its cards show filled in from its setup, for the lists of notes. */
+    fun cardLayouts(layouts: Map<String, PropertyLayout>, setups: Map<String, DatabaseSetup>): Map<String, PropertyLayout> =
+        (layouts.keys + setups.keys).associateWith { source ->
+            val cards = cards(setups[source], layouts[source])
             (layouts[source] ?: PropertyLayout()).copy(coverOnCard = cards.cover, contentOnCard = cards.content, onCard = cards.properties)
         }
-    }
 
     /** True when a card shows its note's header image (only when the note has one). */
     fun showsCover(layout: PropertyLayout?, cover: String?): Boolean = cover != null && layout?.coverOnCard == true

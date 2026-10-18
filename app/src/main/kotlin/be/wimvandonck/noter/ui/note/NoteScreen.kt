@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -40,19 +39,15 @@ import androidx.compose.material.icons.automirrored.rounded.FormatIndentIncrease
 import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.automirrored.rounded.Notes
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.AddTask
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.FormatListNumbered
 import androidx.compose.material.icons.rounded.KeyboardHide
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PushPin
-import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -74,12 +69,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -132,8 +127,6 @@ import be.wimvandonck.noter.logic.ReadOnlyBlocks
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.Tab
 import androidx.compose.material.icons.rounded.AddReaction
-import androidx.compose.material.icons.rounded.BookmarkAdd
-import be.wimvandonck.noter.data.NotesRepository
 import androidx.compose.ui.draw.clip
 import be.wimvandonck.noter.logic.PropertyLayouts
 import be.wimvandonck.noter.ui.theme.readableWidth
@@ -161,7 +154,6 @@ fun NoteScreen(
     onBack: () -> Unit,
     onOpenNote: (String) -> Unit,
     onOpenDatabase: (String) -> Unit,
-    onAddNotebook: (String) -> Unit,
 ) {
     val viewModel: NoteViewModel = viewModel(key = "note-$pageId", factory = NoteViewModel.factory(pageId))
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -259,17 +251,6 @@ fun NoteScreen(
                                         onClick = {
                                             menu = false
                                             viewModel.createSubpage(onOpenNote)
-                                        },
-                                    )
-                                }
-                                // A page on its own can be a notebook of its subpages.
-                                if (!note.isLocal && note.databaseId == NotesRepository.PAGES) {
-                                    DropdownMenuItem(
-                                        text = { Text(stringResource(R.string.add_view)) },
-                                        leadingIcon = { Icon(Icons.Rounded.BookmarkAdd, null) },
-                                        onClick = {
-                                            menu = false
-                                            onAddNotebook(NotesRepository.pageNotebookKey(note.id))
                                         },
                                     )
                                 }

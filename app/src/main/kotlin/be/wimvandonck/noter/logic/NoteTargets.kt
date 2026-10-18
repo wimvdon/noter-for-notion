@@ -1,30 +1,42 @@
 package be.wimvandonck.noter.logic
 
-import be.wimvandonck.noter.data.model.DatabaseConfig
+import be.wimvandonck.noter.data.model.DatabaseInfo
 import be.wimvandonck.noter.data.model.PageIcon
+import be.wimvandonck.noter.data.model.PinnedDatabase
 import be.wimvandonck.noter.data.model.WorkspaceItem
 
-/** A database a new note can go in: from a view ([iconKey]) or from Browse ([pageIcon], Notion's icon). */
+/** A data source a new note can go in, with the name and icon of its database. */
 data class NoteTarget(
     val databaseId: String,
     val name: String,
-    val iconKey: String? = null,
-    val pageIcon: PageIcon? = null,
+    val icon: PageIcon? = null,
 )
 
-/** Where "New note" on Pinned and Browse can put a note. */
+/** Where + on Home can put a new note. */
 object NoteTargets {
     /**
-     * The views' databases (each once, named after its first view), then the other databases
-     * listed in Browse. Notion writes database IDs with or without dashes; they are compared without.
+     * The pinned databases, then the other databases on Home's list ([recent]). A database of several
+     * data sources offers each of them, named "Database · Data source" (from [infos], by database
+     * ID, for a pinned one). Notion writes IDs with or without dashes; they are compared without.
      */
-    fun of(views: List<DatabaseConfig>, browse: List<WorkspaceItem>?): List<NoteTarget> {
-        val fromViews = views.distinctBy { plain(it.sourceId) }.map { NoteTarget(it.sourceId, it.name, iconKey = it.icon) }
-        val known = fromViews.map { plain(it.databaseId) }.toMutableSet()
-        val fromBrowse = browse.orEmpty()
-            .filter { it.isDatabase && known.add(plain(it.id)) }
-            .map { NoteTarget(it.id, it.title, pageIcon = it.icon) }
-        return fromViews + fromBrowse
+    fun of(pinned: List<PinnedDatabase>, recent: List<WorkspaceItem>?, infos: Map<String, DatabaseInfo>): List<NoteTarget> {
+        val byPlainId = infos.mapKeys { plain(it.key) }
+        val fromPins = pinned.flatMap { pin ->
+            val sources = byPlainId[plain(pin.id)]?.sources.orEmpty()
+            if (sources.size > 1) {
+                sources.map { NoteTarget(it.id, "${pin.title} · ${it.title}", pin.icon) }
+            } else {
+                listOf(NoteTarget(pin.id, pin.title, pin.icon))
+            }
+        }
+        val fromRecent = recent.orEmpty().filter { it.isDatabase }.flatMap { item ->
+            if (item.sources.size > 1) {
+                item.sources.map { NoteTarget(it.id, "${item.title} · ${it.title}", item.icon) }
+            } else {
+                listOf(NoteTarget(item.id, item.title, item.icon))
+            }
+        }
+        return (fromPins + fromRecent).distinctBy { plain(it.databaseId) }
     }
 
     private fun plain(id: String) = id.replace("-", "")

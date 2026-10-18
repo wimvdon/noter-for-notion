@@ -3,21 +3,19 @@ package be.wimvandonck.noter.data
 import be.wimvandonck.noter.data.api.NotionClient
 import be.wimvandonck.noter.data.api.NotionErrors
 import be.wimvandonck.noter.data.api.NotionException
-import be.wimvandonck.noter.data.api.objOrNull
 import be.wimvandonck.noter.data.api.stringOrNull
 import be.wimvandonck.noter.data.model.Block
 import be.wimvandonck.noter.data.model.BlockType
-import be.wimvandonck.noter.data.model.DatabaseConfig
 import be.wimvandonck.noter.data.model.DatabaseInfo
 import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.NotionUser
-import be.wimvandonck.noter.data.model.ViewResult
+import be.wimvandonck.noter.data.model.DatabaseSetup
+import be.wimvandonck.noter.data.model.PinnedDatabase
 import be.wimvandonck.noter.data.model.PageContent
 import be.wimvandonck.noter.data.model.PageIcon
 import be.wimvandonck.noter.data.model.PageRef
-import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.model.WorkspaceItem
 import be.wimvandonck.noter.data.notion.BlockCodec
@@ -46,8 +44,7 @@ import be.wimvandonck.noter.data.sync.withProperty
 import be.wimvandonck.noter.logic.Columns
 import be.wimvandonck.noter.logic.KnownUsers
 import be.wimvandonck.noter.logic.NoteOrdering
-import be.wimvandonck.noter.logic.NotebookStructure
-import be.wimvandonck.noter.logic.Notebooks
+import be.wimvandonck.noter.logic.DatabaseSetups
 import be.wimvandonck.noter.logic.NotePreviews
 import be.wimvandonck.noter.logic.SchemaOptions
 import kotlinx.coroutines.CompletableDeferred
@@ -130,7 +127,7 @@ class NotesRepository(
 
     private val _missingSources = MutableStateFlow<Set<String>>(emptySet())
 
-    /** Data sources (IDs without dashes) Notion can't find or has in its trash: their notebooks say so. */
+    /** Data sources (IDs without dashes) Notion can't find or has in its trash: their databases say so. */
     val missingSources: StateFlow<Set<String>> = _missingSources.asStateFlow()
 
     private val _previews = MutableStateFlow<Map<String, String>>(emptyMap())
@@ -139,10 +136,13 @@ class NotesRepository(
     val previews: StateFlow<Map<String, String>> = _previews.asStateFlow()
     private val previewLock = Mutex()
 
-    private val _viewResults = MutableStateFlow<Map<String, ViewResult>>(emptyMap())
+    private val _recent = MutableStateFlow<List<WorkspaceItem>?>(null)
 
-    /** The page's order of its subpages, per page notebook (its key, see [refreshSubpages]). */
-    val viewResults: StateFlow<Map<String, ViewResult>> = _viewResults.asStateFlow()
+    /**
+     * Home's databases and pages: the most recently edited ones Notion's search lists, kept on this
+     * phone (null until the copy was read and nothing is kept; see [refreshRecent]).
+     */
+    val recent: StateFlow<List<WorkspaceItem>?> = _recent.asStateFlow()
 
     private val _events = MutableSharedFlow<RepoEvent>(extraBufferCapacity = 8)
     val events: SharedFlow<RepoEvent> = _events
@@ -167,15 +167,26 @@ class NotesRepository(
         scope.launch(Dispatchers.IO) {
             lock.withLock {
                 _outbox.value = cache.outbox()
-                _viewResults.value = cache.views()
+                cache.recent()?.let { _recent.value = it }
             }
             outboxLoaded.complete(Unit)
             loadDatabase(PAGES)
-            // Databases opened from Browse stay loaded too; they are only a copy.
-            settings.settings.map { s -> Notebooks.leaves(s.databases).map { it.sourceId }.distinct() }.distinctUntilChanged().collect { ids ->
-                ids.forEach { loadDatabase(it) }
+            // Every database with a copy here, for the pinned notes on Home and the notes in Search.
+            cache.databaseKeys().forEach { name ->
+                loadDatabase(if (name.startsWith(LEGACY_PAGE_FILE)) PAGE_PREFIX + name.removePrefix(LEGACY_PAGE_FILE) else name)
             }
+            openPinnedPages()
         }
+    }
+
+    /**
+     * Downloads the pinned pages that have no copy here yet (a page's notebook from before is a
+     * pinned page now), once per start of the app.
+     */
+    private suspend fun openPinnedPages() {
+        if (!hasKey()) return
+        val missing = settings.current().pinned.filter { id -> !id.startsWith(NoteSummary.LOCAL_PREFIX) && findNote(_databases.value, id) == null }
+        missing.forEach { openPage(it) }
     }
 
     /** The app came to the front: send waiting changes and refresh what is stale. */
@@ -183,14 +194,16 @@ class NotesRepository(
         scope.launch {
             outboxLoaded.await()
             flush()
-            // At most every quarter of an hour: where the notebooks' data sources are in Notion now.
-            if (clock() - lastReconcileMs > RECONCILE_EVERY_MS) reconcileNotebooks()
-            Notebooks.leaves(settings.current().databases).map { it.sourceId }.distinct().forEach { refresh(it, userAsked = false) }
+            // The databases of the pinned notes, for Home; a database refreshes when it is opened.
+            pinnedSources().forEach { refresh(it, userAsked = false) }
         }
     }
 
-    /** When [reconcileNotebooks] last ran (0: not since the app started). */
-    private var lastReconcileMs = 0L
+    /** The databases the pinned notes are in (not the pages on their own: nothing to list). */
+    suspend fun pinnedSources(): List<String> {
+        val pinned = settings.current().pinned
+        return pinned.mapNotNull { findNote(_databases.value, it)?.databaseId }.distinct().filter { it != PAGES && !isPageNotebook(it) }
+    }
 
     /** Databases whose on-phone copy was read (once per app start). */
     private val cacheRead = mutableSetOf<String>()
@@ -239,12 +252,9 @@ class NotesRepository(
         if (!hasKey() || databaseId == PAGES) return
         loadDatabase(databaseId)
         val current = _databases.value[databaseId] ?: return
-        if (current.refreshing) return
+        // A page's notebook from before: its copy stays as it is (its pages are edited as usual).
+        if (current.refreshing || isPageNotebook(databaseId)) return
         val kind = SyncPolicy.decide(clock(), current.lastSyncMs, current.lastFullSyncMs, userAsked)
-        if (isPageNotebook(databaseId)) {
-            if (kind != RefreshKind.NONE || databaseId !in _viewResults.value) refreshSubpages(databaseId)
-            return
-        }
         if (kind == RefreshKind.NONE) return
         setState(databaseId) { it.copy(refreshing = true, error = null) }
         val started = clock()
@@ -307,70 +317,6 @@ class NotesRepository(
 
     private fun saveDatabaseCache(id: String, state: DatabaseState) {
         cache.saveDatabase(id, DatabaseCache(state.schema, state.notes, state.lastSyncMs, state.lastFullSyncMs))
-    }
-
-    // ---- Notebooks of a page ----------------------------------------------------------------
-
-    /**
-     * Refreshes a page's notebook ([key], see [pageNotebookKey]): its notes are the page's
-     * subpages (the child pages directly on it), in the page's order, kept in [viewResults] (so
-     * "Notion's order" is the page's). A subpage is downloaded again only when it
-     * changed (at most [MAX_SUBPAGE_DOWNLOADS] per refresh; the rest show their title until then).
-     */
-    private suspend fun refreshSubpages(key: String) {
-        setState(key) { it.copy(refreshing = true, error = null) }
-        val started = clock()
-        try {
-            withContext(Dispatchers.IO) {
-                val children = client.blockChildren(pageOf(key)).filter { it.stringOrNull("type") == "child_page" }
-                val existing = _databases.value[key]?.notes.orEmpty().associateBy { it.id.replace("-", "") }
-                var downloads = 0
-                val fetched = children.mapNotNull { block ->
-                    val id = block.stringOrNull("id") ?: return@mapNotNull null
-                    val edited = block.stringOrNull("last_edited_time").orEmpty()
-                    val known = existing[id.replace("-", "")]
-                    when {
-                        known != null && known.lastEditedTime == edited -> known
-                        downloads < MAX_SUBPAGE_DOWNLOADS -> {
-                            downloads++
-                            PropertyCodec.parsePage(client.getPage(id), key)
-                        }
-                        else -> known ?: WorkspaceCodec.childPage(block, key)
-                    }
-                }
-                val ids = fetched.map { it.id }
-                lock.withLock {
-                    val queue = _outbox.value
-                    val pendingTrash = queue.filterIsInstance<PendingOp.TrashPage>().map { it.pageId }.toSet()
-                    val local = _databases.value[key]?.notes.orEmpty().filter { it.isLocal }
-                    val notes = (local + fetched).filter { it.id !in pendingTrash }.map { Outbox.applyPending(it, queue) }
-                    val updated = (_databases.value[key] ?: DatabaseState()).copy(
-                        schema = DatabaseSchema(key, "", listOf(PropertySchema(PAGE_TITLE, PAGE_TITLE, "title"))),
-                        notes = notes,
-                        lastSyncMs = started,
-                        lastFullSyncMs = started,
-                        loaded = true,
-                        refreshing = false,
-                        error = null,
-                    )
-                    // A subpage opened before from a link was kept among the pages on their own: now it is here.
-                    val plainIds = ids.map { it.replace("-", "") }.toSet()
-                    _databases.update { map ->
-                        val pages = map[PAGES]?.let { db -> db.copy(notes = db.notes.filterNot { it.id.replace("-", "") in plainIds }) }
-                        map + (key to updated) + (if (pages != null) mapOf(PAGES to pages) else emptyMap())
-                    }
-                    saveDatabaseCache(key, updated)
-                    _databases.value[PAGES]?.let { saveDatabaseCache(PAGES, it) }
-                    _viewResults.update { it + (key to ViewResult(ids, Instant.ofEpochMilli(started).toString())) }
-                    cache.saveViews(_viewResults.value)
-                }
-            }
-            _offline.value = false
-        } catch (e: NotionException) {
-            if (e.isOffline) _offline.value = true
-            if (e.status == 401) _events.tryEmit(RepoEvent.KeyRejected)
-            setState(key) { it.copy(refreshing = false, loaded = true, error = NotionErrors.of(e)) }
-        }
     }
 
     // ---- Data sources ---------------------------------------------------------------------
@@ -465,7 +411,7 @@ class NotesRepository(
     suspend fun groupByDatabase(items: List<WorkspaceItem>, ask: Boolean): List<WorkspaceItem> {
         val ids = items.mapNotNull { it.databaseId }.distinctBy { it.replace("-", "") }
         val infos = ids.mapNotNull { id -> databaseInfo(id, fresh = ask)?.let { id.replace("-", "") to it } }.toMap()
-        return WorkspaceCodec.group(items, infos)
+        return WorkspaceCodec.group(items, infos).also { lastFound = it }
     }
 
     /** Moves everything kept under database [old] to its data source [new] (see [SourceKeys]). */
@@ -535,8 +481,6 @@ class NotesRepository(
      */
     suspend fun createNote(databaseId: String, preset: List<NoteProperty> = emptyList()): String? =
         withContext(Dispatchers.IO) {
-            // A page's notebook: a new subpage of the page.
-            if (isPageNotebook(databaseId)) return@withContext createPage(pageOf(databaseId), databaseId)
             loadDatabase(databaseId)
             var schema = _databases.value[databaseId]?.schema
             if (schema == null) {
@@ -1121,6 +1065,29 @@ class NotesRepository(
         WorkspaceCodec.parseAll(client.search(query.trim(), BROWSE_LIMIT), includeNotes = query.isNotBlank(), pagesKey = PAGES)
     }
 
+    /**
+     * Asks Notion for Home's databases and pages again ([recent]): the most recently edited ones
+     * (not the notes in databases), grouped by database. Throws when Notion can't be reached; what
+     * is kept stays.
+     */
+    suspend fun refreshRecent() {
+        val items = groupByDatabase(browse(""), ask = true).take(RECENT_LIMIT)
+        withContext(Dispatchers.IO) {
+            lock.withLock {
+                _recent.value = items
+                cache.saveRecent(items)
+            }
+        }
+    }
+
+    /** What Home's list or the last search said about database or page [id] (its name and icon), if anything. */
+    fun knownItem(id: String): WorkspaceItem? =
+        (lastFound + _recent.value.orEmpty()).firstOrNull { plain(it.id) == plain(id) }
+
+    /** The results of the last search, for [knownItem]. */
+    @Volatile
+    private var lastFound: List<WorkspaceItem> = emptyList()
+
     /** Makes [note] (from Browse) known here so the editor can open it. Returns its ID. */
     suspend fun openNote(note: NoteSummary): String {
         loadDatabase(note.databaseId)
@@ -1185,80 +1152,37 @@ class NotesRepository(
         TokenCodec.parse(if (key != null) client.me(key) else client.me())
     }
 
-    /** Adds or changes a view (a database in the navigation). */
-    suspend fun saveDatabase(config: DatabaseConfig) {
+    /**
+     * Changes how data source [sourceId] shows its notes (kept on this phone, see [DatabaseSetup]);
+     * one never changed starts from [DatabaseSetups.initial] for [schema].
+     */
+    suspend fun updateSetup(sourceId: String, schema: DatabaseSchema?, transform: (DatabaseSetup) -> DatabaseSetup) {
         settings.update { s ->
-            val exists = s.databases.any { it.id == config.id }
-            s.copy(databases = if (exists) s.databases.map { if (it.id == config.id) config else it } else s.databases + config)
-        }
-        config.leaves.forEach { leaf ->
-            loadDatabase(leaf.sourceId)
-            scope.launch { refresh(leaf.sourceId, userAsked = _databases.value[leaf.sourceId]?.lastFullSyncMs == 0L) }
+            val key = s.setups.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
+            s.copy(setups = s.setups + (key to transform(DatabaseSetups.of(s.setups, sourceId, schema))))
         }
     }
 
-    /**
-     * Removes a notebook, or a sub-notebook from its notebook. The notes stay (as a copy, for
-     * Pinned and Browse).
-     */
-    suspend fun removeDatabase(id: String) {
+    /** Pins database [pin] on Home (at the top), or unpins it when it is pinned. */
+    suspend fun togglePinDatabase(pin: PinnedDatabase) {
         settings.update { s ->
-            s.copy(databases = s.databases.filterNot { it.id == id }.map { top -> top.copy(children = top.children.filterNot { it.id == id }) })
+            val pinned = s.pinnedDatabases.any { plain(it.id) == plain(pin.id) }
+            s.copy(pinnedDatabases = if (pinned) s.pinnedDatabases.filterNot { plain(it.id) == plain(pin.id) } else listOf(pin) + s.pinnedDatabases)
         }
     }
 
-    /**
-     * Checks which database each notebook's data source is in now and brings the notebooks in line
-     * ([NotebookStructure]): a data source moved into another database becomes a sub-notebook of
-     * its notebook. One request per data source and per database; nothing changes while offline
-     * or when Notion is busy. Notes the data sources Notion can't find ([missingSources]).
-     */
-    suspend fun reconcileNotebooks() = withContext(Dispatchers.IO) {
-        if (!hasKey()) return@withContext
-        lastReconcileMs = clock()
-        val leaves = Notebooks.leaves(settings.current().databases).filter { it.pageId == null }.distinctBy { it.sourceId }
-        val parents = mutableMapOf<String, String>()
-        val missing = mutableSetOf<String>()
-        try {
-            for (leaf in leaves) {
-                try {
-                    // A key from before data sources: the notebook is kept under its data source first.
-                    val id = resolveSource(leaf.sourceId)
-                    if (id != leaf.sourceId) renameSource(leaf.sourceId, id)
-                    val source = client.getDataSource(id)
-                    if (PropertyCodec.isTrashed(source)) missing += plain(id)
-                    source.objOrNull("parent")?.stringOrNull("database_id")?.let { parents[id] = it }
-                } catch (e: NotionException) {
-                    if (e.status != 404) throw e
-                    missing += plain(leaf.sourceId)
-                }
+    /** Keeps a pinned database's name and icon as Notion has them now (Home shows them offline). */
+    suspend fun renamePinnedDatabase(id: String, title: String, icon: PageIcon?) {
+        if (title.isBlank()) return
+        settings.update { s ->
+            val changed = s.pinnedDatabases.map { pin ->
+                if (plain(pin.id) == plain(id) && (pin.title != title || (icon != null && pin.icon != icon))) pin.copy(title = title, icon = icon ?: pin.icon) else pin
             }
-            val sources = parents.values.distinctBy(::plain).mapNotNull { database ->
-                try {
-                    WorkspaceCodec.databaseInfo(client.getDatabase(database))?.let { database to it.sources }
-                } catch (e: NotionException) {
-                    if (e.status != 404) throw e
-                    null
-                }
-            }.toMap()
-            settings.update { s ->
-                val reconciled = NotebookStructure.reconcile(s.databases, parents, sources) { "view-" + UUID.randomUUID() }
-                if (reconciled == s.databases) s else s.copy(databases = reconciled)
-            }
-            _missingSources.value = missing
-        } catch (e: NotionException) {
-            if (e.isOffline) _offline.value = true
+            if (changed == s.pinnedDatabases) s else s.copy(pinnedDatabases = changed)
         }
     }
 
     private fun plain(id: String) = id.replace("-", "")
-
-    suspend fun moveDatabase(id: String, to: Int) {
-        settings.update { s ->
-            val index = s.databases.indexOfFirst { it.id == id }
-            if (index < 0 || to !in s.databases.indices) s else s.copy(databases = NoteOrdering.move(s.databases, index, to))
-        }
-    }
 
     /** Forgets all Notion data on this phone (the API key was removed). Settings stay. */
     suspend fun clearData() = withContext(Dispatchers.IO) {
@@ -1266,6 +1190,7 @@ class NotesRepository(
             cache.clear()
             databaseInfos.clear()
             databasesAsked.clear()
+            _recent.value = null
             _outbox.value = emptyList()
             _databases.update { map -> map.mapValues { DatabaseState(loaded = true) } }
         }
@@ -1304,34 +1229,30 @@ class NotesRepository(
         /** The key under which pages that are not in a database are kept, like a database's notes. */
         const val PAGES = "pages"
 
-        /** How often, at most, opening the app checks where the notebooks' data sources are. */
-        private const val RECONCILE_EVERY_MS = 15 * 60_000L
-
         /** The title property of a page on its own (Notion's name for it). */
         const val PAGE_TITLE = "title"
 
-        /** Keys of pages' notebooks: their notes are the page's subpages (see [refreshSubpages]). */
+        /**
+         * Keys of pages' notebooks from before the redesign (their notes were the page's subpages).
+         * Their copies are still read, so a change or new subpage waiting to be sent isn't lost.
+         */
         private const val PAGE_PREFIX = "page:"
 
-        fun pageNotebookKey(pageId: String): String = PAGE_PREFIX + pageId
+        /** How a page's notebook's key is written in its copy's file name (see CacheStore). */
+        private const val LEGACY_PAGE_FILE = "page_"
 
-        fun isPageNotebook(key: String): Boolean = key.startsWith(PAGE_PREFIX)
-
-        /** The page of a page's notebook [key]. */
-        fun pageOf(key: String): String = key.removePrefix(PAGE_PREFIX)
-
-        /** Subpages downloaded in one refresh of a page's notebook (one request each). */
-        private const val MAX_SUBPAGE_DOWNLOADS = 40
+        private fun isPageNotebook(key: String): Boolean = key.startsWith(PAGE_PREFIX)
 
         /** Results of one Browse search (one or two requests). */
         private const val BROWSE_LIMIT = 200
+
+        /** Databases and pages on Home's list. */
+        private const val RECENT_LIMIT = 30
         private const val RETRY_MIN_MS = 15_000L
         private const val RETRY_MAX_MS = 5 * 60_000L
         private const val RETRY_OFFLINE_MAX_MS = 60_000L
         private const val LOOKUP_TTL_MS = 24 * 60 * 60_000L
         private const val RELATED_TTL_MS = 10 * 60_000L
-
-        /** Views of one database read when setting up a notebook (one request each). */
 
         /** How deep nested blocks are downloaded (deeper ones stay in Notion, as nested content). */
         const val MAX_DEPTH = 5

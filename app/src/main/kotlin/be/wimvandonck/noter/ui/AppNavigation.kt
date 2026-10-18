@@ -7,12 +7,12 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -29,12 +29,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import be.wimvandonck.noter.ui.main.DatabaseScreen
 import be.wimvandonck.noter.ui.main.MainScreen
 import be.wimvandonck.noter.ui.main.MainViewModel
-import be.wimvandonck.noter.ui.main.PickNotebookScreen
+import be.wimvandonck.noter.ui.main.SearchScreen
 import be.wimvandonck.noter.ui.note.NoteScreen
 import be.wimvandonck.noter.ui.settings.SettingsScreen
 import be.wimvandonck.noter.ui.settings.SettingsViewModel
-import be.wimvandonck.noter.ui.views.ViewsScreen
-import be.wimvandonck.noter.ui.views.ViewsViewModel
 import be.wimvandonck.noter.ui.theme.Motion
 import be.wimvandonck.noter.ui.theme.rememberReducedMotion
 import kotlinx.coroutines.delay
@@ -68,12 +66,12 @@ private class ScreenOwner(
 }
 
 /**
- * The app's screens as a small back stack: the main screen at the bottom, notes, databases and
- * the settings on top. Four screens don't need a navigation library.
+ * The app's screens as a small back stack: Home at the bottom; Search, notes, databases and the
+ * settings on top. Five screens don't need a navigation library.
  */
 @Composable
 fun AppNavigation() {
-    // Entries: "main", "settings", "views", "pick-notebook", "note:<page id>" or "database:<database id>".
+    // Entries: "main", "search", "settings", "note:<page id>" or "database:<database id>".
     var stack by rememberSaveable { mutableStateOf(listOf(MAIN)) }
     val mainViewModel: MainViewModel = viewModel(factory = MainViewModel.Factory)
     val stores: ScreenStores = viewModel()
@@ -90,6 +88,8 @@ fun AppNavigation() {
         if (stack.size <= 1) return
         val closed = stack.last()
         stack = stack.dropLast(1)
+        // Search starts afresh each time it is opened.
+        if (closed == SEARCH && SEARCH !in stack) mainViewModel.resetSearch()
         // Cleared after the closing animation, which still draws the screen.
         scope.launch {
             delay(CLEAR_DELAY_MS)
@@ -112,66 +112,37 @@ fun AppNavigation() {
         label = "screens",
     ) { entries ->
         val top = entries.last()
-        if (top == MAIN) {
-            MainScreen(
+        when (top) {
+            MAIN -> MainScreen(
                 viewModel = mainViewModel,
                 onOpenNote = { push(NOTE + it) },
                 onOpenDatabase = { push(DATABASE + it) },
+                onOpenSearch = { push(SEARCH) },
                 onOpenSettings = { push(SETTINGS) },
-                onOpenViews = { push(VIEWS) },
-                onEditNotebook = { push(EDIT_VIEW + it) },
             )
-        } else {
-            CompositionLocalProvider(LocalViewModelStoreOwner provides ScreenOwner(stores.store(top), application)) {
+            // Shares Home's ViewModel: what is pinned, and the search kept while a result is open.
+            SEARCH -> SearchScreen(
+                viewModel = mainViewModel,
+                onBack = ::pop,
+                onOpenNote = { push(NOTE + it) },
+                onOpenDatabase = { push(DATABASE + it) },
+            )
+            else -> CompositionLocalProvider(LocalViewModelStoreOwner provides ScreenOwner(stores.store(top), application)) {
                 when {
                     top == SETTINGS -> SettingsScreen(
                         viewModel = viewModel(factory = SettingsViewModel.Factory),
                         onBack = ::pop,
-                        onOpenViews = { push(VIEWS) },
-                    )
-                    top == VIEWS || top.startsWith(EDIT_VIEW) || top.startsWith(ADD_NOTEBOOK) -> {
-                        // "add-notebook:<key>" from a database's page or a page, with "\n<title>" from the picker.
-                        val adding = top.removePrefix(ADD_NOTEBOOK).takeIf { top.startsWith(ADD_NOTEBOOK) }
-                        ViewsScreen(
-                            viewModel = viewModel(factory = ViewsViewModel.Factory),
-                            onBack = ::pop,
-                            onAddNotebook = { push(PICK_NOTEBOOK) },
-                            editViewId = top.removePrefix(EDIT_VIEW).takeIf { top.startsWith(EDIT_VIEW) },
-                            addDatabaseId = adding?.substringBefore('\n'),
-                            addTitle = adding?.takeIf { '\n' in it }?.substringAfter('\n'),
-                        )
-                    }
-                    top == PICK_NOTEBOOK -> PickNotebookScreen(
-                        viewModel = mainViewModel,
-                        onBack = {
-                            mainViewModel.resetSearch()
-                            pop()
-                        },
-                        onPick = { key, title ->
-                            mainViewModel.resetSearch()
-                            // Manage notebooks again, with the new notebook's setup open.
-                            val kept = stack.dropLastWhile { it == PICK_NOTEBOOK || it == VIEWS }
-                            val closed = stack.drop(kept.size)
-                            stack = kept + (ADD_NOTEBOOK + key + "\n" + title)
-                            scope.launch {
-                                delay(CLEAR_DELAY_MS)
-                                closed.filterNot { it in stack }.forEach(stores::clear)
-                            }
-                        },
                     )
                     top.startsWith(NOTE) -> NoteScreen(
                         pageId = top.removePrefix(NOTE),
                         onBack = ::pop,
                         onOpenNote = { push(NOTE + it) },
                         onOpenDatabase = { push(DATABASE + it) },
-                        onAddNotebook = { push(ADD_NOTEBOOK + it) },
                     )
                     top.startsWith(DATABASE) -> DatabaseScreen(
                         databaseId = top.removePrefix(DATABASE),
                         onBack = ::pop,
                         onOpenNote = { push(NOTE + it) },
-                        onEditView = { push(EDIT_VIEW + it) },
-                        onAddNotebook = { push(ADD_NOTEBOOK + it) },
                     )
                 }
             }
@@ -181,16 +152,7 @@ fun AppNavigation() {
 
 private const val CLEAR_DELAY_MS = 1_000L
 private const val MAIN = "main"
+private const val SEARCH = "search"
 private const val SETTINGS = "settings"
-private const val VIEWS = "views"
-
-/** Manage notebooks with one notebook's setup open. */
-private const val EDIT_VIEW = "views:"
-
-/** Search for a database or page to add as a notebook. */
-private const val PICK_NOTEBOOK = "pick-notebook"
-
-/** Manage notebooks, or adding a notebook of a database or page. */
-private const val ADD_NOTEBOOK = "add-notebook:"
 private const val NOTE = "note:"
 private const val DATABASE = "database:"

@@ -2,6 +2,14 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-18: Home and databases instead of notebooks
+
+The owner redesigned the app: instead of setting up notebooks (Manage notebooks, Add notebook, a tab per notebook under a navigation bar), the user goes to the database itself. Home is now the only main screen: a large search bar, everything pinned (databases, pages and notes) and the databases and pages Notion's search lists as most recently edited, with a + button. A database keeps its filters, rows of chips, sort and cards on the phone as soon as they change (`DatabaseSetup` per data source, backed up like the notebooks were), so there is nothing to save. Any database, page or note can be pinned. Pages don't get a notebook view any more: a page opens in the editor, where its subpages are links.
+
+Existing notebooks are converted when the settings are read (`LegacyNotebooks`): each database keeps its notebook's setup and is pinned on Home in the order of the tabs, a page's notebook becomes a pinned page, so nothing set up is lost. Gone with the notebooks: the navigation bar and its order setting, Manage notebooks and its icon picker (databases show Notion's own icon now), notebook names of the app's own (Notion's names are used), the check that notebooks follow data sources moved between databases (a pinned database is opened by its key and its tabs come from Notion each time) and the page notebook's sync of subpages and their page order. Home's list is kept on the phone so it shows offline; it is asked again when the app starts and on pull-to-refresh (one or two search requests, plus a request per database the first time per start, as Search already did).
+
+Rejected: keeping notebooks next to pinned databases (two ways to do the same thing), a separate "recently opened" list kept by the app (Notion's own recently edited order needs nothing stored and also lists what was made elsewhere), and source chips above Home's pinned notes (the pinned databases are right above them).
+
 ## 2026-10-17: Edit a sub-notebook on its own
 
 In a sub-notebook, Edit notebook opened the whole notebook's editor, with the cards of every sub-notebook one after another, so the owner had to look for the one they were in. The ⋮ menu now offers both, as the owner suggested: Edit “Notities” (the notebook: name, icon and every sub-notebook's cards, as before) and Edit “Development” (only that sub-notebook's cards, with the notebook it is part of under the title). Rejected: scrolling the whole editor to the sub-notebook (still a long sheet) and leaving out the notebook item (its name and icon would be out of reach from a sub-notebook).

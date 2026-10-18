@@ -1,22 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Noter</string>
-    <string name="tab_home">Épinglées</string>
     <string name="browse_search">Rechercher dans Notion</string>
     <string name="browse_databases">Bases de données</string>
     <string name="search_notes">Notes sur ce téléphone</string>
-    <string name="action_search">Rechercher</string>
     <string name="browse_pages">Pages</string>
     <string name="browse_empty">Rien dans Notion pour l’instant que ce jeton peut voir.</string>
     <string name="browse_nothing_found">Aucun résultat</string>
     <string name="browse_edited">Modifié %1$s</string>
-    <string name="source_pages">Pages</string>
-    <string name="add_view">Ajouter comme notebook</string>
     <string name="page_open_failed">Impossible d’ouvrir la page. Vérifiez votre connexion.</string>
     <string name="settings_title">Paramètres</string>
     <string name="back">Retour</string>
     <string name="cancel">Annuler</string>
-    <string name="save">Enregistrer</string>
     <string name="clear">Effacer</string>
     <string name="retry">Réessayer</string>
     <string name="ok">OK</string>
@@ -26,8 +21,7 @@
     <string name="untitled">Sans titre</string>
     <string name="section_expanded">Développé</string>
     <string name="section_collapsed">Réduit</string>
-    <string name="chip_all">Toutes</string>
-    <string name="section_pinned">Épinglées</string>
+    <string name="section_pinned">Épinglés</string>
     <string name="section_others">Autres</string>
     <string name="action_new_note">Nouvelle note</string>
     <string name="new_note_in">Nouvelle note dans</string>
@@ -42,7 +36,6 @@
     <string name="trash_confirm">Mettre à la corbeille</string>
     <string name="empty_no_key">Ajoutez un jeton d’accès personnel dans les paramètres pour voir vos notes.</string>
     <string name="empty_no_key_action">Ouvrir les paramètres</string>
-    <string name="empty_home">Épinglez une note ou une page, depuis un notebook ou la recherche, pour la garder ici.</string>
     <string name="empty_database">Touchez + pour en ajouter une.</string>
     <string name="empty_filtered">Aucune note ne correspond aux filtres</string>
     <string name="status_offline">Hors connexion. Les modifications sont enregistrées sur ce téléphone et envoyées plus tard.</string>
@@ -113,14 +106,6 @@
     <string name="key_removed">Jeton retiré. Les notes copiées sur ce téléphone ont été supprimées.</string>
     <string name="sync_all_saved">Tout est enregistré dans Notion.</string>
     <string name="sync_now">Synchroniser</string>
-    <string name="section_views">Notebooks</string>
-    <string name="add_database">Ajouter un notebook</string>
-    <string name="edit_database">Modifier le notebook</string>
-    <string name="database_name">Nom</string>
-    <string name="database_icon">Icône</string>
-    <string name="remove_database">Retirer</string>
-    <string name="remove_database_title">Retirer ce notebook ?</string>
-    <string name="remove_database_body">Il disparaît de la navigation. Rien n’est supprimé dans Notion.</string>
     <string name="section_appearance">Apparence</string>
     <string name="theme">Thème</string>
     <string name="theme_system">Système</string>
@@ -145,16 +130,7 @@
         <item quantity="many">%d pages liées</item>
         <item quantity="other">%d pages liées</item>
     </plurals>
-    <!-- Manage views and the navigation bar -->
-    <string name="manage_views">Gérer les notebooks</string>
-    <plurals name="views_count">
-        <item quantity="one">%d notebook</item>
-        <item quantity="many">%d notebooks</item>
-        <item quantity="other">%d notebooks</item>
-    </plurals>
-    <string name="icon_search">Rechercher des icônes (en anglais)</string>
-    <string name="icon_none_found">Aucune icône trouvée. Essayez un autre mot, comme « list », « food » ou « work ».</string>
-    <string name="cards_title">Cartes dans l’aperçu</string>
+    <string name="cards_title">Cartes</string>
     <string name="card_cover">Image d’en-tête</string>
     <string name="card_content">Début du contenu</string>
     <string name="action_indent">Augmenter le retrait (dans le bloc au-dessus)</string>
@@ -162,9 +138,6 @@
     <string name="chip_checked">%1$s</string>
     <string name="chip_unchecked">Pas %1$s</string>
     <string name="cards_properties">Propriétés sur la carte (jusqu’à %1$d)</string>
-    <string name="edit_named">Modifier « %1$s »</string>
-    <string name="sub_notebook_of">Fait partie de %1$s</string>
-    <string name="edit_view">Modifier le notebook</string>
     <string name="new_page">Nouvelle page</string>
     <string name="new_page_top_level">En haut de votre espace de travail</string>
     <string name="new_page_top_level_help">Parmi vos pages privées</string>
@@ -172,12 +145,10 @@
     <string name="create_failed">Notion n’a pas pu créer la page : %1$s</string>
     <string name="browse_empty_title">Rien ici pour l’instant</string>
     <string name="empty_no_key_title">Connexion à Notion</string>
-    <string name="empty_home_title">Aucune note épinglée</string>
     <string name="empty_database_title">Pas encore de notes</string>
     <string name="empty_clear_filters">Effacer les filtres</string>
     <string name="filters">Filtres</string>
     <string name="filters_count">Filtres · %1$d</string>
-    <string name="sort_notion">Ordre des pages</string>
     <string name="sort_custom">Ordre personnalisé</string>
     <string name="sort_last_edited">Dernière modification</string>
     <string name="sort_created">Création</string>
@@ -190,11 +161,9 @@
     <string name="chip_next_7_days">7 prochains jours</string>
     <string name="chip_later">Plus tard</string>
     <string name="chip_no_date">Sans date</string>
-    <string name="no_notebooks">Pas encore de notebooks</string>
     <string name="sort_by">Tri : %1$s</string>
     <string name="sort_ascending">Croissant</string>
     <string name="sort_descending">Décroissant</string>
-    <string name="no_notebooks_body">Un notebook affiche les notes d’une base de données Notion ou les sous-pages d’une page.</string>
     <string name="error_offline">Pas de connexion à Notion. Vérifiez votre connexion Internet et réessayez.</string>
     <string name="error_not_found">Notion ne trouve pas cet élément. Il a peut-être été supprimé ou n’est pas partagé avec votre connexion.</string>
     <string name="error_busy">Notion est occupé. Réessayez dans un instant.</string>
@@ -202,15 +171,11 @@
     <string name="clear_row">Ne plus filtrer par %1$s</string>
     <string name="chip_rows_shown">Affichées</string>
     <string name="new_subpage">Nouvelle sous-page</string>
-    <string name="cards_of">Cartes : %1$s</string>
     <string name="filter_no_values">Pas encore de valeurs</string>
-    <string name="section_navigation_bar">Barre de navigation</string>
-    <string name="navigation_start">S’ouvre au démarrage de l’app</string>
-    <string name="navigation_search_last">Toujours en dernier</string>
     <string name="search_or_add">Rechercher ou ajouter</string>
     <string name="add_option">Ajouter « %1$s »</string>
     <string name="source_missing_title">Notion ne trouve pas cette source de données</string>
     <string name="source_missing_body">Elle a peut-être été supprimée ou mise à la corbeille, ou la connexion n’y a plus accès.</string>
-    <string name="source_missing_remove">Retirer le notebook</string>
-    <string name="source_missing_remove_sub">Retirer de ce notebook</string>
+    <string name="action_new">Nouveau</string>
+    <string name="section_recent">Bases de données et pages</string>
 </resources>

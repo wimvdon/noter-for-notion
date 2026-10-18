@@ -233,26 +233,31 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   cut out. Both layers are drawn at 64% of their first size, centred on the visible drawing (the
   folded corner and the note behind balance each other), so the notes keep clear padding inside
   round and squircle launcher masks (owner's request).
-- View icons: the whole Material Symbols set (outlined, rounded), searchable by English name and
-  topic, the same catalog as RSS Reader's folder icons.
+- Icons: databases and pages show Notion's own icon (emoji or image); for one of Notion's built-in
+  icons the closest Material Symbol in its colour, from the same catalog as RSS Reader's folder
+  icons. Without an icon: Rounded TableChart (database) or Description (page).
 - Seed `#F5A623` (amber): a full Material 3 tonal scheme from the icon's middle stop.
-- Signature element: the overview in the style of Google Keep. Notes are `OutlinedCard`s in a
+- Signature element: notes in the style of Google Keep (on Home and in a database). Notes are `OutlinedCard`s in a
   staggered grid (cells at least 160dp wide: two columns on a phone) with, when chosen per
   database, the header image on top (96dp high, cropped), the title (Title Medium), up to ten lines of content preview (Body Medium, `onSurfaceVariant`) and the
   properties chosen for cards (up to three; options in Notion's colours, other values in Label
   Medium), or else the filter property's options. "Pinned" and "Others" are Label Large headers spanning
   the grid. A dragged card lifts (shadow, 3% larger, `surfaceContainerHigh`).
-- Navigation: the navigation bar has the three top-level destinations, Pinned, Notebooks and
-  Search, in the order set in Settings › Navigation bar (drag handles, as in Tracker for Simkl): the
-  first is where the app opens, Search is locked last because it opens the keyboard. The notebooks are peers within Notebooks: a primary scrollable tab row under the top
-  app bar, leading-icon tabs with the notebook's icon. A notebook of several data sources has a
-  secondary scrollable tab row below it, one tab per data source (a sub-notebook). The top app bar's ⋮ menu has Edit
-  notebook, Manage notebooks and Settings; there is no drawer. In a sub-notebook, Edit notebook
-  becomes two items, Edit “notebook” (name, icon, every sub-notebook's cards) and Edit
-  “sub-notebook” (only its cards, under "Part of" the notebook). On Pinned and Notebooks the whole
-  header (top app bar, tab rows and rows of chips, `surface`) scrolls away with the notes and
-  comes back on the first scroll up (`QuickReturnHeader`); the status bar area stays.
-- Filters and sort: icon buttons in a notebook's top app bar. Filters shows a small badge dot
+- Navigation: no navigation bar; Home is the one main screen and everything else is a child page.
+  Home's top is a large search bar (56dp high, fully rounded, `surfaceContainerHigh`, a search
+  icon and "Search Notion" in Body Large `onSurfaceVariant`) with the sync and Settings icon
+  buttons at its end, as in Material 3's search bar on a main screen; tapping it opens Search.
+  Below it one grid: "Pinned" (a Title Small, primary header), the pinned databases as list rows,
+  the pinned notes and pages as cards, then "Databases and pages" as list rows (icon, name,
+  "Edited …", a small primary pin at the end when pinned). A long press on a row opens a menu with
+  Pin or Unpin. One FAB (+): a sheet with "New page" (at the top of the workspace) and "New note
+  in" with the databases.
+- A database is a child page: back arrow, Notion's icon and name, then sync, Filters, Sort and ⋮
+  (Pin or Unpin, Cards). A database of several data sources has a primary scrollable tab row, one
+  tab per data source. The whole header (top app bar, tab row and rows of chips, `surface`)
+  scrolls away with the notes and comes back on the first scroll up (`QuickReturnHeader`); the
+  status bar area stays.
+- Filters and sort: icon buttons in a database's top app bar. Filters shows a small badge dot
   while filters are on; Sort opens a menu with a check on the current sort and an arrow (up:
   ascending, down: descending) that tapping the current sort again turns around. Each quick
   filter has a row of chips of its own above the notes, starting with the property's name (Label
@@ -261,10 +266,10 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   sections, a drag handle and an eye on each property, and its values to filter by (filter chips)
   right below it, so it is one list. A chip's count of notes sits in a small
   `surfaceContainerHighest` pill after its label.
-- Search, a destination: a search icon and the query field in the app bar, then "Notes on this phone", "Databases" and "Pages" headers (Title
-  Small, primary). A database opened from Search is a child page with an "Add as notebook" text
-  button in its app bar, "Edit notebook" once it is one. "Notebook" stays in English in every
-  language: it is the app's name for its collections.
+- Search, a child page: a back arrow and the query field in the app bar, then "Notes on this
+  phone", "Databases" and "Pages" headers (Title Small, primary).
+- Cards panel (⋮ › Cards in a database): a bottom sheet with switches for the header image and
+  the start of the content, and filter chips for up to three properties.
 - The note editor follows Notion's look: headings in SemiBold, quotes with a bar, callouts and
   code on `surfaceContainerHigh` (code in a monospace font), dividers as `outlineVariant` lines.
   Blocks the app can't show sit in an outlined box (`outlineVariant`) with their kind and an

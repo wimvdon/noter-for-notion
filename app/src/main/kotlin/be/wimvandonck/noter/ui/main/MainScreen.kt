@@ -1,32 +1,11 @@
 package be.wimvandonck.noter.ui.main
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.activity.compose.BackHandler
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material3.LeadingIconTab
-import androidx.compose.material3.PrimaryScrollableTabRow
-import androidx.compose.material3.SecondaryScrollableTabRow
-import androidx.compose.material3.Tab
-import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridItemInfo
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.withFrameNanos
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,70 +14,78 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridItemInfo
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridScope
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.StickyNote2
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.FilterAltOff
+import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.TableChart
+import androidx.compose.material.icons.rounded.Workspaces
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
@@ -113,43 +100,31 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import be.wimvandonck.noter.R
 import be.wimvandonck.noter.data.RepoEvent
 import be.wimvandonck.noter.data.model.NoteSummary
+import be.wimvandonck.noter.data.model.PageIcon
+import be.wimvandonck.noter.data.model.PinnedDatabase
 import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.data.model.PropertyValue
+import be.wimvandonck.noter.data.model.WorkspaceItem
 import be.wimvandonck.noter.data.notion.InlineMarkdown
 import be.wimvandonck.noter.data.notion.PropertyCodec
-import be.wimvandonck.noter.logic.NotionDates
-import be.wimvandonck.noter.logic.PropertyLayouts
-import be.wimvandonck.noter.ui.common.DatabaseIcons
-import be.wimvandonck.noter.ui.common.NotionImage
-import be.wimvandonck.noter.ui.common.PageIconView
-import be.wimvandonck.noter.ui.common.SMALL_PAGE_ICON
-import be.wimvandonck.noter.ui.common.OptionChip
-import be.wimvandonck.noter.ui.common.SyncButton
-import be.wimvandonck.noter.ui.common.errorText
 import be.wimvandonck.noter.logic.ChipFilter
 import be.wimvandonck.noter.logic.FilterChip as Chip
-import be.wimvandonck.noter.logic.Destinations
-import be.wimvandonck.noter.logic.NoteTargets
-import be.wimvandonck.noter.data.model.DatabaseConfig
-import be.wimvandonck.noter.logic.Notebooks
-import androidx.compose.material.icons.automirrored.rounded.ViewList
-import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
-import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
-import androidx.compose.material.icons.outlined.PushPin
-import androidx.compose.material.icons.rounded.Key
-import androidx.compose.material.icons.rounded.Workspaces
-import androidx.compose.material.icons.rounded.FilterAltOff
-import androidx.compose.material.icons.rounded.CloudOff
-import androidx.compose.material.icons.automirrored.rounded.StickyNote2
+import be.wimvandonck.noter.logic.NotionDates
+import be.wimvandonck.noter.logic.PropertyLayouts
+import be.wimvandonck.noter.ui.common.NotionImage
+import be.wimvandonck.noter.ui.common.OptionChip
+import be.wimvandonck.noter.ui.common.PageIconView
+import be.wimvandonck.noter.ui.common.SMALL_PAGE_ICON
+import be.wimvandonck.noter.ui.common.SyncButton
+import be.wimvandonck.noter.ui.common.errorText
 import be.wimvandonck.noter.ui.theme.EmptyState
 import be.wimvandonck.noter.ui.theme.SkeletonBlock
 
 /**
- * The overview, in the style of Google Keep. The navigation bar holds the top-level destinations:
- * Pinned (the pinned notes of everything), Notebooks (the user's notebooks as tabs: peers within
- * one destination) and Search (the notes here, then Notion's pages and databases). A notebook's
- * Filters and Sort are buttons in the top app bar; the ⋮ menu has Edit notebook, Manage
- * notebooks and Settings.
+ * Home: a large search bar (it opens Search) with the sync and settings buttons, then everything
+ * pinned (databases as rows, notes and pages as cards in the style of Google Keep), then the
+ * databases and pages Notion lists as most recently edited. + makes a note in a database or a page
+ * at the top of the workspace.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -157,33 +132,17 @@ fun MainScreen(
     viewModel: MainViewModel,
     onOpenNote: (String) -> Unit,
     onOpenDatabase: (String) -> Unit,
+    onOpenSearch: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenViews: () -> Unit,
-    onEditNotebook: (String) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val previews by viewModel.previews.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val resources = androidx.compose.ui.platform.LocalResources.current
-    var choosingDatabase by remember { mutableStateOf(false) }
-    var filtersOpen by remember { mutableStateOf(false) }
-    val section = state.section
-    // Back goes to the navigation bar's first destination before leaving the app.
-    BackHandler(enabled = state.ready && section != state.bar.first()) { viewModel.selectStart() }
+    var choosingTarget by remember { mutableStateOf(false) }
+    var confirmTrash by remember { mutableStateOf<NoteSummary?>(null) }
+    val notes = state.notes
 
-    val sortedByHand = stringResource(R.string.sorted_by_hand)
-    val undo = stringResource(R.string.undo)
-    LaunchedEffect(viewModel) {
-        viewModel.mainEvents.collect { event ->
-            when (event) {
-                is MainEvent.SortedByHand -> {
-                    // Dragging changed the order; the old one is a tap away.
-                    val result = snackbar.showSnackbar(sortedByHand, actionLabel = undo, duration = SnackbarDuration.Long)
-                    if (result == SnackbarResult.ActionPerformed) viewModel.undoSortedByHand(event)
-                }
-            }
-        }
-    }
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             val text = when (event) {
@@ -199,204 +158,83 @@ fun MainScreen(
             snackbar.showSnackbar(text)
         }
     }
+    LoadPreviews(notes, viewModel::loadPreviews)
 
-    val notebookActions = NotebookActions(onQuickFilters = viewModel::setQuickFilters, onSort = viewModel::setSort)
-    // The header (app bar, tabs and rows of chips) scrolls away with the notes and comes back on
-    // the first scroll up. Another notebook or destination brings it back (a short list can't
-    // scroll it into view).
-    val header = rememberQuickReturnHeaderState()
-    LaunchedEffect(section, state.notebook?.id) { header.show() }
-    val targets = NoteTargets.of(Notebooks.named(state.views), null)
-    val navigationBar: @Composable () -> Unit = {
-        NavigationBar {
-            // In the user's order (Settings); Search is always last.
-            state.bar.forEach { destination ->
-                when (destination) {
-                    Destinations.Section.PINNED -> NavigationBarItem(
-                        selected = section == Destinations.Section.PINNED,
-                        onClick = { viewModel.selectTab(Destinations.PINNED) },
-                        icon = {
-                            Icon(
-                                if (section == Destinations.Section.PINNED) Icons.Rounded.PushPin else Icons.Outlined.PushPin,
-                                contentDescription = null,
-                            )
-                        },
-                        label = { Text(stringResource(R.string.tab_home), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    )
-                    Destinations.Section.NOTEBOOKS -> NavigationBarItem(
-                        selected = section == Destinations.Section.NOTEBOOKS,
-                        onClick = { viewModel.selectNotebooks() },
-                        icon = {
-                            Icon(
-                                if (section == Destinations.Section.NOTEBOOKS) Icons.AutoMirrored.Rounded.LibraryBooks else Icons.AutoMirrored.Outlined.LibraryBooks,
-                                contentDescription = null,
-                            )
-                        },
-                        label = { Text(stringResource(R.string.section_views), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    )
-                    Destinations.Section.SEARCH -> NavigationBarItem(
-                        selected = section == Destinations.Section.SEARCH,
-                        onClick = { viewModel.selectTab(Destinations.SEARCH) },
-                        enabled = state.hasKey,
-                        icon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                        label = { Text(stringResource(R.string.action_search), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    )
-                }
-            }
-        }
-    }
-
-    // A notebook adds to itself; Pinned and Search ask where (when there is a choice): a notebook,
-    // or a page at the top of the workspace (with a personal access token). On Pinned it is pinned.
-    val newButton: @Composable () -> Unit = {
-        val inNotebook = state.notebook != null
-        val noNotebook = section == Destinations.Section.NOTEBOOKS && state.notebook == null
-        if (state.hasKey && !noNotebook && (inNotebook || targets.isNotEmpty() || state.canAddTopLevel)) {
-            FloatingActionButton(
-                onClick = {
-                    when {
-                        inNotebook -> viewModel.createNote(onCreated = onOpenNote)
-                        targets.size == 1 && !state.canAddTopLevel -> viewModel.createNote(targets.first().databaseId, onOpenNote)
-                        else -> choosingDatabase = true
-                    }
-                },
-            ) {
-                Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.action_new_note))
-            }
-        }
-    }
-
-    if (section == Destinations.Section.SEARCH) {
-        SearchScreen(viewModel = viewModel, onOpenNote = onOpenNote, onOpenDatabase = onOpenDatabase, bottomBar = navigationBar, newButton = newButton)
-    } else Scaffold(
-        modifier = Modifier.nestedScroll(header.connection),
+    Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            // The status bar keeps its place; everything under it scrolls away.
-            Box(
-                Modifier
-                    .background(MaterialTheme.colorScheme.surface)
-                    .windowInsetsPadding(TopAppBarDefaults.windowInsets),
-            ) {
-                QuickReturnHeader(header) {
-                    Column {
-                        TopAppBar(
-                            title = {
-                                Text(
-                                    stringResource(if (state.isHome) R.string.tab_home else R.string.section_views),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            },
-                            actions = {
-                                SyncButton(state.pendingCount, state.offline, syncing = false, onSync = viewModel::refresh, alwaysShown = false)
-                                if (state.hasKey) NotebookBarActions(state, notebookActions, onOpenFilters = { filtersOpen = true })
-                                OverflowMenu(
-                                    notebook = state.notebook?.let { Notebooks.topOf(state.views, it.id) },
-                                    subNotebook = state.notebook?.let { Notebooks.subNotebookOf(state.views, it.id) },
-                                    onEditNotebook = onEditNotebook,
-                                    onManage = onOpenViews,
-                                    onSettings = onOpenSettings,
-                                )
-                            },
-                            windowInsets = WindowInsets(0, 0, 0, 0),
-                        )
-                        // The notebooks are peers within Notebooks: tabs, in the order of Manage notebooks.
-                        if (section == Destinations.Section.NOTEBOOKS && state.tabs.isNotEmpty() && state.hasKey) {
-                            val selected = state.tabs.indexOfFirst { it.key == state.currentTab }.coerceAtLeast(0)
-                            PrimaryScrollableTabRow(selectedTabIndex = selected, edgePadding = 16.dp) {
-                                state.tabs.forEach { tab ->
-                                    LeadingIconTab(
-                                        selected = tab.key == state.currentTab,
-                                        onClick = { viewModel.selectTab(tab.key) },
-                                        icon = { Icon(DatabaseIcons.icon(tab.icon), contentDescription = null, Modifier.size(18.dp)) },
-                                        text = { Text(tab.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                    )
-                                }
-                            }
-                            // A notebook of several data sources: one secondary tab per data source.
-                            if (state.subTabs.isNotEmpty()) {
-                                val current = state.subTabs.indexOfFirst { it.key == state.notebook?.id }.coerceAtLeast(0)
-                                SecondaryScrollableTabRow(selectedTabIndex = current, edgePadding = 16.dp) {
-                                    state.subTabs.forEach { sub ->
-                                        Tab(
-                                            selected = sub.key == state.notebook?.id,
-                                            onClick = { viewModel.selectSubTab(state.currentTab, sub.key) },
-                                            text = { Text(sub.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        if (state.hasKey && state.chipGroups.isNotEmpty()) {
-                            ChipRows(state, onToggle = viewModel::toggleChip, onClear = viewModel::clearChips, onClearRow = viewModel::clearRow)
-                        }
+            HomeSearchBar(
+                enabled = notes.hasKey,
+                onSearch = onOpenSearch,
+                actions = {
+                    SyncButton(notes.pendingCount, notes.offline, syncing = false, onSync = viewModel::refresh, alwaysShown = false)
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings_title))
                     }
+                },
+            )
+        },
+        floatingActionButton = {
+            if (notes.hasKey && (state.targets.isNotEmpty() || state.canAddTopLevel)) {
+                FloatingActionButton(onClick = { choosingTarget = true }) {
+                    Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.action_new))
                 }
             }
         },
-        bottomBar = navigationBar,
-        floatingActionButton = newButton,
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
+            val nothing = notes.pinned.isEmpty() && state.pinnedDatabases.isEmpty() && state.recent?.isEmpty() == true
             when {
-                !state.ready -> Unit
-                !state.hasKey -> EmptyState(
+                !notes.ready -> Unit
+                !notes.hasKey -> EmptyState(
                     Icons.Rounded.Key,
                     stringResource(R.string.empty_no_key_title),
                     body = stringResource(R.string.empty_no_key),
                 ) {
                     Button(onClick = onOpenSettings) { Text(stringResource(R.string.empty_no_key_action)) }
                 }
-                section == Destinations.Section.NOTEBOOKS && state.notebook == null -> EmptyState(
-                    Icons.AutoMirrored.Rounded.LibraryBooks,
-                    stringResource(R.string.no_notebooks),
-                    body = stringResource(R.string.no_notebooks_body),
-                ) {
-                    Button(onClick = onOpenViews) { Text(stringResource(R.string.add_database)) }
-                }
-                // Notion can't find the data source (deleted, in the trash, or no access any more).
-                state.sourceMissing -> EmptyState(
-                    Icons.Rounded.SearchOff,
-                    stringResource(R.string.source_missing_title),
-                    body = stringResource(R.string.source_missing_body),
-                ) {
-                    Button(onClick = viewModel::removeMissingNotebook) {
-                        Text(stringResource(if (state.subTabs.size > 1) R.string.source_missing_remove_sub else R.string.source_missing_remove))
-                    }
-                    OutlinedButton(onClick = viewModel::refresh) { Text(stringResource(R.string.retry)) }
-                }
-                else -> NotesPane(
-                    state = state,
-                    previews = previews,
-                    onLoadPreviews = viewModel::loadPreviews,
-                    onToggleChip = viewModel::toggleChip,
-                    onClearChips = viewModel::clearChips,
-                    onLoadChipTitles = { viewModel.loadChipTitles(it) },
+                nothing -> EmptyState(Icons.Rounded.Explore, stringResource(R.string.browse_empty_title), body = stringResource(R.string.browse_empty))
+                else -> PullToRefreshBox(
+                    isRefreshing = notes.refreshing,
                     onRefresh = viewModel::refresh,
-                    onOpen = onOpenNote,
-                    onTogglePin = viewModel::togglePin,
-                    onTrash = viewModel::trash,
-                    onReordered = viewModel::saveOrder,
-                    onClearRow = viewModel::clearRow,
-                    chipsAbove = false,
-                )
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    NoteGrid(
+                        state = notes,
+                        previews = previews,
+                        onOpen = onOpenNote,
+                        onTogglePin = viewModel::togglePin,
+                        onTrash = { confirmTrash = it },
+                        onReordered = viewModel::saveOrder,
+                        header = {
+                            pinnedSection(
+                                databases = state.pinnedDatabases,
+                                anyNotes = notes.pinned.isNotEmpty(),
+                                onOpenDatabase = onOpenDatabase,
+                                onUnpin = viewModel::togglePinDatabase,
+                            )
+                        },
+                        footer = {
+                            recentSection(
+                                state = state,
+                                onOpenDatabase = onOpenDatabase,
+                                onOpenPage = { viewModel.openItem(it, onOpenNote) },
+                                onTogglePin = viewModel::togglePinItem,
+                                onRetry = viewModel::refresh,
+                            )
+                        },
+                    )
+                }
             }
         }
     }
 
-    if (filtersOpen && state.notebook != null) {
-        NotebookFiltersSheet(
-            state = state,
-            actions = notebookActions,
-            onToggle = { property, key -> viewModel.toggleChip(property, key) },
-            onClear = viewModel::clearChips,
-            onDismiss = { filtersOpen = false },
-        )
+    confirmTrash?.let { note ->
+        TrashNoteDialog(note, onConfirm = { viewModel.trash(note.id); confirmTrash = null }, onDismiss = { confirmTrash = null })
     }
 
-    if (choosingDatabase) {
-        ModalBottomSheet(onDismissRequest = { choosingDatabase = false }) {
+    if (choosingTarget) {
+        ModalBottomSheet(onDismissRequest = { choosingTarget = false }) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 // Notion only lets a personal access token add pages at the top of the workspace.
                 if (state.canAddTopLevel) {
@@ -406,26 +244,26 @@ fun MainScreen(
                         supportingContent = { Text(stringResource(R.string.new_page_top_level_help)) },
                         leadingContent = { Icon(Icons.Rounded.Workspaces, contentDescription = null) },
                         modifier = Modifier.clickable {
-                            choosingDatabase = false
-                            viewModel.createPage(null, onOpenNote)
+                            choosingTarget = false
+                            viewModel.createPage(onOpenNote)
                         },
                     )
                 }
-                if (targets.isNotEmpty()) SheetHeader(stringResource(R.string.new_note_in))
-                targets.forEach { target ->
+                if (state.targets.isNotEmpty()) SheetHeader(stringResource(R.string.new_note_in))
+                state.targets.forEach { target ->
                     ListItem(
                         headlineContent = { Text(target.name.ifBlank { stringResource(R.string.untitled) }) },
                         leadingContent = {
                             Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                                if (target.pageIcon != null) {
-                                    PageIconView(target.pageIcon, size = 24.dp)
+                                if (target.icon != null) {
+                                    PageIconView(target.icon, size = 24.dp)
                                 } else {
-                                    Icon(DatabaseIcons.icon(target.iconKey), contentDescription = null)
+                                    Icon(Icons.Rounded.TableChart, contentDescription = null)
                                 }
                             }
                         },
                         modifier = Modifier.clickable {
-                            choosingDatabase = false
+                            choosingTarget = false
                             viewModel.createNote(target.databaseId, onOpenNote)
                         },
                     )
@@ -437,59 +275,97 @@ fun MainScreen(
 }
 
 /**
- * The top app bar's ⋮ menu: Edit notebook (in a notebook; in a sub-notebook, Edit for the notebook
- * and Edit for the sub-notebook on its own), Manage notebooks, Settings.
+ * Home's search bar: a large, rounded field that opens Search, with the screen's buttons at its
+ * end (Material 3's search bar on a main screen).
  */
 @Composable
-private fun OverflowMenu(
-    notebook: DatabaseConfig?,
-    subNotebook: DatabaseConfig?,
-    onEditNotebook: (String) -> Unit,
-    onManage: () -> Unit,
-    onSettings: () -> Unit,
-) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { open = true }) {
-            Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more_options))
+private fun HomeSearchBar(enabled: Boolean, onSearch: () -> Unit, actions: @Composable () -> Unit) {
+    Row(
+        Modifier
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(
+            onClick = onSearch,
+            enabled = enabled,
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier.weight(1f).height(56.dp),
+        ) {
+            Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.browse_search),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(start = 16.dp),
+                )
+                actions()
+            }
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            if (notebook != null) {
-                DropdownMenuItem(
-                    text = { Text(if (subNotebook != null) stringResource(R.string.edit_named, notebook.name) else stringResource(R.string.edit_view)) },
-                    leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
-                    onClick = {
-                        open = false
-                        onEditNotebook(notebook.id)
-                    },
+    }
+}
+
+/** Home's pinned section: its title, then the pinned databases as rows (the notes follow as cards). */
+private fun LazyStaggeredGridScope.pinnedSection(
+    databases: List<PinnedDatabase>,
+    anyNotes: Boolean,
+    onOpenDatabase: (String) -> Unit,
+    onUnpin: (PinnedDatabase) -> Unit,
+) {
+    if (databases.isEmpty() && !anyNotes) return
+    item(key = "__pinned", span = StaggeredGridItemSpan.FullLine) { ListHeader(stringResource(R.string.section_pinned)) }
+    items(databases, key = { "db:" + it.id }, span = { StaggeredGridItemSpan.FullLine }) { pin ->
+        WorkspaceRow(
+            title = pin.title,
+            icon = pin.icon,
+            isDatabase = true,
+            pinned = false,
+            onClick = { onOpenDatabase(pin.id) },
+            onTogglePin = { onUnpin(pin) },
+            modifier = Modifier.animateItem(),
+        )
+    }
+}
+
+/**
+ * Home's list of databases and pages, most recently edited first (from Notion's search, kept on
+ * this phone): loading lines until known; what failed, with Retry, when nothing is kept.
+ */
+private fun LazyStaggeredGridScope.recentSection(
+    state: HomeUiState,
+    onOpenDatabase: (String) -> Unit,
+    onOpenPage: (WorkspaceItem) -> Unit,
+    onTogglePin: (WorkspaceItem) -> Unit,
+    onRetry: () -> Unit,
+) {
+    item(key = "__recent", span = StaggeredGridItemSpan.FullLine) { ListHeader(stringResource(R.string.section_recent)) }
+    val recent = state.recent
+    val error = state.recentError
+    when {
+        recent == null && error != null -> item(key = "__recent_error", span = StaggeredGridItemSpan.FullLine) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text(errorText(error), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+            }
+        }
+        recent == null -> item(key = "__recent_loading", span = StaggeredGridItemSpan.FullLine) { LoadingRows(count = 4) }
+        else -> {
+            val pinnedDatabases = state.pinnedDatabases.map { it.id.replace("-", "") }.toSet()
+            val pinnedPages = state.notes.pinnedIds.map { it.replace("-", "") }.toSet()
+            items(recent, key = { "r:" + it.id }, span = { StaggeredGridItemSpan.FullLine }) { item ->
+                val plain = item.id.replace("-", "")
+                WorkspaceRow(
+                    item = item,
+                    pinned = if (item.isDatabase) plain in pinnedDatabases else plain in pinnedPages,
+                    onClick = { if (item.isDatabase) onOpenDatabase(item.id) else onOpenPage(item) },
+                    onTogglePin = { onTogglePin(item) },
+                    modifier = Modifier.animateItem(),
                 )
             }
-            if (subNotebook != null) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.edit_named, subNotebook.name)) },
-                    leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
-                    onClick = {
-                        open = false
-                        onEditNotebook(subNotebook.id)
-                    },
-                )
-            }
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.manage_views)) },
-                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.ViewList, contentDescription = null) },
-                onClick = {
-                    open = false
-                    onManage()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.settings_title)) },
-                leadingIcon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
-                onClick = {
-                    open = false
-                    onSettings()
-                },
-            )
         }
     }
 }
@@ -504,16 +380,17 @@ private fun SheetHeader(text: String) {
 }
 
 /**
- * The notes of Pinned, a notebook or a database: rows of filter chips on top, then the notes as cards, with pull-to-refresh, loading placeholders and empty
- * states. Moving a note to the trash asks first.
+ * A database's notes as cards (its rows of filter chips are in the screen's header, see
+ * [ChipRows]), with pull-to-refresh, loading placeholders and empty states. Moving a note to the
+ * trash asks first.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun NotesPane(
-    state: MainUiState,
+    state: NotesUiState,
     previews: Map<String, String>,
     onLoadPreviews: (List<NoteSummary>) -> Unit,
-    onToggleChip: (property: String?, key: String) -> Unit,
+    onToggleChip: (property: String, key: String) -> Unit,
     onClearChips: () -> Unit,
     onLoadChipTitles: (String) -> Unit,
     onRefresh: () -> Unit,
@@ -521,18 +398,11 @@ internal fun NotesPane(
     onTogglePin: (String) -> Unit,
     onTrash: (String) -> Unit,
     onReordered: (List<String>) -> Unit,
-    onClearRow: ((property: String) -> Unit)? = null,
-    /** False when the rows of chips are in a header of the screen's own (that scrolls away). */
-    chipsAbove: Boolean = true,
 ) {
     var confirmTrash by remember { mutableStateOf<NoteSummary?>(null) }
     LaunchedEffect(state.chipRelationDatabases) { state.chipRelationDatabases.forEach(onLoadChipTitles) }
-    // Previews are only downloaded for cards that show the content.
-    LaunchedEffect(state.pinned, state.others, state.propertyLayouts) {
-        onLoadPreviews((state.pinned + state.others).filter { PropertyLayouts.showsContent(state.propertyLayouts[it.databaseId]) })
-    }
+    LoadPreviews(state, onLoadPreviews)
     Column(Modifier.fillMaxSize()) {
-        if (chipsAbove && state.chipGroups.isNotEmpty()) ChipRows(state, onToggle = onToggleChip, onClear = onClearChips, onClearRow = onClearRow)
         PullToRefreshBox(
             isRefreshing = state.refreshing && !state.loading,
             onRefresh = onRefresh,
@@ -545,7 +415,6 @@ internal fun NotesPane(
                         EmptyState(Icons.Rounded.FilterAltOff, stringResource(R.string.empty_filtered)) {
                         Button(onClick = onClearChips) { Text(stringResource(R.string.empty_clear_filters)) }
                     }
-                    state.isHome -> EmptyState(Icons.Rounded.PushPin, stringResource(R.string.empty_home_title), body = stringResource(R.string.empty_home))
                     state.error != null -> LoadFailed(state.error, onRefresh)
                     else -> EmptyState(
                         Icons.AutoMirrored.Rounded.StickyNote2,
@@ -565,57 +434,51 @@ internal fun NotesPane(
         }
     }
     confirmTrash?.let { note ->
-        AlertDialog(
-            onDismissRequest = { confirmTrash = null },
-            title = { Text(stringResource(R.string.trash_title)) },
-            text = { Text(stringResource(R.string.trash_body, InlineMarkdown.stripped(note.title).ifBlank { stringResource(R.string.untitled) })) },
-            confirmButton = {
-                TextButton(onClick = {
-                    onTrash(note.id)
-                    confirmTrash = null
-                }) { Text(stringResource(R.string.trash_confirm)) }
-            },
-            dismissButton = { TextButton(onClick = { confirmTrash = null }) { Text(stringResource(R.string.cancel)) } },
-        )
+        TrashNoteDialog(note, onConfirm = { onTrash(note.id); confirmTrash = null }, onDismiss = { confirmTrash = null })
     }
 }
 
+/** Downloads the previews of the notes whose cards show the start of their content. */
+@Composable
+internal fun LoadPreviews(state: NotesUiState, onLoadPreviews: (List<NoteSummary>) -> Unit) {
+    LaunchedEffect(state.pinned, state.others, state.propertyLayouts) {
+        onLoadPreviews((state.pinned + state.others).filter { PropertyLayouts.showsContent(state.propertyLayouts[it.databaseId]) })
+    }
+}
+
+/** Asks before moving [note] to the trash. */
+@Composable
+internal fun TrashNoteDialog(note: NoteSummary, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.trash_title)) },
+        text = { Text(stringResource(R.string.trash_body, InlineMarkdown.stripped(note.title).ifBlank { stringResource(R.string.untitled) })) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.trash_confirm)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
 /**
- * The chips above the notes. A notebook: one row per quick filter, named after its property
- * ("Clear filters" is in the Filters panel). Pinned (its sources) and a database on its own: All,
- * then the chips.
+ * The chips above the notes: one row per quick filter, named after its property, ending in × while
+ * something in it is selected ("Clear filters" is in the Filters panel).
  */
 @Composable
-private fun ChipRows(
-    state: MainUiState,
-    onToggle: (property: String?, key: String) -> Unit,
-    onClear: () -> Unit,
-    onClearRow: ((property: String) -> Unit)?,
+internal fun ChipRows(
+    state: NotesUiState,
+    onToggle: (property: String, key: String) -> Unit,
+    onClearRow: (property: String) -> Unit,
 ) {
-    val anySelected = state.chipGroups.any { it.selected.isNotEmpty() }
-    val inNotebook = state.notebook != null
     Column(Modifier.padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        state.chipGroups.forEachIndexed { index, group ->
+        state.chipGroups.forEach { group ->
             val property = group.property
-            // A notebook's row with something selected ends in × (that row doesn't filter any more).
-            val clearRow = onClearRow?.takeIf { inNotebook && property != null && group.selected.isNotEmpty() }
+            val clearable = group.selected.isNotEmpty()
             Row(verticalAlignment = Alignment.CenterVertically) {
-            LazyRow(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(start = 16.dp, end = if (clearRow != null) 4.dp else 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (!inNotebook && index == 0) {
-                    item(key = "__all") {
-                        FilterChip(
-                            selected = !anySelected,
-                            onClick = onClear,
-                            label = { Text(stringResource(R.string.chip_all)) },
-                        )
-                    }
-                }
-                if (inNotebook && property != null) {
+                LazyRow(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(start = 16.dp, end = if (clearable) 4.dp else 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     item(key = "__name") {
                         Text(
                             property.name,
@@ -626,29 +489,22 @@ private fun ChipRows(
                             modifier = Modifier.widthIn(max = 120.dp),
                         )
                     }
+                    items(group.chips, key = { it.key }) { chip ->
+                        FilterChip(
+                            selected = chip.key in group.selected,
+                            onClick = { onToggle(property.name, chip.key) },
+                            label = { ChipText(chipLabel(chip, property.name, state), chip.count) },
+                            leadingIcon = if (chip.isCheckbox || chip.isDate || chip.label.isEmpty()) null else {
+                                { OptionDot(chip.color) }
+                            },
+                        )
+                    }
                 }
-                items(group.chips, key = { it.key }) { chip ->
-                    val selected = chip.key in group.selected
-                    val icon = if (state.isHome) state.databaseIcons[chip.key] else null
-                    FilterChip(
-                        selected = selected,
-                        onClick = { onToggle(property?.name, chip.key) },
-                        label = { ChipText(chipLabel(chip, property?.name, state), chip.count) },
-                        leadingIcon = if (state.isHome) {
-                            { Icon(DatabaseIcons.icon(icon), contentDescription = null, Modifier.size(FilterChipDefaults.IconSize)) }
-                        } else if (chip.isCheckbox || chip.isDate || chip.label.isEmpty()) {
-                            null
-                        } else {
-                            { OptionDot(chip.color) }
-                        },
-                    )
+                if (clearable) {
+                    IconButton(onClick = { onClearRow(property.name) }, modifier = Modifier.padding(end = 4.dp)) {
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.clear_row, property.name))
+                    }
                 }
-            }
-            if (clearRow != null && property != null) {
-                IconButton(onClick = { clearRow(property.name) }, modifier = Modifier.padding(end = 4.dp)) {
-                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.clear_row, property.name))
-                }
-            }
             }
         }
     }
@@ -659,8 +515,8 @@ private fun ChipRows(
  * page's title, else its own label.
  */
 @Composable
-internal fun chipLabel(chip: Chip, property: String?, state: MainUiState): String {
-    val name = property.orEmpty()
+internal fun chipLabel(chip: Chip, property: String, state: NotesUiState): String {
+    val name = property
     return when (chip.key) {
         ChipFilter.CHECKED -> stringResource(R.string.chip_checked, name)
         ChipFilter.UNCHECKED -> stringResource(R.string.chip_unchecked, name)
@@ -669,12 +525,7 @@ internal fun chipLabel(chip: Chip, property: String?, state: MainUiState): Strin
         ChipFilter.NEXT_7_DAYS -> stringResource(R.string.chip_next_7_days)
         ChipFilter.LATER -> stringResource(R.string.chip_later)
         ChipFilter.NO_DATE -> stringResource(R.string.chip_no_date)
-        else -> when {
-            chip.label.isNotEmpty() -> chip.label
-            // Pinned's chips are the sources; the one without a name is the pages on their own.
-            state.isHome -> stringResource(R.string.source_pages)
-            else -> state.chipTitles[chip.key]?.ifBlank { null } ?: stringResource(R.string.untitled)
-        }
+        else -> chip.label.ifEmpty { state.chipTitles[chip.key]?.ifBlank { null } ?: stringResource(R.string.untitled) }
     }
 }
 
@@ -696,7 +547,8 @@ private sealed interface GridItem {
 }
 
 /**
- * The notes as cards in a staggered grid (two columns on a phone, more on wider screens).
+ * The notes as cards in a staggered grid (two columns on a phone, more on wider screens), with
+ * full-width items of the screen's own before ([header]) and after them ([footer]).
  * Long-press and drag moves a note within its section; a long press without moving opens the
  * note's menu. The order is kept on this phone.
  *
@@ -706,12 +558,15 @@ private sealed interface GridItem {
  */
 @Composable
 internal fun NoteGrid(
-    state: MainUiState,
+    state: NotesUiState,
     previews: Map<String, String>,
     onOpen: (String) -> Unit,
     onTogglePin: (String) -> Unit,
     onTrash: (NoteSummary) -> Unit,
     onReordered: (List<String>) -> Unit,
+    contentPadding: PaddingValues = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 96.dp),
+    header: LazyStaggeredGridScope.() -> Unit = {},
+    footer: LazyStaggeredGridScope.() -> Unit = {},
 ) {
     // Working copies, so dragging moves cards at once; they follow the state when not dragging.
     val pinned = remember { mutableStateListOf<NoteSummary>() }
@@ -810,10 +665,11 @@ internal fun NoteGrid(
         columns = StaggeredGridCells.Adaptive(160.dp),
         state = gridState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 96.dp),
+        contentPadding = contentPadding,
         verticalItemSpacing = 8.dp,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        header()
         items(
             items,
             key = { it.key },
@@ -837,7 +693,7 @@ internal fun NoteGrid(
                         note = item.note,
                         preview = previews[key],
                         showDatabaseIcon = state.isHome,
-                        databaseIcon = state.databaseIcons[item.note.databaseId],
+                        databaseIcon = state.sourceIcons[item.note.databaseId],
                         chipProperty = state.cardProperty,
                         layout = state.propertyLayouts[item.note.databaseId],
                         lifted = isDragging,
@@ -916,6 +772,7 @@ internal fun NoteGrid(
                 }
             }
         }
+        footer()
     }
 }
 
@@ -942,7 +799,7 @@ private fun NoteCard(
     note: NoteSummary,
     preview: String?,
     showDatabaseIcon: Boolean,
-    databaseIcon: String?,
+    databaseIcon: PageIcon?,
     chipProperty: String?,
     layout: PropertyLayout?,
     lifted: Boolean,
@@ -1010,8 +867,8 @@ private fun NoteCard(
 }
 
 /**
- * The card's footer: the properties chosen for cards (see PropertyLayouts), else the filter
- * property's options; the database (on Pinned); "not synced yet".
+ * The card's footer: the database's icon (on Home, when known), the properties chosen for cards
+ * (see PropertyLayouts), else the filter property's options; "not synced yet".
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -1020,25 +877,19 @@ private fun NoteLabels(
     chipProperty: String?,
     layout: PropertyLayout?,
     showDatabaseIcon: Boolean,
-    databaseIcon: String?,
+    databaseIcon: PageIcon?,
 ) {
     val chosen = remember(note.properties, layout) { PropertyLayouts.cardProperties(note.properties, layout).filterNot { it.isEmpty } }
     val shown = chosen.ifEmpty { listOfNotNull(chipProperty?.let { note.property(it) }) }
-    if (shown.all { it.isEmpty } && !note.isLocal && !showDatabaseIcon) return
+    val sourceIcon = databaseIcon?.takeIf { showDatabaseIcon }
+    if (shown.all { it.isEmpty } && !note.isLocal && sourceIcon == null) return
     val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
         itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        if (showDatabaseIcon) {
-            Icon(
-                DatabaseIcons.icon(databaseIcon),
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.primary,
-            )
-        }
+        if (sourceIcon != null) PageIconView(sourceIcon, size = 16.dp)
         shown.forEach { prop ->
             when (val value = prop.value) {
                 is PropertyValue.Select -> value.option?.let { OptionChip(it, small = true) }
@@ -1073,7 +924,7 @@ private fun NoteLabels(
 }
 
 @Composable
-private fun LoadingGrid() {
+internal fun LoadingGrid() {
     val loading = stringResource(R.string.loading)
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Adaptive(160.dp),

@@ -1,7 +1,8 @@
 package be.wimvandonck.noter.data.sync
 
-import be.wimvandonck.noter.data.model.DatabaseConfig
+import be.wimvandonck.noter.data.model.DatabaseSetup
 import be.wimvandonck.noter.data.model.NoteSummary
+import be.wimvandonck.noter.data.model.PinnedDatabase
 import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.data.store.AppSettings
 import org.junit.Assert.assertEquals
@@ -9,18 +10,19 @@ import org.junit.Test
 
 class SourceKeysTest {
     @Test
-    fun `a database's key becomes its data source's in views, order and layouts`() {
+    fun `a database's key becomes its data source's in setups, pins, order and layouts`() {
         val settings = AppSettings(
-            databases = listOf(DatabaseConfig("db", "Notes"), DatabaseConfig("v2", "Todo", databaseId = "db"), DatabaseConfig("v3", "Other", databaseId = "x")),
+            setups = mapOf("db" to DatabaseSetup(quickFilters = listOf("Status")), "x" to DatabaseSetup()),
+            pinnedDatabases = listOf(PinnedDatabase("db", "Notes"), PinnedDatabase("x", "Other")),
             order = mapOf("db" to listOf("p1"), AppSettings.HOME to listOf("p2")),
             propertyLayouts = mapOf("db" to PropertyLayout(onCard = listOf("Status"))),
         )
 
         val renamed = SourceKeys.renameInSettings(settings, "db", "ds")
 
-        assertEquals(listOf("ds", "ds", "x"), renamed.databases.map { it.sourceId })
-        // The view keeps its own ID, so the navigation keeps it selected.
-        assertEquals(listOf("db", "v2", "v3"), renamed.databases.map { it.id })
+        assertEquals(setOf("ds", "x"), renamed.setups.keys)
+        assertEquals(listOf("Status"), renamed.setups["ds"]?.quickFilters)
+        assertEquals(listOf("ds", "x"), renamed.pinnedDatabases.map { it.id })
         assertEquals(mapOf("ds" to listOf("p1"), AppSettings.HOME to listOf("p2")), renamed.order)
         assertEquals(listOf("Status"), renamed.propertyLayouts["ds"]?.onCard)
     }
