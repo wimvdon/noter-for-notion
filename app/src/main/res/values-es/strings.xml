@@ -178,4 +178,13 @@
     <string name="source_missing_body">Puede que se haya eliminado o movido a la papelera, o que la conexión ya no tenga acceso.</string>
     <string name="action_new">Nuevo</string>
     <string name="section_recent">Bases de datos y páginas</string>
+    <string name="action_share">Compartir</string>
+    <string name="action_select_lines">Seleccionar líneas</string>
+    <string name="action_select_all">Seleccionar todo</string>
+    <string name="action_copy">Copiar</string>
+    <string name="copied">Copiado</string>
+    <string name="selected_count">Seleccionadas: %1$d</string>
+    <string name="delete_lines_title">¿Eliminar las líneas seleccionadas?</string>
+    <string name="delete_lines_body">Se eliminan de la nota, también en Notion.</string>
+    <string name="delete_lines_confirm">Eliminar</string>
 </resources>

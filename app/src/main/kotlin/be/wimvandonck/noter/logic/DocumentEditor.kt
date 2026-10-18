@@ -148,6 +148,13 @@ class DocumentEditor(private val newKey: () -> String = { UUID.randomUUID().toSt
         return EditResult(blocks.subList(0, index) + blocks.subList(end, blocks.size), null)
     }
 
+    /** Deletes the blocks of [keys], each with what is nested in it. */
+    fun deleteMany(blocks: List<Block>, keys: Set<String>): EditResult {
+        var result = blocks
+        blocks.forEach { block -> if (block.key in keys) result = delete(result, block.key).blocks }
+        return EditResult(result, null)
+    }
+
     // ---- Nesting ----
 
     /** True when block [key] can go into the block above it (Notion's Tab). */

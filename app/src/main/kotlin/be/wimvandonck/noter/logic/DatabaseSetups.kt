@@ -113,8 +113,17 @@ object DatabaseSetups {
      * The properties a database can filter by, split into the ones with a row of chips above the
      * notes (in their order) and the others (in the database's order).
      */
-    fun chipRows(candidates: List<String>, quickFilters: List<String>): Pair<List<String>, List<String>> =
-        quickFilters.filter { it in candidates } to candidates.filterNot { it in quickFilters }
+    fun chipRows(candidates: List<String>, quickFilters: List<String>, filterOrder: List<String> = emptyList()): Pair<List<String>, List<String>> {
+        val rows = quickFilters.filter { it in candidates }
+        val rest = candidates.filterNot { it in rows }
+        // The others keep the order the user gave them; properties not placed yet follow in the database's order.
+        val placed = filterOrder.filter { it in rest }
+        return rows to (placed + rest.filterNot { it in placed })
+    }
+
+    /** [setup] after the user arranged the Filters panel: [shown] have a row of chips, [hidden] don't; both keep their order. */
+    fun arranged(setup: DatabaseSetup, shown: List<String>, hidden: List<String>): DatabaseSetup =
+        setup.copy(quickFilters = shown, filterOrder = shown + hidden)
 
     private fun plain(id: String) = id.replace("-", "")
 }

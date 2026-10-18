@@ -125,6 +125,17 @@ class DocumentEditorTest {
     }
 
     @Test
+    fun `deleting several lines removes each of them, with what is nested in them`() {
+        val blocks = listOf(n("a", 0), n("b", 1), n("c", 0), n("d", 0), n("e", 1))
+        assertEquals(listOf("c"), editor.deleteMany(blocks, setOf("a", "d")).blocks.map { it.key })
+        // Keys that aren't there are ignored; the focus isn't moved.
+        val result = editor.deleteMany(blocks, setOf("c", "gone"))
+        assertEquals(listOf("a", "b", "d", "e"), result.blocks.map { it.key })
+        assertNull(result.focusKey)
+        assertEquals(blocks, editor.deleteMany(blocks, emptySet()).blocks)
+    }
+
+    @Test
     fun `notion shortcuts for toggles, quotes, code and dividers`() {
         fun typed(text: String) = editor.changeText(listOf(b("a")), "a", text).blocks
         assertEquals(BlockType.TOGGLE, typed("> ")[0].type)

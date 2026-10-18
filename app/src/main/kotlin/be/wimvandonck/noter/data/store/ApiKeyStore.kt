@@ -56,9 +56,12 @@ class ApiKeyStore(private val context: Context) {
         prefs.edit {
             putString(KEY, key)
             if (kind != null) putString(KIND, kind.name) else remove(KIND)
+            // The picture is the old token's owner's; the new token's comes with setAvatarUrl.
+            remove(AVATAR)
         }
         _hasKey.value = key.isNotBlank()
         _kind.value = kind
+        _avatar.value = null
     }
 
     private val _kind by lazy { MutableStateFlow(prefs.getString(KIND, null)?.let { runCatching { TokenKind.valueOf(it) }.getOrNull() }) }
@@ -71,9 +74,20 @@ class ApiKeyStore(private val context: Context) {
         _kind.value = kind
     }
 
+    private val _avatar by lazy { MutableStateFlow(prefs.getString(AVATAR, null)) }
+
+    /** The profile picture of the person the token acts as (null: none, or not known yet). */
+    val avatarUrl: StateFlow<String?> get() = _avatar
+
+    fun setAvatarUrl(url: String?) {
+        prefs.edit { if (url != null) putString(AVATAR, url) else remove(AVATAR) }
+        _avatar.value = url
+    }
+
     private companion object {
         const val TAG = "ApiKeyStore"
         const val KEY = "api_key"
         const val KIND = "token_kind"
+        const val AVATAR = "owner_avatar_url"
     }
 }

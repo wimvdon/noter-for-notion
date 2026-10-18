@@ -119,6 +119,9 @@ import be.wimvandonck.noter.ui.common.SyncButton
 import be.wimvandonck.noter.ui.common.errorText
 import be.wimvandonck.noter.ui.theme.EmptyState
 import be.wimvandonck.noter.ui.theme.SkeletonBlock
+import coil3.compose.SubcomposeAsyncImage
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
 
 /**
  * Home: a large search bar (it opens Search) with the sync and settings buttons, then everything
@@ -168,9 +171,7 @@ fun MainScreen(
                 onSearch = onOpenSearch,
                 actions = {
                     SyncButton(notes.pendingCount, notes.offline, syncing = false, onSync = viewModel::refresh, alwaysShown = false)
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Rounded.Settings, contentDescription = stringResource(R.string.settings_title))
-                    }
+                    SettingsButton(state.avatarUrl, onOpenSettings)
                 },
             )
         },
@@ -206,13 +207,12 @@ fun MainScreen(
                         onTogglePin = viewModel::togglePin,
                         onTrash = { confirmTrash = it },
                         onReordered = viewModel::saveOrder,
+                        databases = state.pinnedDatabases,
+                        onOpenDatabase = onOpenDatabase,
+                        onUnpinDatabase = viewModel::togglePinDatabase,
+                        onDatabasesReordered = viewModel::savePinnedDatabaseOrder,
                         header = {
-                            pinnedSection(
-                                databases = state.pinnedDatabases,
-                                anyNotes = notes.pinned.isNotEmpty(),
-                                onOpenDatabase = onOpenDatabase,
-                                onUnpin = viewModel::togglePinDatabase,
-                            )
+                            pinnedSection(hasDatabases = state.pinnedDatabases.isNotEmpty(), anyNotes = notes.pinned.isNotEmpty())
                         },
                         footer = {
                             recentSection(
@@ -275,6 +275,31 @@ fun MainScreen(
 }
 
 /**
+ * Opens Settings: the profile picture of the person the token acts as when Notion tells it (the
+ * cogwheel while it loads, and when there is none or it can't be shown).
+ */
+@Composable
+private fun SettingsButton(avatarUrl: String?, onClick: () -> Unit) {
+    val label = stringResource(R.string.settings_title)
+    IconButton(onClick = onClick) {
+        if (avatarUrl == null) {
+            Icon(Icons.Rounded.Settings, contentDescription = label)
+        } else {
+            SubcomposeAsyncImage(
+                model = avatarUrl,
+                contentDescription = label,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(AVATAR_SIZE).clip(CircleShape),
+                loading = { Icon(Icons.Rounded.Settings, contentDescription = null) },
+                error = { Icon(Icons.Rounded.Settings, contentDescription = null) },
+            )
+        }
+    }
+}
+
+private val AVATAR_SIZE = 32.dp
+
+/**
  * Home's search bar: a large, rounded field that opens Search, with the screen's buttons at its
  * end (Material 3's search bar on a main screen).
  */
@@ -309,26 +334,13 @@ private fun HomeSearchBar(enabled: Boolean, onSearch: () -> Unit, actions: @Comp
     }
 }
 
-/** Home's pinned section: its title, then the pinned databases as rows (the notes follow as cards). */
-private fun LazyStaggeredGridScope.pinnedSection(
-    databases: List<PinnedDatabase>,
-    anyNotes: Boolean,
-    onOpenDatabase: (String) -> Unit,
-    onUnpin: (PinnedDatabase) -> Unit,
-) {
-    if (databases.isEmpty() && !anyNotes) return
+/**
+ * Home's pinned section: its title. The pinned databases (as rows) and the notes (as cards) follow
+ * in the grid itself ([NoteGrid]), which lets the user drag them.
+ */
+private fun LazyStaggeredGridScope.pinnedSection(hasDatabases: Boolean, anyNotes: Boolean) {
+    if (!hasDatabases && !anyNotes) return
     item(key = "__pinned", span = StaggeredGridItemSpan.FullLine) { ListHeader(stringResource(R.string.section_pinned)) }
-    items(databases, key = { "db:" + it.id }, span = { StaggeredGridItemSpan.FullLine }) { pin ->
-        WorkspaceRow(
-            title = pin.title,
-            icon = pin.icon,
-            isDatabase = true,
-            pinned = false,
-            onClick = { onOpenDatabase(pin.id) },
-            onTogglePin = { onUnpin(pin) },
-            modifier = Modifier.animateItem(),
-        )
-    }
 }
 
 /**
@@ -564,6 +576,11 @@ internal fun NoteGrid(
     onTogglePin: (String) -> Unit,
     onTrash: (NoteSummary) -> Unit,
     onReordered: (List<String>) -> Unit,
+    /** Home: the pinned databases, as rows above the notes; dragged like the cards. */
+    databases: List<PinnedDatabase> = emptyList(),
+    onOpenDatabase: (String) -> Unit = {},
+    onUnpinDatabase: (PinnedDatabase) -> Unit = {},
+    onDatabasesReordered: (List<String>) -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 96.dp),
     header: LazyStaggeredGridScope.() -> Unit = {},
     footer: LazyStaggeredGridScope.() -> Unit = {},
@@ -581,6 +598,17 @@ internal fun NoteGrid(
             dropped.ids = null
             if (pinned.toList() != state.pinned) { pinned.clear(); pinned.addAll(state.pinned) }
             if (others.toList() != state.others) { others.clear(); others.addAll(state.others) }
+        }
+    }
+    // The pinned databases likewise: dragged at once, then followed by the saved order.
+    val pinnedDatabases = remember { mutableStateListOf<PinnedDatabase>() }
+    val droppedDatabases = remember { DroppedOrder() }
+    if (draggingKey == null) {
+        val ids = databases.map { it.id }
+        val waiting = droppedDatabases.ids
+        if (waiting == null || waiting == ids || waiting.toSet() != ids.toSet()) {
+            droppedDatabases.ids = null
+            if (pinnedDatabases.toList() != databases) { pinnedDatabases.clear(); pinnedDatabases.addAll(databases) }
         }
     }
     val showHeaders = pinned.isNotEmpty() && others.isNotEmpty()
@@ -613,6 +641,23 @@ internal fun NoteGrid(
 
     fun changed(): Boolean = pinned.map { it.id } != currentState.pinned.map { it.id } || others.map { it.id } != currentState.others.map { it.id }
 
+    val currentDatabases by rememberUpdatedState(databases)
+
+    fun databasesChanged(): Boolean = pinnedDatabases.map { it.id } != currentDatabases.map { it.id }
+
+    fun saveDatabases() {
+        droppedDatabases.ids = pinnedDatabases.map { it.id }
+        onDatabasesReordered(pinnedDatabases.map { it.id })
+    }
+
+    fun moveDatabase(key: String, by: Int) {
+        val from = pinnedDatabases.indexOfFirst { DATABASE_KEY + it.id == key }
+        val to = from + by
+        if (from < 0 || to !in pinnedDatabases.indices) return
+        pinnedDatabases.add(to, pinnedDatabases.removeAt(from))
+        saveDatabases()
+    }
+
     fun save(key: String) {
         val group = groupOf(key) ?: return
         dropped.ids = pinned.map { it.id } + others.map { it.id }
@@ -636,6 +681,16 @@ internal fun NoteGrid(
         if (swappedWith != null && visible.none { it.key == swappedWith && it.contains(finger) }) swappedWith = null
         val targetKey = under?.key as? String ?: return
         if (targetKey == swappedWith) return
+        if (key.startsWith(DATABASE_KEY)) {
+            // A pinned database only changes places with another one.
+            if (!targetKey.startsWith(DATABASE_KEY)) return
+            val from = pinnedDatabases.indexOfFirst { DATABASE_KEY + it.id == key }
+            val to = pinnedDatabases.indexOfFirst { DATABASE_KEY + it.id == targetKey }
+            if (from < 0 || to < 0) return
+            pinnedDatabases.add(to, pinnedDatabases.removeAt(from))
+            swappedWith = targetKey
+            return
+        }
         val group = groupOf(key) ?: return
         if (groupOf(targetKey) !== group) return
         val from = group.indexOfFirst { it.id == key }
@@ -661,6 +716,47 @@ internal fun NoteGrid(
     val moveUp = stringResource(R.string.action_move_up)
     val moveDown = stringResource(R.string.action_move_down)
 
+    val unpin = stringResource(R.string.action_unpin)
+
+    /**
+     * Long press, then drag moves the item [key] (a card or a pinned database); a long press without
+     * moving opens its menu. Outside the item's own layer, so moving it doesn't move the touch.
+     */
+    fun Modifier.dragToReorder(key: String, changed: () -> Boolean, save: () -> Unit): Modifier =
+        pointerInput(key) {
+            detectDragGesturesAfterLongPress(
+                onDragStart = { touch ->
+                    val info = gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }
+                        ?: return@detectDragGesturesAfterLongPress
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    grab = touch
+                    finger = Offset(info.offset.x.toFloat(), info.offset.y.toFloat()) + touch
+                    dragDistance = 0f
+                    swappedWith = null
+                    draggingKey = key
+                },
+                onDragEnd = {
+                    if (draggingKey == key) {
+                        if (dragDistance < touchSlop) {
+                            // A long press without moving: the item's menu.
+                            menuKey = key
+                        } else if (changed()) {
+                            save()
+                        }
+                    }
+                    draggingKey = null
+                },
+                onDragCancel = { draggingKey = null },
+                onDrag = { change, amount ->
+                    if (draggingKey != key) return@detectDragGesturesAfterLongPress
+                    change.consume()
+                    dragDistance += amount.getDistance()
+                    finger += amount
+                    reorderUnderFinger()
+                },
+            )
+        }
+
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Adaptive(160.dp),
         state = gridState,
@@ -670,6 +766,50 @@ internal fun NoteGrid(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         header()
+        items(pinnedDatabases, key = { DATABASE_KEY + it.id }, span = { StaggeredGridItemSpan.FullLine }) { pin ->
+            val key = DATABASE_KEY + pin.id
+            val isDragging = draggingKey == key
+            Box(
+                Modifier
+                    .zIndex(if (isDragging) 1f else 0f)
+                    .then(if (isDragging) Modifier else Modifier.animateItem())
+                    .dragToReorder(key, changed = { databasesChanged() }, save = { saveDatabases() })
+                    .graphicsLayer {
+                        if (isDragging) {
+                            // Up and down only, under the finger.
+                            gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.let { info ->
+                                translationY = finger.y - grab.y - info.offset.y
+                            }
+                            shadowElevation = 12f
+                        }
+                    }
+                    .then(if (isDragging) Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh) else Modifier)
+                    .semantics {
+                        customActions = listOf(
+                            CustomAccessibilityAction(moveUp) { moveDatabase(key, -1); true },
+                            CustomAccessibilityAction(moveDown) { moveDatabase(key, 1); true },
+                            CustomAccessibilityAction(unpin) { onUnpinDatabase(pin); true },
+                        )
+                    },
+            ) {
+                // No long press of its own: the drag above opens the menu when the finger doesn't move.
+                WorkspaceRow(
+                    title = pin.title,
+                    icon = pin.icon,
+                    isDatabase = true,
+                    pinned = false,
+                    onClick = { if (draggingKey != key) onOpenDatabase(pin.id) },
+                    onTogglePin = null,
+                )
+                DropdownMenu(expanded = menuKey == key, onDismissRequest = { menuKey = null }) {
+                    DropdownMenuItem(
+                        text = { Text(unpin) },
+                        leadingIcon = { Icon(Icons.Rounded.PushPin, null) },
+                        onClick = { menuKey = null; onUnpinDatabase(pin) },
+                    )
+                }
+            }
+        }
         items(
             items,
             key = { it.key },
@@ -717,39 +857,7 @@ internal fun NoteGrid(
                             .zIndex(if (isDragging) 1f else 0f)
                             .then(if (isDragging) Modifier else Modifier.animateItem())
                             // Outside the card's own layer, so moving the card doesn't move the touch.
-                            .pointerInput(key) {
-                                detectDragGesturesAfterLongPress(
-                                    onDragStart = { touch ->
-                                        val info = gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }
-                                            ?: return@detectDragGesturesAfterLongPress
-                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        grab = touch
-                                        finger = Offset(info.offset.x.toFloat(), info.offset.y.toFloat()) + touch
-                                        dragDistance = 0f
-                                        swappedWith = null
-                                        draggingKey = key
-                                    },
-                                    onDragEnd = {
-                                        if (draggingKey == key) {
-                                            if (dragDistance < touchSlop) {
-                                                // A long press without moving: the note's menu.
-                                                menuKey = key
-                                            } else if (changed()) {
-                                                save(key)
-                                            }
-                                        }
-                                        draggingKey = null
-                                    },
-                                    onDragCancel = { draggingKey = null },
-                                    onDrag = { change, amount ->
-                                        if (draggingKey != key) return@detectDragGesturesAfterLongPress
-                                        change.consume()
-                                        dragDistance += amount.getDistance()
-                                        finger += amount
-                                        reorderUnderFinger()
-                                    },
-                                )
-                            }
+                            .dragToReorder(key, changed = { changed() }, save = { save(key) })
                             .graphicsLayer {
                                 if (isDragging) {
                                     // Under the finger, wherever the grid put the card.
@@ -775,6 +883,9 @@ internal fun NoteGrid(
         footer()
     }
 }
+
+/** Prefix of a pinned database's key in Home's grid (note IDs never start with it). */
+private const val DATABASE_KEY = "db:"
 
 /** The order of the notes just dropped, while the saved order is on its way (not state: no redraw). */
 private class DroppedOrder {

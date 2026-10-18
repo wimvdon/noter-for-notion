@@ -175,4 +175,13 @@
     <string name="source_missing_body">Vielleicht wurde sie gelöscht oder in den Papierkorb verschoben, oder die Verbindung hat keinen Zugriff mehr darauf.</string>
     <string name="action_new">Neu</string>
     <string name="section_recent">Datenbanken und Seiten</string>
+    <string name="action_share">Teilen</string>
+    <string name="action_select_lines">Zeilen auswählen</string>
+    <string name="action_select_all">Alles auswählen</string>
+    <string name="action_copy">Kopieren</string>
+    <string name="copied">Kopiert</string>
+    <string name="selected_count">%1$d ausgewählt</string>
+    <string name="delete_lines_title">Ausgewählte Zeilen löschen?</string>
+    <string name="delete_lines_body">Sie werden aus der Notiz entfernt, auch in Notion.</string>
+    <string name="delete_lines_confirm">Löschen</string>
 </resources>

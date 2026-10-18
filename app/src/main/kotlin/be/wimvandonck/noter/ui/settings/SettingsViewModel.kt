@@ -69,6 +69,7 @@ class SettingsViewModel(
             keyStatus.value = try {
                 val info = repository.tokenInfo(trimmed)
                 keyStore.set(trimmed, info.kind)
+                keyStore.setAvatarUrl(info.avatarUrl)
                 repository.onForeground()
                 KeyStatus.Ok(info)
             } catch (e: NotionException) {

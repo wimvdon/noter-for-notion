@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import be.wimvandonck.noter.logic.ReadOnlyBlocks
 
 data class DatabaseUiState(
     /** The database's name (of the database, for one of several data sources). */
@@ -162,8 +163,11 @@ class DatabaseViewModel(
 
     fun clearChips() = updateSetup { it.copy(selected = emptyMap()) }
 
-    /** The properties with a row of chips above the notes, in this order (filters stay as they are). */
-    fun setQuickFilters(properties: List<String>) = updateSetup { it.copy(quickFilters = properties) }
+    /**
+     * The Filters panel was arranged: [shown] have a row of chips above the notes, [hidden] don't,
+     * each in this order (filters stay as they are).
+     */
+    fun arrangeFilters(shown: List<String>, hidden: List<String>) = updateSetup { DatabaseSetups.arranged(it, shown, hidden) }
 
     /** The × at the end of a row of chips: [property] doesn't filter any more. */
     fun clearRow(property: String) = updateSetup { it.copy(selected = it.selected - property) }
@@ -179,6 +183,12 @@ class DatabaseViewModel(
     /** Undo after dragging switched the data source to the custom order. */
     fun undoSortedByHand(event: DatabaseEvent.SortedByHand) = viewModelScope.launch {
         repository.updateSetup(event.sourceId, repository.databases.value[event.sourceId]?.schema) { it.copy(sort = event.previous) }
+    }
+
+    /** Notion's web link to this database, for Share. */
+    fun shareUrl(): String {
+        val ui = state.value
+        return ReadOnlyBlocks.notionUrl(pinKey(ui.sourceId, ui.sources))
     }
 
     /** Pins the database on Home, or unpins it. */

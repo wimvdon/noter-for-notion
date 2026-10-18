@@ -1,6 +1,6 @@
 # Privacy policy
 
-_Last updated: 2026-10-18 (pinned databases and per-database setups instead of notebooks; Home's list)_
+_Last updated: 2026-10-18 (your profile picture on Home)_
 
 Noter for Notion shows and edits notes in **your own Notion workspace**. It has no server of its
 own, no analytics, no advertising and no crash reporting.
@@ -13,7 +13,8 @@ own, no analytics, no advertising and no crash reporting.
   you shared with it. It reads the notes you open and the lists you show (Browse searches by
   title), and writes the changes you make (titles, properties, note content, moving a note to
   Notion's trash).
-- **Images** in your notes (header images, image blocks and page icons that are pictures) are downloaded straight from where
+- **Images** in your notes (header images, image blocks and page icons that are pictures) and your own Notion profile
+  picture (shown on Home, when Notion gives its link) are downloaded straight from where
   Notion keeps them: Notion's own file storage for images uploaded to Notion, or the website an
   image links to. Those websites see an ordinary image request from your phone (its IP address),
   as a browser would; nothing about you or your notes is sent with it. Files, videos and links
@@ -23,7 +24,7 @@ own, no analytics, no advertising and no crash reporting.
 
 ## What the app stores on your phone
 
-- **Your token** (and whether it is a personal access token), encrypted with the Android Keystore. It is never included in a backup.
+- **Your token** (whether it is a personal access token, and the link to your profile picture), encrypted with the Android Keystore. It is never included in a backup.
 - **A copy of your notes** (titles, properties and content of the notes and pages you have seen),
   the list of databases and pages Home shows (their names and icons), and the list of changes that
   still have to be sent to Notion, so the app opens instantly and works offline. This copy is

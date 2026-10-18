@@ -37,6 +37,8 @@ python3 -m unittest discover -s scripts/tests
 | `data/SyncStressTest` | Random editing (typing, Enter, ticking, changing kinds, indenting, outdenting, deleting) while a slow fake Notion that keeps the blocks, nested ones too, answers: Notion ends with exactly the note on the phone, also when it can't insert at the start |
 | `data/store/CacheStoreTest` | On-phone copies survive a restart |
 | `logic/NoteOrderingTest`, `logic/ChipFilterTest` | Pins (Home's pinned notes of every database), custom order, filters (checkbox, date ranges, relations, created by, formulas, numbers in order of their value) |
+| `data/notion/TokenCodecTest`, `logic/NoteListsTest` | The token's kind, owner and profile picture; pinned databases in the order they were dragged to |
+| `logic/BlockSelectionTest`, `logic/RevealTest` | Selecting lines of a note (what can be selected, the Markdown that is copied) and how far a new line scrolls into view above the keyboard |
 | `data/api/NotionErrorsTest` | Which errors the screens say in the user's language |
 | `logic/NewOptionsTest` | When the picker of a select or multi-select offers to add what was typed (not for an existing name in any case, nor with a comma) |
 | `logic/SchemaOptionsTest` | An option a note has (added on the phone or in Notion) joins its property's options once, so every picker shows it |

@@ -96,6 +96,8 @@ data class HomeUiState(
      * refuses it to an internal connection).
      */
     val canAddTopLevel: Boolean = false,
+    /** The profile picture of the person the token acts as, shown in place of Settings' cogwheel (null: the cogwheel). */
+    val avatarUrl: String? = null,
     val pinnedDatabases: List<PinnedDatabase> = emptyList(),
     /** The most recently edited databases and pages (null until known). */
     val recent: List<WorkspaceItem>? = null,
@@ -187,6 +189,7 @@ class MainViewModel(
     private val repository: NotesRepository,
     hasKey: StateFlow<Boolean>,
     tokenKind: StateFlow<TokenKind?>,
+    avatarUrl: StateFlow<String?>,
 ) : ViewModel() {
     val events: Flow<RepoEvent> = repository.events
 
@@ -195,16 +198,16 @@ class MainViewModel(
     /** What Notion said about the pinned databases (their data sources, for +), by pinned ID. */
     private val infos = MutableStateFlow<Map<String, DatabaseInfo>>(emptyMap())
 
-    private data class Status(val pending: Int, val offline: Boolean, val hasKey: Boolean, val kind: TokenKind?)
+    private data class Status(val pending: Int, val offline: Boolean, val hasKey: Boolean, val kind: TokenKind?, val avatarUrl: String?)
 
-    private val status = combine(repository.pendingCount, repository.offline, hasKey, tokenKind, ::Status)
+    private val status = combine(repository.pendingCount, repository.offline, hasKey, tokenKind, avatarUrl, ::Status)
 
     val state: StateFlow<HomeUiState> = combine(
         repository.settingsFlow(),
         repository.databases,
         combine(repository.recent, recentError, infos, ::Triple),
         status,
-    ) { settings, databases, (recent, error, known), (pending, offline, key, kind) ->
+    ) { settings, databases, (recent, error, known), (pending, offline, key, kind, avatar) ->
         val pinned = NoteLists.pinned(databases.values.flatMap { it.notes }, settings.pinned, settings.order[AppSettings.HOME].orEmpty())
         HomeUiState(
             notes = NotesUiState(
@@ -220,6 +223,7 @@ class MainViewModel(
                 offline = offline,
             ),
             canAddTopLevel = kind == TokenKind.PERSONAL,
+            avatarUrl = avatar,
             pinnedDatabases = settings.pinnedDatabases,
             recent = recent,
             recentError = error,
@@ -282,6 +286,9 @@ class MainViewModel(
 
     fun trash(id: String) = viewModelScope.launch { repository.trashNote(id) }
 
+    /** Saves the order of Home's pinned databases after the user dragged them. */
+    fun savePinnedDatabaseOrder(ids: List<String>) = viewModelScope.launch { repository.savePinnedDatabaseOrder(ids) }
+
     /** Saves the order of Home's pinned notes after the user dragged them. */
     fun saveOrder(ids: List<String>) = viewModelScope.launch { repository.saveOrder(AppSettings.HOME, ids) }
 
@@ -342,7 +349,7 @@ class MainViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as NoterApp
-                MainViewModel(app.repository, app.apiKeyStore.hasKey, app.apiKeyStore.kind)
+                MainViewModel(app.repository, app.apiKeyStore.hasKey, app.apiKeyStore.kind, app.apiKeyStore.avatarUrl)
             }
         }
     }
