@@ -251,8 +251,11 @@ class NotesRepository(
      * Notion ID (under either ID while the change happens), so an open editor keeps showing it.
      */
     fun note(pageId: String): Flow<NoteSummary?> =
-        combine(_databases, renamed) { map, ids ->
-            ids[pageId]?.let { findNote(map, it) } ?: findNote(map, pageId)
+        // Both are read as they are now: combine may hand over the new notes before the new ID
+        // (which is set first), and the note would seem gone for a moment.
+        combine(_databases, renamed) { _, _ ->
+            val map = _databases.value
+            renamed.value[pageId]?.let { findNote(map, it) } ?: findNote(map, pageId)
         }.distinctUntilChanged()
 
     private fun findNote(map: Map<String, DatabaseState>, id: String): NoteSummary? =
