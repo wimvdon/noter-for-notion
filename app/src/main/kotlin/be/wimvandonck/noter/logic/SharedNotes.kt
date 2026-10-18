@@ -2,6 +2,9 @@ package be.wimvandonck.noter.logic
 
 import be.wimvandonck.noter.data.model.Block
 import be.wimvandonck.noter.data.model.BlockType
+import be.wimvandonck.noter.data.model.DatabaseSchema
+import be.wimvandonck.noter.data.model.NoteProperty
+import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.notion.InlineMarkdown
 import java.net.URI
 
@@ -36,6 +39,23 @@ object SharedNotes {
         }
         article?.blocks?.let { out += it }
         return out.take(MAX_BLOCKS).mapIndexed { i, block -> block.copy(key = "shared-$i") }
+    }
+
+    /** Names a URL property is likely to have when a database has more than one (#68). */
+    private val LINK_NAMES = listOf("url", "link", "source", "website", "web")
+
+    /**
+     * The shared link as the value of the database's URL property (#68), or null when there is
+     * no link or no URL property. With several URL properties, the one named like a link
+     * ("URL", "Link", "Source", ...) is used, else the first.
+     */
+    fun urlProperty(schema: DatabaseSchema?, url: String?): NoteProperty? {
+        if (url.isNullOrBlank() || schema == null) return null
+        val candidates = schema.properties.filter { it.type == "url" }
+        val target = LINK_NAMES.firstNotNullOfOrNull { name -> candidates.firstOrNull { it.name.trim().equals(name, ignoreCase = true) } }
+            ?: candidates.firstOrNull()
+            ?: return null
+        return NoteProperty(target.name, "url", PropertyValue.Plain(url))
     }
 
     /** The link's site without "www." ("example.com"), or "" when there is none. */

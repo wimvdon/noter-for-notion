@@ -509,7 +509,7 @@ class NotesRepository(
         val title = SharedNotes.title(shared, article)
         val blocks = SharedNotes.blocks(shared, article)
         val id = if (databaseId != null) {
-            createNote(databaseId, title = title, children = blocks)
+            createNote(databaseId, title = title, children = blocks, url = shared.url)
         } else {
             createPage(null, workspace = workspace, title = title, children = blocks)
         } ?: return null
@@ -542,6 +542,8 @@ class NotesRepository(
         title: String = "",
         /** Content made with the note (a share, #63). */
         children: List<Block> = emptyList(),
+        /** A shared link: goes in the database's URL property, when it has one (#68). */
+        url: String? = null,
     ): String? =
         withContext(Dispatchers.IO) {
             loadDatabase(databaseId)
@@ -553,7 +555,8 @@ class NotesRepository(
             }
             val id = NoteSummary.LOCAL_PREFIX + UUID.randomUUID()
             val now = Instant.ofEpochMilli(clock()).toString()
-            val presetByName = preset.associateBy { it.name }
+            // The preset wins over the shared link when both fill the same property.
+            val presetByName = (listOfNotNull(SharedNotes.urlProperty(schema, url)) + preset).associateBy { it.name }
             val markdown = InlineMarkdown.escape(title)
             val properties = schema.properties
                 .filter { it.type in NoteProperty.EDITABLE_TYPES }

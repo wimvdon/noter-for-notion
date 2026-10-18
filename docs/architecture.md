@@ -49,7 +49,8 @@ properties and content: the pages of databases and pages on their own.
   title, headings, paragraphs, list items, quotes, code and images (`logic/WebArticles.kt`, a small
   reader of its own: no HTML library), and makes the note (`logic/SharedNotes.kt`): the title, then
   the link as a bookmark (Notion shows its preview), the shared text and the page's content, at
-  most 100 blocks. Images stay links to the website (external image blocks). The content goes
+  most 100 blocks. In a database with a URL property, the shared link also goes in that property
+  (#68, `SharedNotes.urlProperty`: one named URL, Link, Source, Website or Web, else the first). Images stay links to the website (external image blocks). The content goes
   with the page when Notion makes it (`PendingOp.CreatePage.children`); when Notion refuses it
   (status 400, mostly an image link it can't use), the page is made again without the images,
   then without the bookmark, then empty (`BlockCodec.createAttempts`). Offline, the link isn't
