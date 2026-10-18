@@ -251,7 +251,10 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   the pinned notes and pages as cards, then "Databases and pages" as list rows (icon, name,
   "Edited …", a small primary pin at the end when pinned). A long press on a row opens a menu with
   Pin or Unpin. One FAB (+): a sheet with "New page" (at the top of the workspace) and "New note
-  in" with the databases.
+  in" with the databases. With tokens for several workspaces, "Databases and pages" becomes one
+  part per workspace under its name (Title Small, primary, a chevron; a tap folds it away), rows
+  say "Workspace · Edited …", and the + sheet has a part per workspace (its name as the title,
+  "New page at the top" when its token may, then its databases).
 - A database is a child page: back arrow, Notion's icon and name, then sync, Filters, Sort, Cards
   (Tune icon, as a page's properties button) and ⋮ (Pin or Unpin, Open in Notion, Share). A database of several data sources has a primary scrollable tab row, one
   tab per data source. The whole header (top app bar, tab row and rows of chips, `surface`)
@@ -266,8 +269,9 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   sections, a drag handle and an eye on each property, and its values to filter by (filter chips)
   right below it, so it is one list. A chip's count of notes sits in a small
   `surfaceContainerHighest` pill after its label.
-- Search, a child page: a back arrow and the query field in the app bar, then "Notes on this
-  phone", "Databases" and "Pages" headers (Title Small, primary).
+- Search, a child page: a back arrow and the query field in the app bar, a row of filter chips
+  (Pages, Databases and, with several workspaces, one per workspace; a tap again shows
+  everything), then one list of rows, best matches first, without headers.
 - Cards panel (the Cards button in a database's top app bar): a bottom sheet with switches for the header image and
   the start of the content, and filter chips for up to three properties.
 - The note editor follows Notion's look: headings in SemiBold, quotes with a bar, callouts and
@@ -280,7 +284,7 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   `secondaryContainer`.
 - Select text (⋮ in a note): a full-screen view with × and the note as plain text in one
   selection area, styled like the editor, nothing editable.
-- Steps in a guide (Settings › connection) have numbered circles (32dp, `primary`, the number in
+- Steps in a guide have numbered circles (32dp, `primary`, the number in
   Label Large `onPrimary`), as in Snoozer's guide.
 - A picker (options, people, linked pages) lists what is selected first when it opens and keeps
   its order until it is closed.

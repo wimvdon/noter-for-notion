@@ -1,6 +1,7 @@
 package be.wimvandonck.noter.data.api
 
 import be.wimvandonck.noter.data.FakeNotion
+import be.wimvandonck.noter.logic.Workspaces
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -71,6 +72,27 @@ class MultiWorkspaceClientTest {
             val client = NotionClient(apiKey = { "a" }, baseUrl = notion.baseUrl)
             runCatching { client.getPage("p1") }
             assertEquals(listOf("Bearer a"), notion.requests.map { it.auth })
+        }
+    }
+
+    @Test
+    fun `a page at the top goes with its workspace's token`() = runBlocking {
+        FakeNotion { 200 to """{"object":"page","id":"new"}""" }.use { notion ->
+            val client = NotionClient(apiKey = { "a" }, extraKeys = { listOf("b") }, baseUrl = notion.baseUrl)
+            client.createPageIn(null, emptyMap(), workspace = Workspaces.id("b"))
+            client.createPageIn(null, emptyMap())
+            client.createPageIn(null, emptyMap(), workspace = "removed")
+            assertEquals(listOf("Bearer b", "Bearer a", "Bearer a"), notion.requests.map { it.auth })
+            assertEquals(Workspaces.id("a"), client.owners.value["new"])
+        }
+    }
+
+    @Test
+    fun `with one token the workspace of what it answered is remembered too`() = runBlocking {
+        FakeNotion { 200 to """{"object":"page","id":"p1"}""" }.use { notion ->
+            val client = NotionClient(apiKey = { "a" }, baseUrl = notion.baseUrl)
+            client.getPage("p1")
+            assertEquals(mapOf("p1" to Workspaces.id("a")), client.owners.value)
         }
     }
 }

@@ -4,6 +4,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -44,6 +46,15 @@ class NotionRoutesTest {
             listOf("db1", "d1"),
             NotionRoutes.objectIds(obj("""{"object":"database","id":"db1","data_sources":[{"id":"d1","name":"A"}]}""")),
         )
+    }
+
+    @Test
+    fun `blocks and people are told apart from pages and databases`() {
+        val list = obj("""{"object":"list","results":[{"object":"block","id":"b1"},{"object":"page","id":"p1"},{"object":"user","id":"u1"}]}""")
+        assertEquals(listOf("p1"), NotionRoutes.objectIds(list))
+        assertEquals(listOf("b1"), NotionRoutes.objectIds(list, blocks = true))
+        assertTrue(NotionRoutes.isBlock("/blocks/b1/children"))
+        assertFalse(NotionRoutes.isBlock("/pages/p1"))
     }
 
     @Test

@@ -3,8 +3,10 @@ package be.wimvandonck.noter.data.api
 import be.wimvandonck.noter.data.model.PageRef
 import be.wimvandonck.noter.data.notion.InlineMarkdown
 import be.wimvandonck.noter.logic.KeyRouter
+import be.wimvandonck.noter.logic.Workspaces
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -44,7 +46,9 @@ class NotionException(
  * Notion's REST API (api.notion.com), with the main token ([apiKey]) and the tokens for other
  * workspaces ([extraKeys], #58). A request about a page, block, database or data source goes with
  * the token that worked for it before ([KeyRouter]), else with each token in turn until one isn't
- * answered with "not found". Search and the list of people ask every workspace and merge.
+ * answered with "not found". Search and the list of people ask every workspace and merge. Which
+ * workspace answered for an object is remembered ([owners]), also with one token, so the screens
+ * can tell where a page or database is.
  */
 class NotionClient(
     private val apiKey: () -> String,
@@ -58,6 +62,18 @@ class NotionClient(
         .build()
 
     private val router = KeyRouter()
+
+    /** The workspace ([Workspaces.id]) of each object a token answered for, by ID (see [KeyRouter]). */
+    val owners: StateFlow<Map<String, String>> get() = router.owners
+
+    /** What the phone kept about which workspace objects are in. */
+    fun restoreOwners(saved: Map<String, String>) = router.restore(saved)
+
+    /** Forgets which objects were in [workspace] (its token was removed). */
+    fun forgetWorkspace(workspace: String) = router.forget(workspace)
+
+    /** Forgets which workspace every object is in (the last token was removed). */
+    fun forgetWorkspaces() = router.clear()
 
     /** Every token, the main one first; none without a main token. */
     private fun keys(): List<String> {
@@ -77,16 +93,21 @@ class NotionClient(
         key: String? = null,
         adds: Boolean = false,
     ): JsonObject {
-        if (key != null) return send(method, endpoint, body, key, adds)
+        if (key != null) return send(method, endpoint, body, key, adds).also { remember(it, key) }
         val all = keys()
-        if (all.size <= 1) return send(method, endpoint, body, all.firstOrNull().orEmpty(), adds)
         val subject = NotionRoutes.subjectId(endpoint, body)
-            ?: return send(method, endpoint, body, all.first(), adds)
+        if (all.size <= 1 || subject == null) {
+            val only = all.firstOrNull().orEmpty()
+            return send(method, endpoint, body, only, adds).also { data ->
+                subject?.let { router.remember(it, only, kept = !NotionRoutes.isBlock(endpoint)) }
+                remember(data, only)
+            }
+        }
         var firstError: NotionException? = null
         for (candidate in router.candidates(subject, all)) {
             try {
                 val data = send(method, endpoint, body, candidate, adds)
-                router.remember(subject, candidate)
+                router.remember(subject, candidate, kept = !NotionRoutes.isBlock(endpoint))
                 remember(data, candidate)
                 return data
             } catch (e: NotionException) {
@@ -102,8 +123,12 @@ class NotionClient(
 
     /** The objects in [data] belong to [key]'s workspace. */
     private fun remember(data: JsonObject, key: String) {
-        NotionRoutes.objectIds(data).forEach { router.remember(it, key) }
+        router.remember(NotionRoutes.objectIds(data), key)
+        router.remember(NotionRoutes.objectIds(data, blocks = true), key, kept = false)
     }
+
+    /** The token of [workspace] ([Workspaces.id]), if the app still has it. */
+    private fun keyOf(workspace: String): String? = keys().firstOrNull { Workspaces.id(it) == workspace }
 
     /**
      * [block] once per token: the results of the tokens that worked. Fails only when every token
@@ -177,7 +202,7 @@ class NotionClient(
         }
 
     /** The token's own (bot) user, with [key] or the stored key: who it acts as (see TokenCodec). */
-    suspend fun me(key: String = apiKey()): JsonObject = call("GET", "/users/me", key = key)
+    suspend fun me(key: String = apiKey()): JsonObject = send("GET", "/users/me", null, key, adds = false)
 
     /**
      * Data sources shared with the integration, most recently edited first. A database usually has
@@ -196,7 +221,7 @@ class NotionClient(
                             if (cursor != null) put("start_cursor", cursor)
                         },
                         key = key,
-                    ).also { remember(it, key) }
+                    )
                 }
             },
         ).mapNotNull { db ->
@@ -225,7 +250,6 @@ class NotionClient(
                 },
                 key = key,
             )
-            remember(data, key)
             data.arrayOrNull("results")?.forEach { el -> el.asObjectOrNull()?.let(results::add) }
             cursor = if (data.boolOrNull("has_more") == true) data.stringOrNull("next_cursor") else null
         } while (cursor != null && results.size < limit)
@@ -263,15 +287,17 @@ class NotionClient(
         createPage(mapOf("type" to "data_source_id", "data_source_id" to dataSourceId), properties, children, emoji)
 
     /**
-     * Creates a page on its own: inside page [parentPageId], or at the top of the workspace when it
-     * is null (Notion allows that only for some kinds of connections; others get an error).
+     * Creates a page on its own: inside page [parentPageId], or at the top of [workspace] (the main
+     * one when null or no longer there) when it is null. Notion allows the top only to a personal
+     * access token; a connection gets an error.
      */
-    suspend fun createPageIn(parentPageId: String?, properties: Map<String, Any?>, emoji: String? = null): JsonObject =
+    suspend fun createPageIn(parentPageId: String?, properties: Map<String, Any?>, emoji: String? = null, workspace: String? = null): JsonObject =
         createPage(
             if (parentPageId != null) mapOf("type" to "page_id", "page_id" to parentPageId) else mapOf("type" to "workspace", "workspace" to true),
             properties,
             emptyList(),
             emoji,
+            key = if (parentPageId == null) workspace?.let(::keyOf) else null,
         )
 
     private suspend fun createPage(
@@ -279,6 +305,7 @@ class NotionClient(
         properties: Map<String, Any?>,
         children: List<Map<String, Any?>>,
         emoji: String?,
+        key: String? = null,
     ): JsonObject =
         call(
             "POST", "/pages",
@@ -288,6 +315,7 @@ class NotionClient(
                 if (emoji != null) put("icon", emojiIcon(emoji))
                 if (children.isNotEmpty()) put("children", children.take(MAX_CHILDREN))
             },
+            key = key,
             adds = true,
         )
 

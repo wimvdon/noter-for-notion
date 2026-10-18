@@ -125,6 +125,13 @@ class CacheStore(private val dir: File) {
     @Synchronized
     fun saveRecent(items: List<WorkspaceItem>) = write(RECENT, ListSerializer(WorkspaceItem.serializer()), items)
 
+    /** Which workspace each page, database and data source is in (see KeyRouter). */
+    @Synchronized
+    fun owners(): Map<String, String> = read(OWNERS, MapSerializer(String.serializer(), String.serializer())).orEmpty()
+
+    @Synchronized
+    fun saveOwners(owners: Map<String, String>) = write(OWNERS, MapSerializer(String.serializer(), String.serializer()), owners)
+
     /** The keys of the databases with a copy here (see [database]), as written in the file names. */
     @Synchronized
     fun databaseKeys(): List<String> =
@@ -142,6 +149,7 @@ class CacheStore(private val dir: File) {
     private companion object {
         const val OUTBOX = "outbox.json"
         const val USERS = "users.json"
+        const val OWNERS = "workspaces.json"
         // v2: a database is asked about before a data source (see NotesRepository.resolveSource), so
         // keys resolved the other way round before are asked about again.
         const val SOURCES = "sources_v2.json"

@@ -15,6 +15,7 @@ import be.wimvandonck.noter.data.store.ApiKeyStore
 import be.wimvandonck.noter.data.store.CacheStore
 import be.wimvandonck.noter.data.store.DataFiles
 import be.wimvandonck.noter.data.store.SettingsStore
+import be.wimvandonck.noter.logic.WorkspaceTokens
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -47,7 +48,8 @@ class NoterApp : Application(), SingletonImageLoader.Factory {
             scope = scope,
         )
         repository.start()
-        // Ask Notion who the token is at each start: its kind, and its owner's profile picture for Home.
+        // Ask Notion who each token is at each start: its kind and workspace's name, and the main
+        // token's owner's profile picture for Home.
         val key = apiKeyStore.get()
         if (key.isNotBlank()) {
             scope.launch {
@@ -55,8 +57,14 @@ class NoterApp : Application(), SingletonImageLoader.Factory {
                     val info = repository.tokenInfo(key)
                     // Not when another token was saved while this was on its way.
                     if (apiKeyStore.get() == key) {
-                        apiKeyStore.setKind(info.kind)
+                        apiKeyStore.setMainInfo(info.kind, info.name, info.workspace.orEmpty())
                         apiKeyStore.setAvatarUrl(info.avatarUrl)
+                    }
+                }
+                apiKeyStore.extras.value.forEach { extra ->
+                    runCatching {
+                        val info = repository.tokenInfo(extra.token)
+                        apiKeyStore.setExtras(WorkspaceTokens.update(apiKeyStore.extras.value, extra.token, info.name, info.workspace.orEmpty(), info.kind))
                     }
                 }
             }

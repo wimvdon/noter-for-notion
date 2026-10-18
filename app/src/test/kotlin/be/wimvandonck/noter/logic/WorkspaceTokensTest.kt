@@ -1,5 +1,6 @@
 package be.wimvandonck.noter.logic
 
+import be.wimvandonck.noter.data.notion.TokenKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -38,8 +39,14 @@ class WorkspaceTokensTest {
     }
 
     @Test
+    fun `what Notion says now replaces the names and kind, in place`() {
+        val updated = WorkspaceTokens.update(listOf(first, second), "t1", "Wim V", "Work 2", TokenKind.CONNECTION)
+        assertEquals(listOf(WorkspaceToken("t1", "Wim V", "Work 2", TokenKind.CONNECTION), second), updated)
+    }
+
+    @Test
     fun `stored and read back`() {
-        val list = listOf(first, second)
+        val list = listOf(first, second.copy(kind = TokenKind.PERSONAL))
         assertEquals(list, WorkspaceTokens.decode(WorkspaceTokens.encode(list)))
     }
 
