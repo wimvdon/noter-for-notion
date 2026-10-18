@@ -16,14 +16,24 @@ object NotionRoutes {
         return (parent["page_id"] ?: parent["data_source_id"] ?: parent["database_id"]) as? String
     }
 
+    /** A request about this object is about a block (only remembered while the app runs, see KeyRouter). */
+    fun isBlock(endpoint: String): Boolean = subject.find(endpoint)?.groupValues?.get(1) == "blocks"
+
     /**
      * The IDs of the objects in a successful answer (the object itself, a list's results and a
-     * database's data sources): later requests about them go to the same workspace.
+     * database's data sources): later requests about them go to the same workspace. [blocks]:
+     * the blocks among them, else the pages, databases and data sources (people are in every
+     * workspace they were invited to, so they aren't anyone's).
      */
-    fun objectIds(data: JsonObject): List<String> = buildList {
-        data.stringOrNull("id")?.let(::add)
+    fun objectIds(data: JsonObject, blocks: Boolean = false): List<String> = buildList {
+        fun take(obj: JsonObject) {
+            val kind = obj.stringOrNull("object")
+            val wanted = if (blocks) kind == "block" else kind != "block" && kind != "user"
+            if (wanted) obj.stringOrNull("id")?.let(::add)
+        }
+        take(data)
         for (key in listOf("results", "data_sources")) {
-            data.arrayOrNull(key)?.forEach { el -> el.asObjectOrNull()?.stringOrNull("id")?.let(::add) }
+            data.arrayOrNull(key)?.forEach { el -> el.asObjectOrNull()?.let(::take) }
         }
     }
 

@@ -50,7 +50,9 @@ python3 -m unittest discover -s scripts/tests
 | `ui/main/PresetForTest` | The value a new note gets from the selected filter |
 | `data/notion/WorkspaceCodecTest` | The list of databases and pages from Notion's search, data sources (grouped by their database; one the database doesn't list is left out) and the data source a page belongs to |
 | `data/icons/IconCatalogTest` | Reading the icon file, icon search, old icon keys, and that the bundled file has every suggested icon |
-| `logic/NoteTargetsTest` | Where + on Home offers a new note: the pinned databases, then the others on Home's list, each data source of a database of several |
+| `logic/NoteTargetsTest` | Where + on Home offers a new note: the pinned databases, then the others on Home's list, each data source of a database of several; a part per workspace, with a page at the top unless the token is a connection's |
+| `logic/WorkspacesTest` | A token's short ID, the workspaces' names, which workspace a page or database is in, lists split by workspace |
+| `logic/SearchResultsTest` | Search's one list: phone notes and Notion's results mixed, each page once, best matches first; filters by kind and workspace |
 | `logic/PropertyLayoutsTest` | Which properties are shown, collapsed and on the card, and in which order; header image and content on cards; cards per database setup, starting from what its cards showed before |
 | `logic/NotePreviewsTest` | Which previews are downloaded, and the preview text |
 | `logic/NotionDatesTest` | Dates as Notion sends them |

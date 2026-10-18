@@ -26,13 +26,15 @@ What the app sends and stores: [`PRIVACY.md`](PRIVACY.md). Rules for Claude Code
 2. In Notion, open <https://www.notion.so/developers/tokens> and make a **personal access token**:
    give it a name, turn on **Notion API**, choose your workspace and an expiry date, and copy it.
    It acts as you, so the app sees the pages you see; there is nothing to share with it.
-3. In the app: **Settings › Connection**, paste the token and tap **Test and save**. Then tap
+3. In the app: **Settings › Workspaces**, paste the token and tap **Add workspace**. Then tap
    **Home** lists your databases and pages; open a database and pin it with **⋮ › Pin** to keep it
    at the top of Home.
 
-When the token expires, make a new one and paste it in the same place. An older **internal
-integration** key works too, but then the app only sees the pages you shared with that
-integration and can't add pages at the top of your workspace; Settings says so.
+When the token expires, remove it and add a new one in the same place. For another workspace or
+Notion account, add a token for it too: the app shows everything together and says which
+workspace each database and page is in. A **connection's** token (an internal integration, for
+pages someone shared with it) works too, but sees only those pages and can't add pages at the top
+of the workspace.
 
 ---
 

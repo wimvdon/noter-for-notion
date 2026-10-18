@@ -11,11 +11,12 @@ import be.wimvandonck.noter.data.api.NotionErrors
 import be.wimvandonck.noter.data.api.NotionException
 import be.wimvandonck.noter.data.model.ThemeMode
 import be.wimvandonck.noter.data.notion.TokenInfo
-import be.wimvandonck.noter.data.notion.TokenKind
 import be.wimvandonck.noter.data.store.ApiKeyStore
 import be.wimvandonck.noter.data.store.AppSettings
+import be.wimvandonck.noter.logic.Workspace
 import be.wimvandonck.noter.logic.WorkspaceToken
 import be.wimvandonck.noter.logic.WorkspaceTokens
+import be.wimvandonck.noter.logic.Workspaces
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,31 +24,28 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** The result of the last key test, for the Connection section. */
+/** The result of the last token added or removed, for the Workspaces section. */
 sealed interface KeyStatus {
     data object None : KeyStatus
 
     data object Testing : KeyStatus
 
-    /** Notion accepted the token: who it acts as (a person, or a connection's name). */
+    /** Notion accepted the token: who it acts as and its workspace. */
     data class Ok(val info: TokenInfo) : KeyStatus
 
     data class Failed(val message: String) : KeyStatus
 
-    data object Removed : KeyStatus
+    /** A workspace was removed ([name]); [last]: it was the only one, and the notes here were deleted. */
+    data class Removed(val name: String, val last: Boolean) : KeyStatus
 }
 
 data class SettingsUiState(
     val settings: AppSettings = AppSettings(),
     val hasKey: Boolean = false,
-    /** The stored token's kind (null: not known yet). */
-    val tokenKind: TokenKind? = null,
+    /** Every workspace with a token, the main one first. */
+    val workspaces: List<Workspace> = emptyList(),
     val keyStatus: KeyStatus = KeyStatus.None,
     val pendingCount: Int = 0,
-    /** Tokens for other workspaces (#58). */
-    val extras: List<WorkspaceToken> = emptyList(),
-    /** The result of the last token added for another workspace. */
-    val extraStatus: KeyStatus = KeyStatus.None,
 )
 
 class SettingsViewModel(
@@ -55,57 +53,39 @@ class SettingsViewModel(
     private val keyStore: ApiKeyStore,
 ) : ViewModel() {
     private val keyStatus = MutableStateFlow<KeyStatus>(KeyStatus.None)
-    private val extraStatus = MutableStateFlow<KeyStatus>(KeyStatus.None)
 
     val state: StateFlow<SettingsUiState> = combine(
-        combine(
-            repository.settingsFlow(),
-            keyStore.hasKey,
-            keyStore.kind,
-            keyStatus,
-            repository.pendingCount,
-        ) { settings, hasKey, kind, status, pending ->
-            SettingsUiState(settings, hasKey, kind, status, pending)
-        },
-        keyStore.extras,
-        extraStatus,
-    ) { state, extras, status -> state.copy(extras = extras, extraStatus = status) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState(hasKey = keyStore.get().isNotBlank()))
+        repository.settingsFlow(),
+        combine(keyStore.main, keyStore.extras) { main, extras -> Workspaces.of(listOf(main) + extras) },
+        keyStatus,
+        repository.pendingCount,
+    ) { settings, workspaces, status, pending ->
+        SettingsUiState(settings, workspaces.isNotEmpty(), workspaces, status, pending)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState(hasKey = keyStore.get().isNotBlank()))
 
-    fun currentKey(): String = keyStore.get()
-
-    fun saveKey(key: String) {
-        val trimmed = key.trim()
+    /**
+     * Tests [token] with Notion and keeps it: as the main token when there is none yet, else next
+     * to the others, with its workspace's name.
+     */
+    fun addWorkspace(token: String) {
+        val trimmed = token.trim()
+        if (trimmed.isEmpty()) return
         keyStatus.value = KeyStatus.Testing
         viewModelScope.launch {
             keyStatus.value = try {
                 val info = repository.tokenInfo(trimmed)
-                keyStore.set(trimmed, info.kind)
-                keyStore.setAvatarUrl(info.avatarUrl)
-                repository.onForeground()
-                KeyStatus.Ok(info)
-            } catch (e: NotionException) {
-                KeyStatus.Failed(NotionErrors.of(e))
-            }
-        }
-    }
-
-    fun removeKey() {
-        viewModelScope.launch {
-            keyStore.set("")
-            repository.clearData()
-            keyStatus.value = KeyStatus.Removed
-        }
-    }
-
-    /** Tests [token] with Notion and keeps it next to the main one, with the workspace's name. */
-    fun addWorkspace(token: String) {
-        val trimmed = token.trim()
-        extraStatus.value = KeyStatus.Testing
-        viewModelScope.launch {
-            extraStatus.value = try {
-                val info = repository.tokenInfo(trimmed)
-                val added = WorkspaceToken(trimmed, info.name, info.workspace.orEmpty())
-                keyStore.setExtras(WorkspaceTokens.add(keyStore.extras.value, keyStore.get(), added))
+                val main = keyStore.get()
+                when {
+                    main.isBlank() -> {
+                        keyStore.set(trimmed, info.kind, info.name, info.workspace.orEmpty())
+                        keyStore.setAvatarUrl(info.avatarUrl)
+                    }
+                    main == trimmed -> keyStore.setMainInfo(info.kind, info.name, info.workspace.orEmpty())
+                    else -> {
+                        val added = WorkspaceToken(trimmed, info.name, info.workspace.orEmpty(), info.kind)
+                        keyStore.setExtras(WorkspaceTokens.add(keyStore.extras.value, main, added))
+                    }
+                }
                 refreshAfterChange()
                 KeyStatus.Ok(info)
             } catch (e: NotionException) {
@@ -114,10 +94,40 @@ class SettingsViewModel(
         }
     }
 
-    fun removeWorkspace(token: String) {
-        keyStore.setExtras(WorkspaceTokens.remove(keyStore.extras.value, token))
-        extraStatus.value = KeyStatus.None
-        viewModelScope.launch { refreshAfterChange() }
+    /**
+     * Removes workspace [id]. The main one makes way for the next; without any token left, the
+     * notes copied to this phone are deleted. Another workspace's notes stay (Notion answers "not
+     * found" for them from then on).
+     */
+    fun removeWorkspace(id: String) {
+        val main = keyStore.main.value
+        val extras = keyStore.extras.value
+        val removed = (listOf(main) + extras).firstOrNull { it.token.isNotBlank() && Workspaces.id(it.token) == id } ?: return
+        keyStore.setCollapsed(keyStore.collapsed.value - id)
+        viewModelScope.launch {
+            when {
+                removed.token != main.token -> {
+                    keyStore.setExtras(WorkspaceTokens.remove(extras, removed.token))
+                    repository.forgetWorkspace(id)
+                }
+                extras.isEmpty() -> {
+                    keyStore.set("")
+                    repository.clearData()
+                    keyStatus.value = KeyStatus.Removed(WorkspaceTokens.label(removed), last = true)
+                    return@launch
+                }
+                else -> {
+                    val next = extras.first()
+                    keyStore.set(next.token, next.kind, next.name, next.workspace)
+                    keyStore.setExtras(extras.drop(1))
+                    repository.forgetWorkspace(id)
+                    // Home shows the new main token's owner's picture.
+                    runCatching { keyStore.setAvatarUrl(repository.tokenInfo(next.token).avatarUrl) }
+                }
+            }
+            keyStatus.value = KeyStatus.Removed(WorkspaceTokens.label(removed), last = false)
+            refreshAfterChange()
+        }
     }
 
     /** Home's recent databases and pages come from every workspace: ask again after a change. */

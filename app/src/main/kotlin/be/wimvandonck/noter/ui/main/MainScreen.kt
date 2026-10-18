@@ -176,7 +176,7 @@ fun MainScreen(
             )
         },
         floatingActionButton = {
-            if (notes.hasKey && (state.targets.isNotEmpty() || state.canAddTopLevel)) {
+            if (notes.hasKey && state.targetGroups.isNotEmpty()) {
                 FloatingActionButton(onClick = { choosingTarget = true }) {
                     Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.action_new))
                 }
@@ -208,6 +208,7 @@ fun MainScreen(
                         onTrash = { confirmTrash = it },
                         onReordered = viewModel::saveOrder,
                         databases = state.pinnedDatabases,
+                        databaseWorkspaces = state.pinnedWorkspaces,
                         onOpenDatabase = onOpenDatabase,
                         onUnpinDatabase = viewModel::togglePinDatabase,
                         onDatabasesReordered = viewModel::savePinnedDatabaseOrder,
@@ -221,6 +222,7 @@ fun MainScreen(
                                 onOpenPage = { viewModel.openItem(it, onOpenNote) },
                                 onTogglePin = viewModel::togglePinItem,
                                 onRetry = viewModel::refresh,
+                                onToggleWorkspace = viewModel::toggleCollapsed,
                             )
                         },
                     )
@@ -236,37 +238,44 @@ fun MainScreen(
     if (choosingTarget) {
         ModalBottomSheet(onDismissRequest = { choosingTarget = false }) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                // Notion only lets a personal access token add pages at the top of the workspace.
-                if (state.canAddTopLevel) {
-                    SheetHeader(stringResource(R.string.new_page))
-                    ListItem(
-                        headlineContent = { Text(stringResource(R.string.new_page_top_level)) },
-                        supportingContent = { Text(stringResource(R.string.new_page_top_level_help)) },
-                        leadingContent = { Icon(Icons.Rounded.Workspaces, contentDescription = null) },
-                        modifier = Modifier.clickable {
-                            choosingTarget = false
-                            viewModel.createPage(onOpenNote)
-                        },
-                    )
-                }
-                if (state.targets.isNotEmpty()) SheetHeader(stringResource(R.string.new_note_in))
-                state.targets.forEach { target ->
-                    ListItem(
-                        headlineContent = { Text(target.name.ifBlank { stringResource(R.string.untitled) }) },
-                        leadingContent = {
-                            Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                                if (target.icon != null) {
-                                    PageIconView(target.icon, size = 24.dp)
-                                } else {
-                                    Icon(Icons.Rounded.TableChart, contentDescription = null)
+                // With several workspaces, each has its own part: a page at its top and its databases.
+                state.targetGroups.forEach { group ->
+                    val several = state.severalWorkspaces
+                    if (several) {
+                        SheetHeader(group.workspace?.name?.ifBlank { null } ?: stringResource(if (group.workspace == null) R.string.new_note_in else R.string.workspace_unnamed))
+                    }
+                    // Notion doesn't let a connection add pages at the top of a workspace.
+                    if (group.topLevel) {
+                        if (!several) SheetHeader(stringResource(R.string.new_page))
+                        ListItem(
+                            headlineContent = { Text(stringResource(if (several) R.string.new_page_at_top else R.string.new_page_top_level)) },
+                            supportingContent = { Text(stringResource(R.string.new_page_top_level_help)) },
+                            leadingContent = { Icon(Icons.Rounded.Workspaces, contentDescription = null) },
+                            modifier = Modifier.clickable {
+                                choosingTarget = false
+                                viewModel.createPage(group.workspace?.id, onOpenNote)
+                            },
+                        )
+                    }
+                    if (!several && group.targets.isNotEmpty()) SheetHeader(stringResource(R.string.new_note_in))
+                    group.targets.forEach { target ->
+                        ListItem(
+                            headlineContent = { Text(target.name.ifBlank { stringResource(R.string.untitled) }) },
+                            leadingContent = {
+                                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                                    if (target.icon != null) {
+                                        PageIconView(target.icon, size = 24.dp)
+                                    } else {
+                                        Icon(Icons.Rounded.TableChart, contentDescription = null)
+                                    }
                                 }
-                            }
-                        },
-                        modifier = Modifier.clickable {
-                            choosingTarget = false
-                            viewModel.createNote(target.databaseId, onOpenNote)
-                        },
-                    )
+                            },
+                            modifier = Modifier.clickable {
+                                choosingTarget = false
+                                viewModel.createNote(target.databaseId, onOpenNote)
+                            },
+                        )
+                    }
                 }
                 Spacer(Modifier.padding(bottom = 24.dp))
             }
@@ -353,9 +362,14 @@ private fun LazyStaggeredGridScope.recentSection(
     onOpenPage: (WorkspaceItem) -> Unit,
     onTogglePin: (WorkspaceItem) -> Unit,
     onRetry: () -> Unit,
+    onToggleWorkspace: (String) -> Unit,
 ) {
-    item(key = "__recent", span = StaggeredGridItemSpan.FullLine) { ListHeader(stringResource(R.string.section_recent)) }
     val recent = state.recent
+    if (state.severalWorkspaces && recent != null) {
+        workspaceSections(state, onOpenDatabase, onOpenPage, onTogglePin, onToggleWorkspace)
+        return
+    }
+    item(key = "__recent", span = StaggeredGridItemSpan.FullLine) { ListHeader(stringResource(R.string.section_recent)) }
     val error = state.recentError
     when {
         recent == null && error != null -> item(key = "__recent_error", span = StaggeredGridItemSpan.FullLine) {
@@ -369,6 +383,50 @@ private fun LazyStaggeredGridScope.recentSection(
             val pinnedDatabases = state.pinnedDatabases.map { it.id.replace("-", "") }.toSet()
             val pinnedPages = state.notes.pinnedIds.map { it.replace("-", "") }.toSet()
             items(recent, key = { "r:" + it.id }, span = { StaggeredGridItemSpan.FullLine }) { item ->
+                val plain = item.id.replace("-", "")
+                WorkspaceRow(
+                    item = item,
+                    pinned = if (item.isDatabase) plain in pinnedDatabases else plain in pinnedPages,
+                    onClick = { if (item.isDatabase) onOpenDatabase(item.id) else onOpenPage(item) },
+                    onTogglePin = { onTogglePin(item) },
+                    modifier = Modifier.animateItem(),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Home's databases and pages with several workspaces: a part per workspace, each folded away or
+ * shown with a tap on its title; what isn't known to be in one comes last, under the usual title.
+ */
+private fun LazyStaggeredGridScope.workspaceSections(
+    state: HomeUiState,
+    onOpenDatabase: (String) -> Unit,
+    onOpenPage: (WorkspaceItem) -> Unit,
+    onTogglePin: (WorkspaceItem) -> Unit,
+    onToggleWorkspace: (String) -> Unit,
+) {
+    val pinnedDatabases = state.pinnedDatabases.map { it.id.replace("-", "") }.toSet()
+    val pinnedPages = state.notes.pinnedIds.map { it.replace("-", "") }.toSet()
+    state.recentGroups.forEach { group ->
+        val workspace = group.workspace
+        val groupKey = workspace?.id ?: "__unknown"
+        val collapsed = workspace != null && workspace.id in state.collapsed
+        item(key = "w:$groupKey", span = StaggeredGridItemSpan.FullLine) {
+            if (workspace != null) {
+                WorkspaceHeader(
+                    workspace.name.ifBlank { stringResource(R.string.workspace_unnamed) },
+                    collapsed = collapsed,
+                    onToggle = { onToggleWorkspace(workspace.id) },
+                    modifier = Modifier.animateItem(),
+                )
+            } else {
+                ListHeader(stringResource(R.string.section_recent), Modifier.animateItem())
+            }
+        }
+        if (!collapsed) {
+            items(group.items, key = { "r:$groupKey:" + it.id }, span = { StaggeredGridItemSpan.FullLine }) { item ->
                 val plain = item.id.replace("-", "")
                 WorkspaceRow(
                     item = item,
@@ -578,6 +636,8 @@ internal fun NoteGrid(
     onReordered: (List<String>) -> Unit,
     /** Home: the pinned databases, as rows above the notes; dragged like the cards. */
     databases: List<PinnedDatabase> = emptyList(),
+    /** The workspace's name of each pinned database, by its ID (with several workspaces). */
+    databaseWorkspaces: Map<String, String> = emptyMap(),
     onOpenDatabase: (String) -> Unit = {},
     onUnpinDatabase: (PinnedDatabase) -> Unit = {},
     onDatabasesReordered: (List<String>) -> Unit = {},
@@ -800,6 +860,7 @@ internal fun NoteGrid(
                     pinned = false,
                     onClick = { if (draggingKey != key) onOpenDatabase(pin.id) },
                     onTogglePin = null,
+                    workspace = databaseWorkspaces[pin.id],
                 )
                 DropdownMenu(expanded = menuKey == key, onDismissRequest = { menuKey = null }) {
                     DropdownMenuItem(

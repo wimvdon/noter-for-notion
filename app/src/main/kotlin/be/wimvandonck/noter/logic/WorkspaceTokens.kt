@@ -1,15 +1,16 @@
 package be.wimvandonck.noter.logic
 
+import be.wimvandonck.noter.data.notion.TokenKind
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
 /**
- * A token for another workspace (#58), next to the main one: [name] is who it acts as and
- * [workspace] the workspace's name, both as Notion said when it was added.
+ * A token for a workspace (#58): [name] is who it acts as, [workspace] the workspace's name and
+ * [kind] the kind of token, as Notion said when it was added or the app last started.
  */
 @Serializable
-data class WorkspaceToken(val token: String, val name: String = "", val workspace: String = "")
+data class WorkspaceToken(val token: String, val name: String = "", val workspace: String = "", val kind: TokenKind? = null)
 
 /** The list of tokens for other workspaces: adding, removing and storing it. */
 object WorkspaceTokens {
@@ -26,6 +27,10 @@ object WorkspaceTokens {
     }
 
     fun remove(list: List<WorkspaceToken>, token: String): List<WorkspaceToken> = list.filter { it.token != token }
+
+    /** [list] with what Notion now says about [token] (its names and kind); the order stays. */
+    fun update(list: List<WorkspaceToken>, token: String, name: String, workspace: String, kind: TokenKind): List<WorkspaceToken> =
+        list.map { if (it.token == token) it.copy(name = name, workspace = workspace, kind = kind) else it }
 
     /** The name to show for [token]: the workspace's, else who it acts as. */
     fun label(token: WorkspaceToken): String = token.workspace.ifBlank { token.name }

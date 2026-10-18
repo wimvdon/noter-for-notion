@@ -1,15 +1,19 @@
 package be.wimvandonck.noter.ui.main
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material3.DropdownMenu
@@ -25,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -32,8 +37,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import be.wimvandonck.noter.R
@@ -44,8 +51,9 @@ import be.wimvandonck.noter.ui.common.PageIconView
 import be.wimvandonck.noter.ui.theme.SkeletonLine
 
 /**
- * A database or page in a list (Home, Search): its icon, name and when it was last edited. Tap
- * opens it; a long press opens its menu (pin or unpin). A pin at the end shows it is pinned.
+ * A database or page in a list (Home, Search): its icon, name, the workspace it is in ([workspace],
+ * with several) and when it was last edited. Tap opens it; a long press opens its menu (pin or
+ * unpin). A pin at the end shows it is pinned.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -58,6 +66,7 @@ internal fun WorkspaceRow(
     onTogglePin: (() -> Unit)?,
     modifier: Modifier = Modifier,
     edited: String = "",
+    workspace: String? = null,
 ) {
     var menu by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
@@ -68,8 +77,11 @@ internal fun WorkspaceRow(
             headlineContent = {
                 Text(title.ifBlank { stringResource(R.string.untitled) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
             },
-            supportingContent = if (edited.isNotBlank()) {
-                { Text(stringResource(R.string.browse_edited, NotionDates.display(edited, locale)), maxLines = 1) }
+            supportingContent = if (edited.isNotBlank() || !workspace.isNullOrBlank()) {
+                {
+                    val editedText = if (edited.isNotBlank()) stringResource(R.string.browse_edited, NotionDates.display(edited, locale)) else ""
+                    Text(listOf(workspace.orEmpty(), editedText).filter { it.isNotBlank() }.joinToString(" · "), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             } else {
                 null
             },
@@ -130,8 +142,45 @@ internal fun WorkspaceRow(
 
 /** A row of [WorkspaceRow] for [item] from Notion's search. */
 @Composable
-internal fun WorkspaceRow(item: WorkspaceItem, pinned: Boolean, onClick: () -> Unit, onTogglePin: (() -> Unit)?, modifier: Modifier = Modifier) =
-    WorkspaceRow(item.title, item.icon, item.isDatabase, pinned, onClick, onTogglePin, modifier, item.lastEditedTime)
+internal fun WorkspaceRow(
+    item: WorkspaceItem,
+    pinned: Boolean,
+    onClick: () -> Unit,
+    onTogglePin: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    workspace: String? = null,
+) = WorkspaceRow(item.title, item.icon, item.isDatabase, pinned, onClick, onTogglePin, modifier, item.lastEditedTime, workspace)
+
+/**
+ * A workspace's title on Home, with several: tap folds its databases and pages away, or shows
+ * them again.
+ */
+@Composable
+internal fun WorkspaceHeader(name: String, collapsed: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+    val rotation by animateFloatAsState(if (collapsed) -90f else 0f, label = "chevron")
+    val stateText = stringResource(if (collapsed) R.string.section_collapsed else R.string.section_expanded)
+    Row(
+        modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onToggle)
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)
+            .semantics {
+                heading()
+                stateDescription = stateText
+            },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            name,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.rotate(rotation))
+    }
+}
 
 /** A section's title in a list. */
 @Composable

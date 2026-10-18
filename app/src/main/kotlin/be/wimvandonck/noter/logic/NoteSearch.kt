@@ -23,6 +23,6 @@ object NoteSearch {
     }
 
     /** Lower case, without accents and with single spaces, so "Café" matches "cafe". */
-    private fun plain(text: String): String =
+    internal fun plain(text: String): String =
         Normalizer.normalize(text.lowercase(), Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "").replace(Regex("\\s+"), " ").trim()
 }

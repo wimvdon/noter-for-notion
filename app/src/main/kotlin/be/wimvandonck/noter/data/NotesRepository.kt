@@ -59,8 +59,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -169,8 +171,16 @@ class NotesRepository(
             lock.withLock {
                 _outbox.value = cache.outbox()
                 cache.recent()?.let { _recent.value = it }
+                client.restoreOwners(cache.owners())
             }
             outboxLoaded.complete(Unit)
+            // Which workspace things are in, kept a moment after it changes (it changes in bursts).
+            scope.launch(Dispatchers.IO) {
+                client.owners.drop(1).collectLatest { owners ->
+                    delay(OWNERS_SAVE_DELAY_MS)
+                    cache.saveOwners(owners)
+                }
+            }
             loadDatabase(PAGES)
             // Every database with a copy here, for the pinned notes on Home and the notes in Search.
             cache.databaseKeys().forEach { name ->
@@ -447,7 +457,7 @@ class NotesRepository(
      * Creates a page on its own on this phone (it is sent to Notion right after): inside page
      * [parentPageId], or at the top of the workspace when that is null. Returns its ID.
      */
-    suspend fun createPage(parentPageId: String?, key: String = PAGES): String = withContext(Dispatchers.IO) {
+    suspend fun createPage(parentPageId: String?, key: String = PAGES, workspace: String? = null): String = withContext(Dispatchers.IO) {
         loadDatabase(key)
         val id = NoteSummary.LOCAL_PREFIX + UUID.randomUUID()
         val now = Instant.ofEpochMilli(clock()).toString()
@@ -457,7 +467,7 @@ class NotesRepository(
             setState(key) { it.copy(notes = listOf(page) + it.notes, loaded = true) }
             _databases.value[key]?.let { saveDatabaseCache(key, it) }
             cache.saveContent(PageContent(id, blocks = emptyList(), base = emptyList(), nestedLoaded = true))
-            enqueue(PendingOp.CreatePage(id, key, parentPageId?.let(::resolve)))
+            enqueue(PendingOp.CreatePage(id, key, parentPageId?.let(::resolve), workspace.takeIf { parentPageId == null }))
         }
         scheduleFlush()
         id
@@ -796,7 +806,7 @@ class NotesRepository(
         val sent = note.properties
         val sentEmoji = note.icon?.emoji
         val page = if (op.databaseId == PAGES || isPageNotebook(op.databaseId)) {
-            client.createPageIn(op.parentPageId, PropertyCodec.toCreateRequest(sent), sentEmoji)
+            client.createPageIn(op.parentPageId, PropertyCodec.toCreateRequest(sent), sentEmoji, op.workspace)
         } else {
             client.createPage(resolveSource(op.databaseId), PropertyCodec.toCreateRequest(sent), children = emptyList(), emoji = sentEmoji)
         }
@@ -1210,8 +1220,15 @@ class NotesRepository(
     private fun plain(id: String) = id.replace("-", "")
 
     /** Forgets all Notion data on this phone (the API key was removed). Settings stay. */
+    /** Which workspace each page, database and data source is in (Workspaces.id, by ID without dashes). */
+    val owners: StateFlow<Map<String, String>> get() = client.owners
+
+    /** Forgets which objects were in [workspace] (its token was removed); its notes stay on the phone. */
+    fun forgetWorkspace(workspace: String) = client.forgetWorkspace(workspace)
+
     suspend fun clearData() = withContext(Dispatchers.IO) {
         lock.withLock {
+            client.forgetWorkspaces()
             cache.clear()
             databaseInfos.clear()
             databasesAsked.clear()
@@ -1274,6 +1291,7 @@ class NotesRepository(
         /** Databases and pages on Home's list. */
         private const val RECENT_LIMIT = 30
         private const val RETRY_MIN_MS = 15_000L
+        private const val OWNERS_SAVE_DELAY_MS = 2_000L
         private const val RETRY_MAX_MS = 5 * 60_000L
         private const val RETRY_OFFLINE_MAX_MS = 60_000L
         private const val LOOKUP_TTL_MS = 24 * 60 * 60_000L

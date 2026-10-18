@@ -22,7 +22,6 @@ import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.model.WorkspaceItem
-import be.wimvandonck.noter.data.notion.TokenKind
 import be.wimvandonck.noter.data.store.AppSettings
 import be.wimvandonck.noter.logic.ChipFilter
 import be.wimvandonck.noter.logic.ChipGroup
@@ -30,9 +29,14 @@ import be.wimvandonck.noter.logic.DatabaseSetups
 import be.wimvandonck.noter.logic.FilterChip
 import be.wimvandonck.noter.logic.NoteLists
 import be.wimvandonck.noter.logic.NoteSearch
-import be.wimvandonck.noter.logic.NoteTarget
 import be.wimvandonck.noter.logic.NoteTargets
 import be.wimvandonck.noter.logic.PropertyLayouts
+import be.wimvandonck.noter.logic.SearchKind
+import be.wimvandonck.noter.logic.SearchResults
+import be.wimvandonck.noter.logic.TargetGroup
+import be.wimvandonck.noter.logic.Workspace
+import be.wimvandonck.noter.logic.WorkspaceGroup
+import be.wimvandonck.noter.logic.Workspaces
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -91,11 +95,6 @@ data class NotesUiState(
 /** Home: a search bar, then what is pinned (databases, notes and pages), then Notion's databases and pages. */
 data class HomeUiState(
     val notes: NotesUiState = NotesUiState(),
-    /**
-     * Pages can be added at the top of the workspace: only with a personal access token (Notion
-     * refuses it to an internal connection).
-     */
-    val canAddTopLevel: Boolean = false,
     /** The profile picture of the person the token acts as, shown in place of Settings' cogwheel (null: the cogwheel). */
     val avatarUrl: String? = null,
     val pinnedDatabases: List<PinnedDatabase> = emptyList(),
@@ -103,8 +102,16 @@ data class HomeUiState(
     val recent: List<WorkspaceItem>? = null,
     /** Asking Notion for [recent] failed (an error from NotionErrors). */
     val recentError: String? = null,
-    /** Where + can put a new note. */
-    val targets: List<NoteTarget> = emptyList(),
+    /** Where + can put a new note or page, by workspace. */
+    val targetGroups: List<TargetGroup> = emptyList(),
+    /** There are tokens for more than one workspace: lists say which workspace things are in. */
+    val severalWorkspaces: Boolean = false,
+    /** [recent] by workspace (with several). */
+    val recentGroups: List<WorkspaceGroup<WorkspaceItem>> = emptyList(),
+    /** The workspaces folded away on Home ([Workspace.id]). */
+    val collapsed: Set<String> = emptySet(),
+    /** The workspace's name of each pinned database, by its ID (with several workspaces). */
+    val pinnedWorkspaces: Map<String, String> = emptyMap(),
 )
 
 /**
@@ -117,6 +124,24 @@ data class BrowseState(
     val items: List<WorkspaceItem>? = null,
     val loading: Boolean = false,
     val error: String? = null,
+)
+
+/**
+ * Search as shown (#60): the notes here and Notion's results in one list, best matches first
+ * ([results]; null while there is nothing yet), filtered by [kind] and [workspace].
+ */
+data class SearchUiState(
+    val query: String = "",
+    val results: List<WorkspaceItem>? = null,
+    val loading: Boolean = false,
+    val error: String? = null,
+    val kind: SearchKind = SearchKind.ALL,
+    /** Only this workspace's results ([Workspace.id]); null: every workspace. */
+    val workspace: String? = null,
+    /** The workspaces to filter by (only with several). */
+    val workspaces: List<Workspace> = emptyList(),
+    /** The workspace's name of each result, by its ID (with several workspaces). */
+    val workspaceNames: Map<String, String> = emptyMap(),
 )
 
 /**
@@ -188,8 +213,12 @@ internal fun sourceIcons(pinned: List<PinnedDatabase>, recent: List<WorkspaceIte
 class MainViewModel(
     private val repository: NotesRepository,
     hasKey: StateFlow<Boolean>,
-    tokenKind: StateFlow<TokenKind?>,
+    /** Every workspace with a token, the main one first. */
+    workspaces: Flow<List<Workspace>>,
     avatarUrl: StateFlow<String?>,
+    /** The workspaces folded away on Home, and keeping a change to them. */
+    collapsed: StateFlow<Set<String>>,
+    private val setCollapsed: (Set<String>) -> Unit,
 ) : ViewModel() {
     val events: Flow<RepoEvent> = repository.events
 
@@ -198,17 +227,21 @@ class MainViewModel(
     /** What Notion said about the pinned databases (their data sources, for +), by pinned ID. */
     private val infos = MutableStateFlow<Map<String, DatabaseInfo>>(emptyMap())
 
-    private data class Status(val pending: Int, val offline: Boolean, val hasKey: Boolean, val kind: TokenKind?, val avatarUrl: String?)
+    private data class Status(val pending: Int, val offline: Boolean, val hasKey: Boolean, val avatarUrl: String?)
 
-    private val status = combine(repository.pendingCount, repository.offline, hasKey, tokenKind, avatarUrl, ::Status)
+    private val status = combine(repository.pendingCount, repository.offline, hasKey, avatarUrl, ::Status)
+
+    private val workspaceInfo = combine(workspaces, repository.owners, collapsed, ::Triple)
 
     val state: StateFlow<HomeUiState> = combine(
         repository.settingsFlow(),
         repository.databases,
         combine(repository.recent, recentError, infos, ::Triple),
         status,
-    ) { settings, databases, (recent, error, known), (pending, offline, key, kind, avatar) ->
+        workspaceInfo,
+    ) { settings, databases, (recent, error, known), (pending, offline, key, avatar), (spaces, owners, folded) ->
         val pinned = NoteLists.pinned(databases.values.flatMap { it.notes }, settings.pinned, settings.order[AppSettings.HOME].orEmpty())
+        val several = spaces.size > 1
         HomeUiState(
             notes = NotesUiState(
                 ready = true,
@@ -222,12 +255,22 @@ class MainViewModel(
                 pendingCount = pending,
                 offline = offline,
             ),
-            canAddTopLevel = kind == TokenKind.PERSONAL,
             avatarUrl = avatar,
             pinnedDatabases = settings.pinnedDatabases,
             recent = recent,
             recentError = error,
-            targets = NoteTargets.of(settings.pinnedDatabases, recent, known),
+            targetGroups = NoteTargets.grouped(NoteTargets.of(settings.pinnedDatabases, recent, known), spaces, owners),
+            severalWorkspaces = several,
+            recentGroups = if (several) Workspaces.group(recent.orEmpty(), owners, spaces, SearchResults::idsOf) else emptyList(),
+            collapsed = folded,
+            pinnedWorkspaces = if (several) {
+                settings.pinnedDatabases.mapNotNull { pin ->
+                    val ids = listOf(pin.id) + known[pin.id]?.sources.orEmpty().map { it.id }
+                    Workspaces.ownerOf(ids, owners, spaces)?.let { pin.id to it.name }
+                }.toMap()
+            } else {
+                emptyMap()
+            },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
@@ -298,9 +341,15 @@ class MainViewModel(
         onCreated(id)
     }
 
-    /** Makes a page at the top of the workspace. */
-    fun createPage(onCreated: (String) -> Unit) = viewModelScope.launch {
-        onCreated(repository.createPage(null))
+    /** Makes a page at the top of [workspace] (null: the main one). */
+    fun createPage(workspace: String?, onCreated: (String) -> Unit) = viewModelScope.launch {
+        onCreated(repository.createPage(null, workspace = workspace))
+    }
+
+    /** Folds workspace [id] away on Home, or unfolds it. */
+    fun toggleCollapsed(id: String) {
+        val now = state.value.collapsed
+        setCollapsed(if (id in now) now - id else now + id)
     }
 
     // ---- Search ----
@@ -308,11 +357,40 @@ class MainViewModel(
     private val _browse = MutableStateFlow(BrowseState())
     val browse: StateFlow<BrowseState> = _browse.asStateFlow()
     private var searchJob: Job? = null
+    private val searchFilter = MutableStateFlow(SearchKind.ALL to null as String?)
+
+    val search: StateFlow<SearchUiState> = combine(_browse, searchFilter, workspaces, repository.owners) { browse, (kind, workspace), spaces, owners ->
+        val several = spaces.size > 1
+        // A workspace that was removed meanwhile doesn't filter anymore.
+        val shownWorkspace = workspace?.takeIf { id -> several && spaces.any { it.id == id } }
+        val merged = SearchResults.merge(browse.query, browse.notes, browse.items)
+        SearchUiState(
+            query = browse.query,
+            results = if (browse.items == null && merged.isEmpty()) null else SearchResults.filter(merged, kind, shownWorkspace, owners, spaces),
+            loading = browse.loading,
+            error = browse.error,
+            kind = kind,
+            workspace = shownWorkspace,
+            workspaces = if (several) spaces else emptyList(),
+            workspaceNames = if (several) {
+                merged.mapNotNull { item -> Workspaces.ownerOf(SearchResults.idsOf(item), owners, spaces)?.let { item.id to it.name } }.toMap()
+            } else {
+                emptyMap()
+            },
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SearchUiState())
+
+    /** Shows only [kind] in Search (again: everything). */
+    fun toggleSearchKind(kind: SearchKind) = searchFilter.update { (now, ws) -> (if (now == kind) SearchKind.ALL else kind) to ws }
+
+    /** Shows only workspace [id]'s results in Search (again: every workspace). */
+    fun toggleSearchWorkspace(id: String) = searchFilter.update { (kind, now) -> kind to (if (now == id) null else id) }
 
     /** Back to an empty search (when leaving Search). */
     fun resetSearch() {
         searchJob?.cancel()
         _browse.value = BrowseState()
+        searchFilter.value = SearchKind.ALL to null
     }
 
     /**
@@ -349,7 +427,15 @@ class MainViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as NoterApp
-                MainViewModel(app.repository, app.apiKeyStore.hasKey, app.apiKeyStore.kind, app.apiKeyStore.avatarUrl)
+                val keys = app.apiKeyStore
+                MainViewModel(
+                    app.repository,
+                    keys.hasKey,
+                    combine(keys.main, keys.extras) { main, extras -> Workspaces.of(listOf(main) + extras) },
+                    keys.avatarUrl,
+                    keys.collapsed,
+                    keys::setCollapsed,
+                )
             }
         }
     }

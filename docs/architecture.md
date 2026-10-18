@@ -18,14 +18,18 @@ properties and content: the pages of databases and pages on their own.
     Any database, page or note can be pinned: a long press on a row (Home, Search), the pin in a
     note's app bar, a database's ⋮ menu, or a card's menu.
   - **Databases and pages**: the most recently edited databases and pages Notion's search lists
-    (not the notes in databases), grouped by database as in Search, at most 30
+    (not the notes in databases), grouped by database as in Search, at most 30. With several
+    workspaces, one part per workspace (`Workspaces.group`), each folded away with a tap on its
+    name (`ApiKeyStore.collapsed`, on this phone only); pinned databases say their workspace
     (`NotesRepository.recent`, `refreshRecent`). The list is kept on this phone (`recent.json`), so
     Home shows it at once and offline; it is asked again when the app starts (with a token) and on
     pull-to-refresh. A pin at the end of a row shows it is pinned.
-  - **+** (`logic/NoteTargets.kt`) offers a page at the top of the workspace (with a personal
-    access token; when Notion refuses, the page is removed again and the app explains) and a note
-    in the pinned databases, then the other databases on Home's list; a database of several data
-    sources offers each, named "Database · Data source". A new note opens at once.
+  - **+** (`logic/NoteTargets.kt`) offers a page at the top of the workspace (not with a
+    connection's token; when Notion refuses, the page is removed again and the app says to check
+    the token in Settings) and a note in the pinned databases, then the other databases on Home's
+    list; a database of several data sources offers each, named "Database · Data source". With
+    several workspaces it has a part per workspace (`NoteTargets.grouped`), and a page at the top
+    goes with that workspace's token (`PendingOp.CreatePage.workspace`). A new note opens at once.
   Without a token the screen says "Connect to Notion" with "Open settings" (`DESIGN.md`, "Empty
   and setup states"). Back on Home leaves the app.
 - **Database** (`DatabaseScreen.kt`, `DatabaseViewModel`): a database opened from Home, Search or a
@@ -72,10 +76,13 @@ properties and content: the pages of databases and pages on their own.
   gets its value where it can (not for computed properties; a date only for Today).
 - **Pages** open in the editor, also a page with subpages: its subpages are links in its content
   (child pages), which open in the app. A page's ⋮ menu has "New subpage".
-- **Search** (`SearchScreen.kt`, a child page from Home's search bar, sharing Home's ViewModel): the
-  notes on this phone whose title has every word typed (`logic/NoteSearch.kt`, at once and
-  offline), then the databases and pages Notion's search finds; before anything is typed,
-  Notion's most recently edited ones. Notion's search lists data sources, not databases. Each data
+- **Search** (`SearchScreen.kt`, a child page from Home's search bar, sharing Home's ViewModel): one
+  list (#60) of the notes on this phone whose title has every word typed (`logic/NoteSearch.kt`,
+  at once and offline) and the databases and pages Notion's search finds, each page once, best
+  matching titles first (`logic/SearchResults.kt`: the same title, starts with it, every word
+  starts a word, every word is in it, else Notion's own match; newest first among equals);
+  before anything is typed, Notion's most recently edited ones. Filter chips show only pages,
+  only databases or (with several workspaces) one workspace; each row says its workspace. Notion's search lists data sources, not databases. Each data
   source names its database; the app asks Notion about that database once
   (`NotesRepository.databaseInfo`, kept in `databases.json`) and groups the results
   (`WorkspaceCodec.group`): a database of several data sources is listed once, as the database; a
@@ -112,15 +119,22 @@ properties and content: the pages of databases and pages on their own.
 - **Icons of Notion's own** (`data/icons/IconCatalog.kt`, `DatabaseIcons.kt`): the Material Symbols
   set (4 229 icons) from `assets/material_symbols.txt` (name, categories and SVG path data per icon,
   from RSS Reader), drawn as vectors, for the closest match to a Notion icon (`logic/PageIcons.kt`).
-- **Settings** (`ui/settings/`): Connection (a personal access token, with the steps to make one,
-  and sync status), Other workspaces (once there is a token) and Appearance; built from the shared `SettingsKit.kt`.
-- **Other workspaces** (#58): a token belongs to one workspace, so tokens for other workspaces can
-  be added next to the main one (`ApiKeyStore.extras`, encrypted like it and never backed up;
-  the list itself is `logic/WorkspaceTokens.kt`). Each is tested with `GET /users/me` and shown
-  with its workspace's name. `NotionClient` gets every token: a request about a page, block,
-  database or data source goes with the token that worked for that ID before (`logic/KeyRouter.kt`,
-  in memory; IDs come from the path or a new page's parent and from the answers, see
-  `data/api/NotionRoutes.kt`), else with each token in turn until one isn't answered 404 (or 401/403).
+- **Settings** (`ui/settings/`): Workspaces (every token, links to make a personal access token
+  or a connection, a field to add one, and sync status) and Appearance; built from the shared `SettingsKit.kt`.
+- **Workspaces** (#58): a token belongs to one workspace, so there can be one per workspace or
+  Notion account. The first is the main token (`ApiKeyStore.get`, with its names in
+  `ApiKeyStore.main`); the others are `ApiKeyStore.extras` (encrypted like it and never backed
+  up; the list itself is `logic/WorkspaceTokens.kt`). Each is tested with `GET /users/me` when
+  added and asked again at each start, and shown with its workspace's name and kind. Removing the
+  main token makes the next one the main; removing the last deletes the notes on the phone.
+  `NotionClient` gets every token: a request about a page, block, database or data source goes
+  with the token of the workspace that answered for that ID before (`logic/KeyRouter.kt`; IDs come
+  from the path or a new page's parent and from the answers, see `data/api/NotionRoutes.kt`),
+  else with each token in turn until one isn't answered 404 (or 401/403). Which workspace each
+  page, database and data source is in is kept on the phone (`workspaces.json` in the cache,
+  under `Workspaces.id`, a short hash of the token, never the token) and remembered with one
+  token too, so lists can say where things are (`logic/Workspaces.kt`); blocks are only
+  remembered while the app runs.
   Search and the people list ask every workspace and merge (newest first); a refused token only
   drops its own results. Things without an ID (a page at the top of the workspace, `/users/me`)
   use the main token. The rest of the app doesn't know about workspaces: Notion's IDs are unique,

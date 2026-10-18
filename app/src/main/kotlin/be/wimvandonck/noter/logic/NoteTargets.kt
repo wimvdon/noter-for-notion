@@ -12,6 +12,12 @@ data class NoteTarget(
     val icon: PageIcon? = null,
 )
 
+/**
+ * The places + offers in one workspace: a page at its top ([topLevel], not with a connection's
+ * token) and its databases. [workspace] is null for databases not known to be in one yet.
+ */
+data class TargetGroup(val workspace: Workspace?, val topLevel: Boolean, val targets: List<NoteTarget>)
+
 /** Where + on Home can put a new note. */
 object NoteTargets {
     /**
@@ -37,6 +43,24 @@ object NoteTargets {
             }
         }
         return (fromPins + fromRecent).distinctBy { plain(it.databaseId) }
+    }
+
+    /**
+     * [targets] by workspace (see [Workspaces.group]): every workspace that can take something,
+     * in order, then the databases not known to be in one. With one workspace everything is in it.
+     */
+    fun grouped(targets: List<NoteTarget>, workspaces: List<Workspace>, owners: Map<String, String>): List<TargetGroup> {
+        if (workspaces.size <= 1) {
+            val only = workspaces.firstOrNull()
+            val topLevel = only?.canAddTopLevel == true
+            return if (targets.isEmpty() && !topLevel) emptyList() else listOf(TargetGroup(only, topLevel, targets))
+        }
+        val byWorkspace = Workspaces.group(targets, owners, workspaces) { listOf(it.databaseId) }.associateBy { it.workspace?.id }
+        val known = workspaces.mapNotNull { ws ->
+            val own = byWorkspace[ws.id]?.items.orEmpty()
+            if (own.isEmpty() && !ws.canAddTopLevel) null else TargetGroup(ws, ws.canAddTopLevel, own)
+        }
+        return known + listOfNotNull(byWorkspace[null]?.let { TargetGroup(null, topLevel = false, it.items) })
     }
 
     private fun plain(id: String) = id.replace("-", "")

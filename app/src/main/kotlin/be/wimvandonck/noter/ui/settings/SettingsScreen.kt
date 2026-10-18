@@ -1,21 +1,15 @@
 package be.wimvandonck.noter.ui.settings
 
 import android.content.Intent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
-import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
@@ -23,9 +17,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,11 +27,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -50,8 +40,6 @@ import be.wimvandonck.noter.R
 import be.wimvandonck.noter.ui.common.errorText
 import be.wimvandonck.noter.data.model.ThemeMode
 import be.wimvandonck.noter.data.notion.TokenKind
-import be.wimvandonck.noter.logic.WorkspaceTokens
-import be.wimvandonck.noter.ui.theme.AppShapes
 import be.wimvandonck.noter.ui.theme.AppearanceSettings
 import be.wimvandonck.noter.ui.theme.SettingsBlock
 import be.wimvandonck.noter.ui.theme.SettingsSection
@@ -69,16 +57,9 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
         backLabel = stringResource(R.string.back),
         onBack = onBack,
     ) {
-        item(key = "connection") {
-            SettingsSection(title = stringResource(R.string.section_connection)) {
-                SettingsBlock { ConnectionSettings(state, viewModel) }
-            }
-        }
-        if (state.hasKey) {
-            item(key = "workspaces") {
-                SettingsSection(title = stringResource(R.string.section_workspaces)) {
-                    SettingsBlock { OtherWorkspaces(state, viewModel) }
-                }
+        item(key = "workspaces") {
+            SettingsSection(title = stringResource(R.string.section_workspaces)) {
+                SettingsBlock { WorkspaceSettings(state, viewModel) }
             }
         }
         item(key = "appearance") {
@@ -109,104 +90,14 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
 
 }
 
-@Composable
-private fun ConnectionSettings(state: SettingsUiState, viewModel: SettingsViewModel) {
-    val context = LocalContext.current
-    var key by rememberSaveable { mutableStateOf(viewModel.currentKey()) }
-    var visible by rememberSaveable { mutableStateOf(false) }
-    Text(
-        stringResource(R.string.connection_help),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    // How to make a personal access token, step by step (Notion's form changes rarely), with the
-    // same numbered circles as the guide in Snoozer.
-    listOf(R.string.connection_step_1, R.string.connection_step_2, R.string.connection_step_3).forEachIndexed { index, step ->
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Box(
-                Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("${index + 1}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
-            }
-            Text(
-                stringResource(step),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
-            )
-        }
-    }
-    TextButton(onClick = {
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, TOKENS_URL.toUri())) }
-    }) {
-        Text(stringResource(R.string.connection_open_tokens))
-        Spacer(Modifier.width(8.dp))
-        Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
-    }
-    OutlinedTextField(
-        value = key,
-        onValueChange = { key = it },
-        label = { Text(stringResource(R.string.api_key)) },
-        singleLine = true,
-        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        trailingIcon = {
-            IconButton(onClick = { visible = !visible }) {
-                Icon(
-                    if (visible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                    contentDescription = stringResource(if (visible) R.string.hide_key else R.string.show_key),
-                )
-            }
-        },
-        modifier = Modifier.fillMaxWidth(),
-    )
-    when (val status = state.keyStatus) {
-        is KeyStatus.Ok -> if (status.info.kind == TokenKind.PERSONAL) {
-            StatusText(stringResource(R.string.key_ok, status.info.name), error = false)
-        }
-        is KeyStatus.Failed -> StatusText(stringResource(R.string.key_failed, errorText(status.message)), error = true)
-        KeyStatus.Removed -> StatusText(stringResource(R.string.key_removed), error = false)
-        else -> Unit
-    }
-    // An internal connection's token works, but sees less: say what, and what to do about it.
-    if (state.hasKey && state.tokenKind == TokenKind.CONNECTION) ConnectionTokenWarning()
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Button(onClick = { viewModel.saveKey(key) }, enabled = key.isNotBlank() && state.keyStatus != KeyStatus.Testing) {
-            if (state.keyStatus == KeyStatus.Testing) {
-                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                Spacer(Modifier.width(8.dp))
-            }
-            Text(stringResource(R.string.test_and_save))
-        }
-        if (state.hasKey) {
-            OutlinedButton(onClick = {
-                key = ""
-                viewModel.removeKey()
-            }) { Text(stringResource(R.string.remove_key)) }
-        }
-    }
-    if (state.hasKey) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                if (state.pendingCount == 0) {
-                    stringResource(R.string.sync_all_saved)
-                } else {
-                    pluralStringResource(R.plurals.status_pending, state.pendingCount, state.pendingCount)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = viewModel::syncNow) { Text(stringResource(R.string.sync_now)) }
-        }
-    }
-}
-
 /**
- * Tokens for other workspaces (#58): one per workspace, so notes from a workspace the person was
- * invited to show up next to their own. Each can be removed; a new one is tested before it is kept.
+ * Every workspace with a token (#58): a personal access token for a workspace of one's own, or a
+ * connection's token for pages someone shared. Each can be removed; a new one is tested before it
+ * is kept. The first becomes the main token.
  */
 @Composable
-private fun OtherWorkspaces(state: SettingsUiState, viewModel: SettingsViewModel) {
+private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewModel) {
+    val context = LocalContext.current
     var token by rememberSaveable { mutableStateOf("") }
     var visible by rememberSaveable { mutableStateOf(false) }
     Text(
@@ -214,24 +105,22 @@ private fun OtherWorkspaces(state: SettingsUiState, viewModel: SettingsViewModel
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    Text(
-        stringResource(R.string.workspaces_guests),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    state.extras.forEach { extra ->
+    state.workspaces.forEach { workspace ->
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(WorkspaceTokens.label(extra), style = MaterialTheme.typography.titleSmall)
-                if (extra.workspace.isNotBlank() && extra.name.isNotBlank()) {
-                    Text(
-                        extra.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                Text(workspace.name.ifBlank { stringResource(R.string.workspace_unnamed) }, style = MaterialTheme.typography.titleSmall)
+                val kind = when (workspace.kind) {
+                    TokenKind.PERSONAL -> stringResource(R.string.workspace_personal)
+                    TokenKind.CONNECTION -> stringResource(R.string.workspace_connection)
+                    null -> ""
+                }
+                val person = workspace.person.takeIf { it.isNotBlank() && it != workspace.name }.orEmpty()
+                val details = listOf(kind, person).filter { it.isNotBlank() }.joinToString(" · ")
+                if (details.isNotBlank()) {
+                    Text(details, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            TextButton(onClick = { viewModel.removeWorkspace(extra.token) }) {
+            TextButton(onClick = { viewModel.removeWorkspace(workspace.id) }) {
                 Text(stringResource(R.string.remove_workspace))
             }
         }
@@ -253,9 +142,13 @@ private fun OtherWorkspaces(state: SettingsUiState, viewModel: SettingsViewModel
         },
         modifier = Modifier.fillMaxWidth(),
     )
-    when (val status = state.extraStatus) {
+    when (val status = state.keyStatus) {
         is KeyStatus.Ok -> StatusText(stringResource(R.string.workspace_added, status.info.workspace?.ifBlank { null } ?: status.info.name), error = false)
         is KeyStatus.Failed -> StatusText(stringResource(R.string.key_failed, errorText(status.message)), error = true)
+        is KeyStatus.Removed -> StatusText(
+            if (status.last) stringResource(R.string.key_removed) else stringResource(R.string.workspace_removed, status.name),
+            error = false,
+        )
         else -> Unit
     }
     Button(
@@ -263,31 +156,46 @@ private fun OtherWorkspaces(state: SettingsUiState, viewModel: SettingsViewModel
             viewModel.addWorkspace(token)
             token = ""
         },
-        enabled = token.isNotBlank() && state.extraStatus != KeyStatus.Testing,
+        enabled = token.isNotBlank() && state.keyStatus != KeyStatus.Testing,
     ) {
-        if (state.extraStatus == KeyStatus.Testing) {
+        if (state.keyStatus == KeyStatus.Testing) {
             CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             Spacer(Modifier.width(8.dp))
         }
         Text(stringResource(R.string.add_workspace))
     }
+    // Where to make a token: Notion's own pages.
+    Column {
+        LinkButton(stringResource(R.string.make_personal_token)) {
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, TOKENS_URL.toUri())) }
+        }
+        LinkButton(stringResource(R.string.make_connection)) {
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, CONNECTIONS_URL.toUri())) }
+        }
+    }
+    if (state.hasKey) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (state.pendingCount == 0) {
+                    stringResource(R.string.sync_all_saved)
+                } else {
+                    pluralStringResource(R.plurals.status_pending, state.pendingCount, state.pendingCount)
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = viewModel::syncNow) { Text(stringResource(R.string.sync_now)) }
+        }
+    }
 }
 
-/** Shown while the saved token is an internal connection's: what it can't do, and the fix. */
+/** A link to one of Notion's pages, with the "opens elsewhere" arrow. */
 @Composable
-private fun ConnectionTokenWarning() {
-    Surface(
-        shape = AppShapes.Item,
-        color = MaterialTheme.colorScheme.tertiaryContainer,
-        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-    ) {
-        Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(Icons.Rounded.Info, contentDescription = null)
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(stringResource(R.string.connection_token_title), style = MaterialTheme.typography.titleSmall)
-                Text(stringResource(R.string.connection_token_body), style = MaterialTheme.typography.bodyMedium)
-            }
-        }
+private fun LinkButton(text: String, onClick: () -> Unit) {
+    TextButton(onClick = onClick) {
+        Text(text)
+        Spacer(Modifier.width(8.dp))
+        Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -302,4 +210,7 @@ private fun StatusText(text: String, error: Boolean) {
 
 /** Notion's page for making personal access tokens (its Developer portal). */
 private const val TOKENS_URL = "https://www.notion.so/developers/tokens"
+
+/** Notion's page for making connections (internal integrations), whose pages are shared with them. */
+private const val CONNECTIONS_URL = "https://www.notion.so/profile/integrations"
 private const val PRIVACY_URL = "https://github.com/wimvdon/noter-for-notion/blob/main/PRIVACY.md"

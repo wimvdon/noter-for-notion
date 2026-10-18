@@ -5,6 +5,7 @@ import be.wimvandonck.noter.data.model.PageIcon
 import be.wimvandonck.noter.data.model.PageRef
 import be.wimvandonck.noter.data.model.PinnedDatabase
 import be.wimvandonck.noter.data.model.WorkspaceItem
+import be.wimvandonck.noter.data.notion.TokenKind
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -40,5 +41,30 @@ class NoteTargetsTest {
     @Test
     fun `before Home's list has loaded only the pins count`() {
         assertEquals(listOf("bbbb"), NoteTargets.of(listOf(PinnedDatabase("bbbb", "Ideas")), null, emptyMap()).map { it.databaseId })
+    }
+
+    @Test
+    fun `with one workspace everything is in it, with a page at the top unless it is a connection`() {
+        val targets = listOf(NoteTarget("db1", "Tasks"))
+        val work = Workspace("w1", "Work", TokenKind.PERSONAL)
+        assertEquals(listOf(TargetGroup(work, true, targets)), NoteTargets.grouped(targets, listOf(work), emptyMap()))
+        val club = Workspace("w2", "Club", TokenKind.CONNECTION)
+        assertEquals(listOf(TargetGroup(club, false, targets)), NoteTargets.grouped(targets, listOf(club), emptyMap()))
+        assertEquals(emptyList<TargetGroup>(), NoteTargets.grouped(emptyList(), listOf(club), emptyMap()))
+    }
+
+    @Test
+    fun `with several workspaces each gets its own part, the unknown databases last`() {
+        val work = Workspace("w1", "Work", TokenKind.PERSONAL)
+        val club = Workspace("w2", "Club", TokenKind.CONNECTION)
+        val empty = Workspace("w3", "Shared", TokenKind.CONNECTION)
+        val tasks = NoteTarget("db-1", "Tasks")
+        val members = NoteTarget("db2", "Members")
+        val other = NoteTarget("db3", "Other")
+        val groups = NoteTargets.grouped(listOf(members, tasks, other), listOf(work, club, empty), mapOf("db1" to "w1", "db2" to "w2"))
+        assertEquals(
+            listOf(TargetGroup(work, true, listOf(tasks)), TargetGroup(club, false, listOf(members)), TargetGroup(null, false, listOf(other))),
+            groups,
+        )
     }
 }

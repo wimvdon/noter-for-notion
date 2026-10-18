@@ -17,7 +17,13 @@ sealed interface PendingOp {
      * A new note in [databaseId], or a page on its own (databaseId [be.wimvandonck.noter.data.NotesRepository.PAGES])
      * inside page [parentPageId], or at the top of the workspace when that is null.
      */
-    data class CreatePage(override val pageId: String, val databaseId: String, val parentPageId: String? = null) : PendingOp
+    data class CreatePage(
+        override val pageId: String,
+        val databaseId: String,
+        val parentPageId: String? = null,
+        /** A page at the top of a workspace: which one (Workspaces.id; null: the main one). */
+        val workspace: String? = null,
+    ) : PendingOp
 
     @Serializable
     @SerialName("property")
