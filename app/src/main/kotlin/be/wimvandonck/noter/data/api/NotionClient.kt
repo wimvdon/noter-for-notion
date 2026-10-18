@@ -2,6 +2,7 @@ package be.wimvandonck.noter.data.api
 
 import be.wimvandonck.noter.data.model.PageRef
 import be.wimvandonck.noter.data.notion.InlineMarkdown
+import be.wimvandonck.noter.logic.KeyRouter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -39,9 +40,15 @@ class NotionException(
     val isTemporary: Boolean get() = status == null || status == 429 || status >= 500
 }
 
-/** Notion's REST API (api.notion.com), with the integration's API key. */
+/**
+ * Notion's REST API (api.notion.com), with the main token ([apiKey]) and the tokens for other
+ * workspaces ([extraKeys], #58). A request about a page, block, database or data source goes with
+ * the token that worked for it before ([KeyRouter]), else with each token in turn until one isn't
+ * answered with "not found". Search and the list of people ask every workspace and merge.
+ */
 class NotionClient(
     private val apiKey: () -> String,
+    private val extraKeys: () -> List<String> = { emptyList() },
     /** Only tests change this (to a server on the test machine). */
     private val baseUrl: String = BASE_URL,
 ) {
@@ -50,18 +57,86 @@ class NotionClient(
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
+    private val router = KeyRouter()
+
+    /** Every token, the main one first; none without a main token. */
+    private fun keys(): List<String> {
+        val primary = apiKey()
+        if (primary.isBlank()) return emptyList()
+        return (listOf(primary) + extraKeys()).filter { it.isNotBlank() }.distinct()
+    }
+
+    /**
+     * Sends a request with [key] when given, else with the right token (see the class comment).
+     * With one token this is the same as [send] with it.
+     */
+    private suspend fun call(
+        method: String,
+        endpoint: String,
+        body: Any? = null,
+        key: String? = null,
+        adds: Boolean = false,
+    ): JsonObject {
+        if (key != null) return send(method, endpoint, body, key, adds)
+        val all = keys()
+        if (all.size <= 1) return send(method, endpoint, body, all.firstOrNull().orEmpty(), adds)
+        val subject = NotionRoutes.subjectId(endpoint, body)
+            ?: return send(method, endpoint, body, all.first(), adds)
+        var firstError: NotionException? = null
+        for (candidate in router.candidates(subject, all)) {
+            try {
+                val data = send(method, endpoint, body, candidate, adds)
+                router.remember(subject, candidate)
+                remember(data, candidate)
+                return data
+            } catch (e: NotionException) {
+                // Another workspace's token doesn't know the object (404) or isn't allowed (401, 403):
+                // try the next one. Anything else (offline, Notion busy, a bad request) stops here.
+                if (e.status != 404 && e.status != 401 && e.status != 403) throw e
+                val previous = firstError
+                if (previous == null || previous.isNotFound && !e.isNotFound) firstError = e
+            }
+        }
+        throw firstError ?: NotionException("No Notion API key", status = 401, code = "no_key")
+    }
+
+    /** The objects in [data] belong to [key]'s workspace. */
+    private fun remember(data: JsonObject, key: String) {
+        NotionRoutes.objectIds(data).forEach { router.remember(it, key) }
+    }
+
+    /**
+     * [block] once per token: the results of the tokens that worked. Fails only when every token
+     * failed (with the first error), so one refused token doesn't hide the other workspaces.
+     */
+    private suspend fun <T> eachKey(block: suspend (key: String) -> T): List<T> {
+        val all = keys()
+        if (all.size <= 1) return listOf(block(all.firstOrNull().orEmpty()))
+        val results = mutableListOf<T>()
+        var firstError: NotionException? = null
+        for (key in all) {
+            try {
+                results.add(block(key))
+            } catch (e: NotionException) {
+                if (firstError == null) firstError = e
+            }
+        }
+        if (results.isEmpty()) throw firstError ?: NotionException("No Notion API key", status = 401, code = "no_key")
+        return results
+    }
+
     /**
      * Notion allows about three requests per second per integration and answers 429 above that.
      * Throttled and server-side failures are retried here, honouring Retry-After. Requests that
      * add something ([adds]) are only retried when throttled: after a server error Notion may have
      * added it anyway, and a second try would add it twice.
      */
-    private suspend fun call(
+    private suspend fun send(
         method: String,
         endpoint: String,
-        body: Any? = null,
-        key: String = apiKey(),
-        adds: Boolean = false,
+        body: Any?,
+        key: String,
+        adds: Boolean,
     ): JsonObject =
         withContext(Dispatchers.IO) {
             if (key.isBlank()) throw NotionException("No Notion API key", status = 401, code = "no_key")
@@ -109,17 +184,22 @@ class NotionClient(
      * one; a database with several has one result per data source.
      */
     suspend fun searchDatabases(): List<PageRef> =
-        paged { cursor ->
-            call(
-                "POST", "/search",
-                buildMap {
-                    put("filter", mapOf("value" to "data_source", "property" to "object"))
-                    put("sort", mapOf("direction" to "descending", "timestamp" to "last_edited_time"))
-                    put("page_size", 100)
-                    if (cursor != null) put("start_cursor", cursor)
-                },
-            )
-        }.mapNotNull { db ->
+        NotionRoutes.newestFirst(
+            eachKey { key ->
+                paged { cursor ->
+                    call(
+                        "POST", "/search",
+                        buildMap {
+                            put("filter", mapOf("value" to "data_source", "property" to "object"))
+                            put("sort", mapOf("direction" to "descending", "timestamp" to "last_edited_time"))
+                            put("page_size", 100)
+                            if (cursor != null) put("start_cursor", cursor)
+                        },
+                        key = key,
+                    ).also { remember(it, key) }
+                }
+            },
+        ).mapNotNull { db ->
             val id = db.stringOrNull("id") ?: return@mapNotNull null
             PageRef(id, InlineMarkdown.plainText(db.arrayOrNull("title")).trim())
         }
@@ -128,7 +208,10 @@ class NotionClient(
      * Pages and databases shared with the integration whose title matches [query] (everything when
      * blank), most recently edited first; at most [limit] results.
      */
-    suspend fun search(query: String, limit: Int): List<JsonObject> {
+    suspend fun search(query: String, limit: Int): List<JsonObject> =
+        NotionRoutes.newestFirst(eachKey { key -> search(query, limit, key) }, limit)
+
+    private suspend fun search(query: String, limit: Int, key: String): List<JsonObject> {
         val results = mutableListOf<JsonObject>()
         var cursor: String? = null
         do {
@@ -140,7 +223,9 @@ class NotionClient(
                     put("page_size", 100)
                     if (cursor != null) put("start_cursor", cursor)
                 },
+                key = key,
             )
+            remember(data, key)
             data.arrayOrNull("results")?.forEach { el -> el.asObjectOrNull()?.let(results::add) }
             cursor = if (data.boolOrNull("has_more") == true) data.stringOrNull("next_cursor") else null
         } while (cursor != null && results.size < limit)
@@ -271,8 +356,11 @@ class NotionClient(
         call("DELETE", "/blocks/$blockId")
     }
 
+    /** The people of every workspace (each person once). */
     suspend fun listUsers(): List<JsonObject> =
-        paged { cursor -> call("GET", "/users?page_size=100" + (cursor?.let { "&start_cursor=$it" } ?: "")) }
+        eachKey { key ->
+            paged { cursor -> call("GET", "/users?page_size=100" + (cursor?.let { "&start_cursor=$it" } ?: ""), key = key) }
+        }.flatten().distinctBy { it.stringOrNull("id") ?: it.toString() }
 
     private suspend fun paged(fetchPage: suspend (cursor: String?) -> JsonObject): List<JsonObject> {
         val results = mutableListOf<JsonObject>()

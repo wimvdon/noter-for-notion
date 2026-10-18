@@ -40,7 +40,7 @@ class NoterApp : Application(), SingletonImageLoader.Factory {
         apiKeyStore = ApiKeyStore(this)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         repository = NotesRepository(
-            client = NotionClient(apiKey = { apiKeyStore.get() }),
+            client = NotionClient(apiKey = { apiKeyStore.get() }, extraKeys = { apiKeyStore.extraTokens() }),
             hasKey = { apiKeyStore.get().isNotBlank() },
             settings = SettingsStore(this),
             cache = CacheStore(File(noBackupFilesDir, DataFiles.CACHE_DIR)),

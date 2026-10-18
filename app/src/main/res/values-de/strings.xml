@@ -186,4 +186,11 @@
     <string name="delete_lines_confirm">Löschen</string>
     <string name="action_select_text">Text auswählen</string>
     <string name="close">Schließen</string>
+    <string name="section_workspaces">Andere Workspaces</string>
+    <string name="workspaces_help">Füge ein persönliches Zugriffstoken aus einem anderen Workspace hinzu, um auch dessen Notizen hier zu sehen. Erstelle es in diesem Workspace, so wie oben.</string>
+    <string name="workspaces_guests">Gäste können keine Tokens erstellen. Ein Mitglied dieses Workspace kann die Seiten mit einer Verbindung teilen und dir deren Token geben.</string>
+    <string name="workspace_token">Token für einen anderen Workspace</string>
+    <string name="add_workspace">Workspace hinzufügen</string>
+    <string name="remove_workspace">Entfernen</string>
+    <string name="workspace_added">%1$s hinzugefügt.</string>
 </resources>

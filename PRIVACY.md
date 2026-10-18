@@ -1,6 +1,6 @@
 # Privacy policy
 
-_Last updated: 2026-10-18 (your profile picture on Home)_
+_Last updated: 2026-10-18 (tokens for other workspaces)_
 
 Noter for Notion shows and edits notes in **your own Notion workspace**. It has no server of its
 own, no analytics, no advertising and no crash reporting.
@@ -10,7 +10,8 @@ own, no analytics, no advertising and no crash reporting.
 - The app talks only to **Notion's API** (`api.notion.com`), with the personal access token you
   make yourself in Notion (or the key of an integration you made). With a personal access token it
   can read the pages and databases you can see in Notion; with an integration's key only the ones
-  you shared with it. It reads the notes you open and the lists you show (Browse searches by
+  you shared with it. If you add tokens for other workspaces (Settings › Other workspaces), each
+  is used only for that workspace's pages, and searches ask every workspace. It reads the notes you open and the lists you show (Browse searches by
   title), and writes the changes you make (titles, properties, note content, moving a note to
   Notion's trash).
 - **Images** in your notes (header images, image blocks and page icons that are pictures) and your own Notion profile
@@ -24,7 +25,7 @@ own, no analytics, no advertising and no crash reporting.
 
 ## What the app stores on your phone
 
-- **Your token** (whether it is a personal access token, and the link to your profile picture), encrypted with the Android Keystore. It is never included in a backup.
+- **Your token** (whether it is a personal access token, and the link to your profile picture), and any tokens you added for other workspaces (with the workspace's name), encrypted with the Android Keystore. They are never included in a backup.
 - **A copy of your notes** (titles, properties and content of the notes and pages you have seen),
   the list of databases and pages Home shows (their names and icons), and the list of changes that
   still have to be sent to Notion, so the app opens instantly and works offline. This copy is
@@ -45,6 +46,7 @@ own, no analytics, no advertising and no crash reporting.
 ## Deleting your data
 
 - *Settings › Connection › Remove token* removes the token and the copy of your notes.
+- *Settings › Other workspaces › Remove* removes that workspace's token.
 - Uninstalling the app removes everything it stored on your phone.
 - To stop the app's access to Notion completely, revoke the token at
   <https://www.notion.so/developers/tokens> (or delete the integration, if you used one).

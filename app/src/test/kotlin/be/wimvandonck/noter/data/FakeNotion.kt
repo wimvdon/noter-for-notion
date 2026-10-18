@@ -5,7 +5,7 @@ import java.net.InetSocketAddress
 import java.util.Collections
 
 /** A request the app sent to [FakeNotion]. */
-data class Sent(val method: String, val path: String, val body: String)
+data class Sent(val method: String, val path: String, val body: String, val auth: String = "")
 
 /**
  * A tiny stand-in for Notion's API on the test machine (the JDK's own HTTP server), so the
@@ -22,6 +22,7 @@ class FakeNotion(var respond: (Sent) -> Pair<Int, String> = { 200 to "{}" }) : A
                 exchange.requestMethod,
                 exchange.requestURI.toString().removePrefix("/v1"),
                 exchange.requestBody.readBytes().decodeToString(),
+                exchange.requestHeaders.getFirst("Authorization").orEmpty(),
             )
             requests += sent
             val (status, body) = respond(sent)

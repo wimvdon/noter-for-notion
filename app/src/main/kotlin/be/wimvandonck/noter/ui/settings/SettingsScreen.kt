@@ -50,6 +50,7 @@ import be.wimvandonck.noter.R
 import be.wimvandonck.noter.ui.common.errorText
 import be.wimvandonck.noter.data.model.ThemeMode
 import be.wimvandonck.noter.data.notion.TokenKind
+import be.wimvandonck.noter.logic.WorkspaceTokens
 import be.wimvandonck.noter.ui.theme.AppShapes
 import be.wimvandonck.noter.ui.theme.AppearanceSettings
 import be.wimvandonck.noter.ui.theme.SettingsBlock
@@ -71,6 +72,13 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
         item(key = "connection") {
             SettingsSection(title = stringResource(R.string.section_connection)) {
                 SettingsBlock { ConnectionSettings(state, viewModel) }
+            }
+        }
+        if (state.hasKey) {
+            item(key = "workspaces") {
+                SettingsSection(title = stringResource(R.string.section_workspaces)) {
+                    SettingsBlock { OtherWorkspaces(state, viewModel) }
+                }
             }
         }
         item(key = "appearance") {
@@ -190,6 +198,78 @@ private fun ConnectionSettings(state: SettingsUiState, viewModel: SettingsViewMo
             )
             TextButton(onClick = viewModel::syncNow) { Text(stringResource(R.string.sync_now)) }
         }
+    }
+}
+
+/**
+ * Tokens for other workspaces (#58): one per workspace, so notes from a workspace the person was
+ * invited to show up next to their own. Each can be removed; a new one is tested before it is kept.
+ */
+@Composable
+private fun OtherWorkspaces(state: SettingsUiState, viewModel: SettingsViewModel) {
+    var token by rememberSaveable { mutableStateOf("") }
+    var visible by rememberSaveable { mutableStateOf(false) }
+    Text(
+        stringResource(R.string.workspaces_help),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Text(
+        stringResource(R.string.workspaces_guests),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    state.extras.forEach { extra ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(WorkspaceTokens.label(extra), style = MaterialTheme.typography.titleSmall)
+                if (extra.workspace.isNotBlank() && extra.name.isNotBlank()) {
+                    Text(
+                        extra.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            TextButton(onClick = { viewModel.removeWorkspace(extra.token) }) {
+                Text(stringResource(R.string.remove_workspace))
+            }
+        }
+    }
+    OutlinedTextField(
+        value = token,
+        onValueChange = { token = it },
+        label = { Text(stringResource(R.string.workspace_token)) },
+        singleLine = true,
+        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        trailingIcon = {
+            IconButton(onClick = { visible = !visible }) {
+                Icon(
+                    if (visible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                    contentDescription = stringResource(if (visible) R.string.hide_key else R.string.show_key),
+                )
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+    )
+    when (val status = state.extraStatus) {
+        is KeyStatus.Ok -> StatusText(stringResource(R.string.workspace_added, status.info.workspace?.ifBlank { null } ?: status.info.name), error = false)
+        is KeyStatus.Failed -> StatusText(stringResource(R.string.key_failed, errorText(status.message)), error = true)
+        else -> Unit
+    }
+    Button(
+        onClick = {
+            viewModel.addWorkspace(token)
+            token = ""
+        },
+        enabled = token.isNotBlank() && state.extraStatus != KeyStatus.Testing,
+    ) {
+        if (state.extraStatus == KeyStatus.Testing) {
+            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(stringResource(R.string.add_workspace))
     }
 }
 
