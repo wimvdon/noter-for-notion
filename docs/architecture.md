@@ -17,18 +17,26 @@ properties and content: the pages of databases and pages on their own.
     coming to the front refreshes the databases the pinned notes are in (`pinnedSources`).
     Any database, page or note can be pinned: a long press on a row (Home, Search), the pin in a
     note's app bar, a database's ⋮ menu, or a card's menu.
-  - **Databases and pages**: the most recently edited databases and pages Notion's search lists
-    (not the notes in databases), grouped by database as in Search, at most 30. With several
-    workspaces, one part per workspace (`Workspaces.group`), each folded away with a tap on its
-    name (`ApiKeyStore.collapsed`, on this phone only); pinned databases say their workspace
-    (`NotesRepository.recent`, `refreshRecent`). The list is kept on this phone (`recent.json`), so
-    Home shows it at once and offline; it is asked again when the app starts (with a token) and on
-    pull-to-refresh. A pin at the end of a row shows it is pinned.
+  - **Databases and pages** (#64): what Notion's search lists (not the notes in databases), as a
+    tree of two levels like Notion's sidebar (`logic/PageTree.kt`): on top what isn't inside
+    another page of the list (at the top of the workspace, or in a page the connection can't see),
+    by title, at most 30 until "Show more" (30 more each time); a chevron at the end of a row shows
+    the databases and pages right inside it, indented (closed at first; which are open is kept
+    while the app runs). Deeper pages are links in their page's content. Where something is comes
+    from Notion's `parent` (`WorkspaceItem.parentId`; a data source is placed where its database
+    is, `DatabaseInfo.parentId`). Notion's API doesn't give the sidebar's own order, hence by title.
+    With several workspaces, one part per workspace (`Workspaces.group`), each folded away with a
+    tap on its name (`ApiKeyStore.collapsed`, on this phone only); pinned databases say their
+    workspace (`NotesRepository.recent`, `refreshRecent`: one search's worth, newest first, at most
+    200). The list is kept on this phone (`recent.json`), so Home shows it at once and offline; it
+    is asked again when the app starts (with a token) and on pull-to-refresh. A pin at the end of
+    a row shows it is pinned.
   - **+** (`logic/NoteTargets.kt`) offers a page at the top of the workspace (not with a
     connection's token; when Notion refuses, the page is removed again and the app says to check
     the token in Settings) and a note in the pinned databases, then the other databases on Home's
-    list; a database of several data sources offers each, named "Database · Data source". With
-    several workspaces it has a part per workspace (`NoteTargets.grouped`), and a page at the top
+    list (most recently edited first); a database of several data sources offers each, named
+    "Database · Data source". With several workspaces it has a part per workspace
+    (`NoteTargets.grouped`; a tap on its name folds it away while the sheet is open), and a page at the top
     goes with that workspace's token (`PendingOp.CreatePage.workspace`). A new note opens at once.
   Without a token the screen says "Connect to Notion" with "Open settings" (`DESIGN.md`, "Empty
   and setup states"). Back on Home leaves the app.

@@ -186,6 +186,11 @@ data class WorkspaceItem(
     val databaseId: String? = null,
     /** A database with several data sources ([id] is the database's): those data sources. */
     val sources: List<PageRef> = emptyList(),
+    /**
+     * The page (or block on a page) this page or database is in, for Home's tree (null: at the top
+     * of the workspace, or not known).
+     */
+    val parentId: String? = null,
 )
 
 /** A database as Notion describes it: its name, icon and data sources (see WorkspaceCodec.group). */
@@ -195,6 +200,8 @@ data class DatabaseInfo(
     val title: String,
     val icon: PageIcon? = null,
     val sources: List<PageRef> = emptyList(),
+    /** The page (or block on a page) the database is in (null: at the top of the workspace, or not known). */
+    val parentId: String? = null,
 )
 
 /** A linked page of a relation property, or a page of the related database. */

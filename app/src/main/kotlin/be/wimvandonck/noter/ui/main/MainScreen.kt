@@ -111,6 +111,7 @@ import be.wimvandonck.noter.logic.ChipFilter
 import be.wimvandonck.noter.logic.FilterChip as Chip
 import be.wimvandonck.noter.logic.NotionDates
 import be.wimvandonck.noter.logic.PropertyLayouts
+import be.wimvandonck.noter.logic.TreeNode
 import be.wimvandonck.noter.ui.common.NotionImage
 import be.wimvandonck.noter.ui.common.OptionChip
 import be.wimvandonck.noter.ui.common.PageIconView
@@ -223,6 +224,8 @@ fun MainScreen(
                                 onTogglePin = viewModel::togglePinItem,
                                 onRetry = viewModel::refresh,
                                 onToggleWorkspace = viewModel::toggleCollapsed,
+                                onToggleTree = viewModel::toggleExpanded,
+                                onShowMore = viewModel::showMore,
                             )
                         },
                     )
@@ -236,13 +239,26 @@ fun MainScreen(
     }
 
     if (choosingTarget) {
+        // The workspaces folded away in the sheet (#64), while it is open.
+        var foldedTargets by remember { mutableStateOf(emptySet<String>()) }
         ModalBottomSheet(onDismissRequest = { choosingTarget = false }) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 // With several workspaces, each has its own part: a page at its top and its databases.
+                // A tap on a workspace's name folds its part away, or shows it again.
                 state.targetGroups.forEach { group ->
                     val several = state.severalWorkspaces
-                    if (several) {
-                        SheetHeader(group.workspace?.name?.ifBlank { null } ?: stringResource(if (group.workspace == null) R.string.new_note_in else R.string.workspace_unnamed))
+                    val workspace = group.workspace
+                    if (several && workspace != null) {
+                        val folded = workspace.id in foldedTargets
+                        WorkspaceHeader(
+                            workspace.name.ifBlank { stringResource(R.string.workspace_unnamed) },
+                            collapsed = folded,
+                            onToggle = { foldedTargets = if (folded) foldedTargets - workspace.id else foldedTargets + workspace.id },
+                            modifier = Modifier.padding(start = 8.dp, end = 8.dp),
+                        )
+                        if (folded) return@forEach
+                    } else if (several) {
+                        SheetHeader(stringResource(R.string.new_note_in))
                     }
                     // Notion doesn't let a connection add pages at the top of a workspace.
                     if (group.topLevel) {
@@ -353,8 +369,8 @@ private fun LazyStaggeredGridScope.pinnedSection(hasDatabases: Boolean, anyNotes
 }
 
 /**
- * Home's list of databases and pages, most recently edited first (from Notion's search, kept on
- * this phone): loading lines until known; what failed, with Retry, when nothing is kept.
+ * Home's databases and pages as a tree of two levels (`logic/PageTree.kt`, from Notion's search,
+ * kept on this phone): loading lines until known; what failed, with Retry, when nothing is kept.
  */
 private fun LazyStaggeredGridScope.recentSection(
     state: HomeUiState,
@@ -363,10 +379,12 @@ private fun LazyStaggeredGridScope.recentSection(
     onTogglePin: (WorkspaceItem) -> Unit,
     onRetry: () -> Unit,
     onToggleWorkspace: (String) -> Unit,
+    onToggleTree: (String) -> Unit,
+    onShowMore: () -> Unit,
 ) {
     val recent = state.recent
     if (state.severalWorkspaces && recent != null) {
-        workspaceSections(state, onOpenDatabase, onOpenPage, onTogglePin, onToggleWorkspace)
+        workspaceSections(state, onOpenDatabase, onOpenPage, onTogglePin, onToggleWorkspace, onToggleTree, onShowMore)
         return
     }
     item(key = "__recent", span = StaggeredGridItemSpan.FullLine) { ListHeader(stringResource(R.string.section_recent)) }
@@ -379,20 +397,7 @@ private fun LazyStaggeredGridScope.recentSection(
             }
         }
         recent == null -> item(key = "__recent_loading", span = StaggeredGridItemSpan.FullLine) { LoadingRows(count = 4) }
-        else -> {
-            val pinnedDatabases = state.pinnedDatabases.map { it.id.replace("-", "") }.toSet()
-            val pinnedPages = state.notes.pinnedIds.map { it.replace("-", "") }.toSet()
-            items(recent, key = { "r:" + it.id }, span = { StaggeredGridItemSpan.FullLine }) { item ->
-                val plain = item.id.replace("-", "")
-                WorkspaceRow(
-                    item = item,
-                    pinned = if (item.isDatabase) plain in pinnedDatabases else plain in pinnedPages,
-                    onClick = { if (item.isDatabase) onOpenDatabase(item.id) else onOpenPage(item) },
-                    onTogglePin = { onTogglePin(item) },
-                    modifier = Modifier.animateItem(),
-                )
-            }
-        }
+        else -> treeRows(state.tree, "", state, onOpenDatabase, onOpenPage, onTogglePin, onToggleTree, onShowMore)
     }
 }
 
@@ -406,10 +411,10 @@ private fun LazyStaggeredGridScope.workspaceSections(
     onOpenPage: (WorkspaceItem) -> Unit,
     onTogglePin: (WorkspaceItem) -> Unit,
     onToggleWorkspace: (String) -> Unit,
+    onToggleTree: (String) -> Unit,
+    onShowMore: () -> Unit,
 ) {
-    val pinnedDatabases = state.pinnedDatabases.map { it.id.replace("-", "") }.toSet()
-    val pinnedPages = state.notes.pinnedIds.map { it.replace("-", "") }.toSet()
-    state.recentGroups.forEach { group ->
+    state.treeGroups.forEach { group ->
         val workspace = group.workspace
         val groupKey = workspace?.id ?: "__unknown"
         val collapsed = workspace != null && workspace.id in state.collapsed
@@ -425,16 +430,62 @@ private fun LazyStaggeredGridScope.workspaceSections(
                 ListHeader(stringResource(R.string.section_recent), Modifier.animateItem())
             }
         }
-        if (!collapsed) {
-            items(group.items, key = { "r:$groupKey:" + it.id }, span = { StaggeredGridItemSpan.FullLine }) { item ->
-                val plain = item.id.replace("-", "")
+        if (!collapsed) treeRows(group.items, groupKey, state, onOpenDatabase, onOpenPage, onTogglePin, onToggleTree, onShowMore)
+    }
+}
+
+/**
+ * The rows of a tree ([nodes]): the first [HomeUiState.treeLimit] entries of its top level, each
+ * with the databases and pages inside it below it while it is opened (indented), then "Show more"
+ * while there are more. [groupKey] keeps the rows' keys apart per workspace.
+ */
+private fun LazyStaggeredGridScope.treeRows(
+    nodes: List<TreeNode>,
+    groupKey: String,
+    state: HomeUiState,
+    onOpenDatabase: (String) -> Unit,
+    onOpenPage: (WorkspaceItem) -> Unit,
+    onTogglePin: (WorkspaceItem) -> Unit,
+    onToggleTree: (String) -> Unit,
+    onShowMore: () -> Unit,
+) {
+    val pinnedDatabases = state.pinnedDatabases.map { it.id.replace("-", "") }.toSet()
+    val pinnedPages = state.notes.pinnedIds.map { it.replace("-", "") }.toSet()
+    fun isPinned(entry: WorkspaceItem): Boolean {
+        val plain = entry.id.replace("-", "")
+        return if (entry.isDatabase) plain in pinnedDatabases else plain in pinnedPages
+    }
+    nodes.take(state.treeLimit).forEach { node ->
+        val entry = node.item
+        val open = node.children.isNotEmpty() && entry.id in state.expanded
+        item(key = "t:$groupKey:" + entry.id, span = StaggeredGridItemSpan.FullLine) {
+            WorkspaceRow(
+                item = entry,
+                pinned = isPinned(entry),
+                onClick = { if (entry.isDatabase) onOpenDatabase(entry.id) else onOpenPage(entry) },
+                onTogglePin = { onTogglePin(entry) },
+                modifier = Modifier.animateItem(),
+                expanded = open,
+                onToggleExpanded = { onToggleTree(entry.id) }.takeIf { node.children.isNotEmpty() },
+            )
+        }
+        if (open) {
+            items(node.children, key = { "c:$groupKey:${entry.id}:" + it.id }, span = { StaggeredGridItemSpan.FullLine }) { child ->
                 WorkspaceRow(
-                    item = item,
-                    pinned = if (item.isDatabase) plain in pinnedDatabases else plain in pinnedPages,
-                    onClick = { if (item.isDatabase) onOpenDatabase(item.id) else onOpenPage(item) },
-                    onTogglePin = { onTogglePin(item) },
+                    item = child,
+                    pinned = isPinned(child),
+                    onClick = { if (child.isDatabase) onOpenDatabase(child.id) else onOpenPage(child) },
+                    onTogglePin = { onTogglePin(child) },
                     modifier = Modifier.animateItem(),
+                    nested = true,
                 )
+            }
+        }
+    }
+    if (nodes.size > state.treeLimit) {
+        item(key = "more:$groupKey", span = StaggeredGridItemSpan.FullLine) {
+            TextButton(onClick = onShowMore, modifier = Modifier.padding(horizontal = 8.dp).animateItem()) {
+                Text(stringResource(R.string.tree_show_more))
             }
         }
     }

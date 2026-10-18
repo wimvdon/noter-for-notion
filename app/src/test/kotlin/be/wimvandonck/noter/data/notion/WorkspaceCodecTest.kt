@@ -89,4 +89,30 @@ class WorkspaceCodecTest {
         assertEquals("Health", info.title)
         assertEquals(listOf(PageRef("ds1", "Skin")), info.sources)
     }
+
+    @Test
+    fun `pages and databases know the page they are in, for Home's tree`() {
+        assertEquals("p0", WorkspaceCodec.parse(page, includeNotes = false, pagesKey = "pages")!!.parentId)
+        val top = obj("""{"object":"page","id":"p2","parent":{"type":"workspace","workspace":true},"properties":{}}""")
+        assertNull(WorkspaceCodec.parse(top, includeNotes = false, pagesKey = "pages")!!.parentId)
+        val inBlock = obj("""{"object":"page","id":"p3","parent":{"type":"block_id","block_id":"b1"},"properties":{}}""")
+        assertEquals("b1", WorkspaceCodec.parse(inBlock, includeNotes = false, pagesKey = "pages")!!.parentId)
+        // A note is in its database, not in a page.
+        assertNull(WorkspaceCodec.parse(note, includeNotes = true, pagesKey = "pages")!!.parentId)
+
+        // A data source is placed where its database is.
+        val info = WorkspaceCodec.databaseInfo(
+            obj("""{"object":"database","id":"db1","parent":{"type":"page_id","page_id":"p0"},"title":[{"plain_text":"Books"}],"data_sources":[{"id":"ds1","name":"Books"}]}"""),
+        )!!
+        assertEquals("p0", info.parentId)
+        val source = WorkspaceCodec.parse(
+            obj("""{"object":"data_source","id":"ds1","title":[{"plain_text":"Books"}],"parent":{"type":"database_id","database_id":"db1"}}"""),
+            includeNotes = false,
+            pagesKey = "pages",
+        )!!
+        assertNull(source.parentId)
+        assertEquals("p0", WorkspaceCodec.group(listOf(source), mapOf("db1" to info)).single().parentId)
+        val several = info.copy(sources = listOf(PageRef("ds1", "Books"), PageRef("ds2", "Loans")))
+        assertEquals("p0", WorkspaceCodec.group(listOf(source), mapOf("db1" to several)).single().parentId)
+    }
 }

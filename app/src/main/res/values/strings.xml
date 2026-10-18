@@ -162,6 +162,9 @@
     <string name="source_missing_body">It may have been deleted or moved to the trash, or the connection no longer has access to it.</string>
     <string name="action_new">New</string>
     <string name="section_recent">Databases and pages</string>
+    <string name="tree_show_more">Show more</string>
+    <string name="tree_show_inside">Show pages inside</string>
+    <string name="tree_hide_inside">Hide pages inside</string>
     <string name="action_share">Share</string>
     <string name="action_select_lines">Select lines</string>
     <string name="action_select_all">Select all</string>
