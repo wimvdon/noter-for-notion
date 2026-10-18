@@ -48,8 +48,9 @@ python3 -m unittest discover -s scripts/tests
 | `logic/LegacyNotebooksTest` | Notebooks from before the redesign: each database keeps its notebook's setup and is pinned in the order of the tabs (also a notebook of several data sources), a page's notebook becomes a pinned page, the first notebook of a database wins, a setup made since then stays, old filter properties |
 | `logic/ColumnsTest` | Columns: how far their blocks are indented, and that blocks stay in their column |
 | `ui/main/PresetForTest` | The value a new note gets from the selected filter |
-| `data/notion/WorkspaceCodecTest` | The list of databases and pages from Notion's search, data sources (grouped by their database; one the database doesn't list is left out) and the data source a page belongs to |
+| `data/notion/WorkspaceCodecTest` | The list of databases and pages from Notion's search, data sources (grouped by their database; one the database doesn't list is left out) and the data source a page belongs to; the page each page or database is in, a data source placed where its database is |
 | `data/icons/IconCatalogTest` | Reading the icon file, icon search, old icon keys, and that the bundled file has every suggested icon |
+| `logic/PageTreeTest` | Home's tree of databases and pages: the top level (what isn't in another page of the list) and the level below, by title, IDs with or without dashes |
 | `logic/NoteTargetsTest` | Where + on Home offers a new note: the pinned databases, then the others on Home's list, each data source of a database of several; a part per workspace, with a page at the top unless the token is a connection's |
 | `logic/WorkspacesTest` | A token's short ID, the workspaces' names, which workspace a page or database is in, lists split by workspace |
 | `logic/SearchResultsTest` | Search's one list: phone notes and Notion's results mixed, each page once, best matches first; filters by kind and workspace |

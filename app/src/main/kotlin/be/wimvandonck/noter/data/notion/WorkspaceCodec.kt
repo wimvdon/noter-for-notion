@@ -26,6 +26,19 @@ object WorkspaceCodec {
         }
     }
 
+    /**
+     * The page (or block on a page) a page or database is in, for Home's tree; null at the top of
+     * the workspace and for what is in a database (a note, or a data source).
+     */
+    fun parentPage(json: JsonObject): String? {
+        val parent = json.objOrNull("parent") ?: return null
+        return when (parent.stringOrNull("type")) {
+            "page_id" -> parent.stringOrNull("page_id")
+            "block_id" -> parent.stringOrNull("block_id")
+            else -> null
+        }
+    }
+
     /** A database's data sources (ID and name), in Notion's order. */
     fun dataSources(database: JsonObject): List<PageRef> =
         database.arrayOrNull("data_sources").orEmpty().mapNotNull { element ->
@@ -58,7 +71,13 @@ object WorkspaceCodec {
     /** A database's name, icon and data sources, from `GET /databases/{id}`. */
     fun databaseInfo(database: JsonObject): DatabaseInfo? {
         val id = database.stringOrNull("id") ?: return null
-        return DatabaseInfo(id, InlineMarkdown.plainText(database.arrayOrNull("title")).trim(), IconCodec.parse(database.objOrNull("icon")), dataSources(database))
+        return DatabaseInfo(
+            id,
+            InlineMarkdown.plainText(database.arrayOrNull("title")).trim(),
+            IconCodec.parse(database.objOrNull("icon")),
+            dataSources(database),
+            parentPage(database),
+        )
     }
 
     /**
@@ -74,7 +93,8 @@ object WorkspaceCodec {
             val info = item.databaseId?.let { byPlainId[plain(it)] } ?: return@mapNotNull item
             when {
                 info.sources.none { plain(it.id) == plain(item.id) } -> null
-                info.sources.size == 1 -> item
+                // A data source's own parent is its database: the tree places it where the database is.
+                info.sources.size == 1 -> item.copy(parentId = item.parentId ?: info.parentId)
                 !shown.add(plain(info.id)) -> null
                 else -> WorkspaceItem(
                     id = info.id,
@@ -83,6 +103,7 @@ object WorkspaceCodec {
                     icon = info.icon ?: item.icon,
                     lastEditedTime = item.lastEditedTime,
                     sources = info.sources,
+                    parentId = info.parentId,
                 )
             }
         }
@@ -109,12 +130,21 @@ object WorkspaceCodec {
                 icon = icon,
                 lastEditedTime = edited,
                 databaseId = json.objOrNull("parent")?.stringOrNull("database_id"),
+                parentId = parentPage(json),
             )
             "page" -> {
                 val database = parentDatabase(json)
                 if (database != null && !includeNotes) return null
                 val note = PropertyCodec.parsePage(json, database ?: pagesKey) ?: return null
-                WorkspaceItem(id, isDatabase = false, title = InlineMarkdown.stripped(note.title), icon = icon, lastEditedTime = edited, note = note)
+                WorkspaceItem(
+                    id,
+                    isDatabase = false,
+                    title = InlineMarkdown.stripped(note.title),
+                    icon = icon,
+                    lastEditedTime = edited,
+                    note = note,
+                    parentId = parentPage(json),
+                )
             }
             else -> null
         }

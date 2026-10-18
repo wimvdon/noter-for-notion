@@ -1081,11 +1081,12 @@ class NotesRepository(
 
     /**
      * Asks Notion for Home's databases and pages again ([recent]): the most recently edited ones
-     * (not the notes in databases), grouped by database. Throws when Notion can't be reached; what
+     * (not the notes in databases, at most one search's worth), grouped by database. Home shows them
+     * as a tree (`logic/PageTree.kt`); + and the pinned cards' icons use them in this order. Throws when Notion can't be reached; what
      * is kept stays.
      */
     suspend fun refreshRecent() {
-        val items = groupByDatabase(browse(""), ask = true).take(RECENT_LIMIT)
+        val items = groupByDatabase(browse(""), ask = true)
         withContext(Dispatchers.IO) {
             lock.withLock {
                 _recent.value = items
@@ -1290,9 +1291,6 @@ class NotesRepository(
 
         /** Results of one Browse search (one or two requests). */
         private const val BROWSE_LIMIT = 200
-
-        /** Databases and pages on Home's list. */
-        private const val RECENT_LIMIT = 30
         private const val RETRY_MIN_MS = 15_000L
         private const val OWNERS_SAVE_DELAY_MS = 2_000L
         private const val RETRY_MAX_MS = 5 * 60_000L

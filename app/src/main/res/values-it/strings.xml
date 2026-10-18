@@ -165,6 +165,9 @@
     <string name="source_missing_body">Forse è stata eliminata o spostata nel cestino, oppure la connessione non vi ha più accesso.</string>
     <string name="action_new">Nuovo</string>
     <string name="section_recent">Database e pagine</string>
+    <string name="tree_show_more">Mostra altro</string>
+    <string name="tree_show_inside">Mostra le pagine contenute</string>
+    <string name="tree_hide_inside">Nascondi le pagine contenute</string>
     <string name="action_share">Condividi</string>
     <string name="action_select_lines">Seleziona righe</string>
     <string name="action_select_all">Seleziona tutto</string>

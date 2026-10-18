@@ -19,6 +19,7 @@ import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -53,7 +54,8 @@ import be.wimvandonck.noter.ui.theme.SkeletonLine
 /**
  * A database or page in a list (Home, Search): its icon, name, the workspace it is in ([workspace],
  * with several) and when it was last edited. Tap opens it; a long press opens its menu (pin or
- * unpin). A pin at the end shows it is pinned.
+ * unpin). A pin at the end shows it is pinned. In Home's tree, an entry with databases and pages
+ * inside it ends in a chevron that shows or hides them ([onToggleExpanded]); those are [nested].
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -67,6 +69,9 @@ internal fun WorkspaceRow(
     modifier: Modifier = Modifier,
     edited: String = "",
     workspace: String? = null,
+    expanded: Boolean = false,
+    onToggleExpanded: (() -> Unit)? = null,
+    nested: Boolean = false,
 ) {
     var menu by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
@@ -98,19 +103,35 @@ internal fun WorkspaceRow(
                     }
                 }
             },
-            trailingContent = if (pinned) {
+            trailingContent = if (pinned || onToggleExpanded != null) {
                 {
-                    Icon(
-                        Icons.Rounded.PushPin,
-                        contentDescription = stringResource(R.string.section_pinned),
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp),
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (pinned) {
+                            Icon(
+                                Icons.Rounded.PushPin,
+                                contentDescription = stringResource(R.string.section_pinned),
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                        if (onToggleExpanded != null) {
+                            val rotation by animateFloatAsState(if (expanded) 0f else -90f, label = "chevron")
+                            IconButton(onClick = onToggleExpanded) {
+                                Icon(
+                                    Icons.Rounded.ExpandMore,
+                                    contentDescription = stringResource(if (expanded) R.string.tree_hide_inside else R.string.tree_show_inside),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.rotate(rotation),
+                                )
+                            }
+                        }
+                    }
                 }
             } else {
                 null
             },
             modifier = Modifier
+                .padding(start = if (nested) 24.dp else 0.dp)
                 .fillMaxWidth()
                 .combinedClickable(
                     onClick = onClick,
@@ -149,7 +170,23 @@ internal fun WorkspaceRow(
     onTogglePin: (() -> Unit)?,
     modifier: Modifier = Modifier,
     workspace: String? = null,
-) = WorkspaceRow(item.title, item.icon, item.isDatabase, pinned, onClick, onTogglePin, modifier, item.lastEditedTime, workspace)
+    expanded: Boolean = false,
+    onToggleExpanded: (() -> Unit)? = null,
+    nested: Boolean = false,
+) = WorkspaceRow(
+    item.title,
+    item.icon,
+    item.isDatabase,
+    pinned,
+    onClick,
+    onTogglePin,
+    modifier,
+    item.lastEditedTime,
+    workspace,
+    expanded = expanded,
+    onToggleExpanded = onToggleExpanded,
+    nested = nested,
+)
 
 /**
  * A workspace's title on Home, with several: tap folds its databases and pages away, or shows

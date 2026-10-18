@@ -249,11 +249,14 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   buttons at its end, as in Material 3's search bar on a main screen; tapping it opens Search.
   Below it one grid: "Pinned" (a Title Small, primary header), the pinned databases as list rows,
   the pinned notes and pages as cards, then "Databases and pages" as list rows (icon, name,
-  "Edited …", a small primary pin at the end when pinned). A long press on a row opens a menu with
+  "Edited …", a small primary pin at the end when pinned) in a tree of two levels: a row with
+  pages inside ends in a chevron icon button (pointing right when closed, down when open) and its
+  pages follow it indented by 24dp; "Show more" (a text button) below the first 30. A long press on a row opens a menu with
   Pin or Unpin. One FAB (+): a sheet with "New page" (at the top of the workspace) and "New note
   in" with the databases. With tokens for several workspaces, "Databases and pages" becomes one
   part per workspace under its name (Title Small, primary, a chevron; a tap folds it away), rows
-  say "Workspace · Edited …", and the + sheet has a part per workspace (its name as the title,
+  say "Workspace · Edited …", and the + sheet has a part per workspace (its name as the title, with
+  a chevron that folds the part away,
   "New page at the top" when its token may, then its databases).
 - A database is a child page: back arrow, Notion's icon and name, then sync, Filters, Sort, Cards
   (Tune icon, as a page's properties button) and ⋮ (Pin or Unpin, Open in Notion, Share). A database of several data sources has a primary scrollable tab row, one

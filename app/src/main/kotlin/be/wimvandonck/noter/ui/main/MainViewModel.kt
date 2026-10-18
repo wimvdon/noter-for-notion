@@ -30,10 +30,12 @@ import be.wimvandonck.noter.logic.FilterChip
 import be.wimvandonck.noter.logic.NoteLists
 import be.wimvandonck.noter.logic.NoteSearch
 import be.wimvandonck.noter.logic.NoteTargets
+import be.wimvandonck.noter.logic.PageTree
 import be.wimvandonck.noter.logic.PropertyLayouts
 import be.wimvandonck.noter.logic.SearchKind
 import be.wimvandonck.noter.logic.SearchResults
 import be.wimvandonck.noter.logic.TargetGroup
+import be.wimvandonck.noter.logic.TreeNode
 import be.wimvandonck.noter.logic.Workspace
 import be.wimvandonck.noter.logic.WorkspaceGroup
 import be.wimvandonck.noter.logic.Workspaces
@@ -98,16 +100,22 @@ data class HomeUiState(
     /** The profile picture of the person the token acts as, shown in place of Settings' cogwheel (null: the cogwheel). */
     val avatarUrl: String? = null,
     val pinnedDatabases: List<PinnedDatabase> = emptyList(),
-    /** The most recently edited databases and pages (null until known). */
+    /** The most recently edited databases and pages (null until known), for + and as [tree]. */
     val recent: List<WorkspaceItem>? = null,
+    /** [recent] as Home shows it: a tree of two levels (`logic/PageTree.kt`). */
+    val tree: List<TreeNode> = emptyList(),
+    /** The entries of [tree] whose databases and pages show below them, by ID. */
+    val expanded: Set<String> = emptySet(),
+    /** How many entries of the tree's top level show (each workspace's, with several); "Show more" adds more. */
+    val treeLimit: Int = PageTree.PAGE_SIZE,
     /** Asking Notion for [recent] failed (an error from NotionErrors). */
     val recentError: String? = null,
     /** Where + can put a new note or page, by workspace. */
     val targetGroups: List<TargetGroup> = emptyList(),
     /** There are tokens for more than one workspace: lists say which workspace things are in. */
     val severalWorkspaces: Boolean = false,
-    /** [recent] by workspace (with several). */
-    val recentGroups: List<WorkspaceGroup<WorkspaceItem>> = emptyList(),
+    /** [recent] by workspace (with several), each as a tree. */
+    val treeGroups: List<WorkspaceGroup<TreeNode>> = emptyList(),
     /** The workspaces folded away on Home ([Workspace.id]). */
     val collapsed: Set<String> = emptySet(),
     /** The workspace's name of each pinned database, by its ID (with several workspaces). */
@@ -231,7 +239,19 @@ class MainViewModel(
 
     private val status = combine(repository.pendingCount, repository.offline, hasKey, avatarUrl, ::Status)
 
-    private val workspaceInfo = combine(workspaces, repository.owners, collapsed, ::Triple)
+    /** Home's tree: the entries opened, and how many of its top level show. */
+    private val expanded = MutableStateFlow<Set<String>>(emptySet())
+    private val treeLimit = MutableStateFlow(PageTree.PAGE_SIZE)
+
+    private data class Spaces(
+        val workspaces: List<Workspace>,
+        val owners: Map<String, String>,
+        val collapsed: Set<String>,
+        val expanded: Set<String>,
+        val treeLimit: Int,
+    )
+
+    private val workspaceInfo = combine(workspaces, repository.owners, collapsed, expanded, treeLimit, ::Spaces)
 
     val state: StateFlow<HomeUiState> = combine(
         repository.settingsFlow(),
@@ -239,7 +259,7 @@ class MainViewModel(
         combine(repository.recent, recentError, infos, ::Triple),
         status,
         workspaceInfo,
-    ) { settings, databases, (recent, error, known), (pending, offline, key, avatar), (spaces, owners, folded) ->
+    ) { settings, databases, (recent, error, known), (pending, offline, key, avatar), (spaces, owners, folded, opened, limit) ->
         val pinned = NoteLists.pinned(databases.values.flatMap { it.notes }, settings.pinned, settings.order[AppSettings.HOME].orEmpty())
         val several = spaces.size > 1
         HomeUiState(
@@ -258,10 +278,17 @@ class MainViewModel(
             avatarUrl = avatar,
             pinnedDatabases = settings.pinnedDatabases,
             recent = recent,
+            tree = if (several) emptyList() else PageTree.build(recent.orEmpty()),
+            expanded = opened,
+            treeLimit = limit,
             recentError = error,
             targetGroups = NoteTargets.grouped(NoteTargets.of(settings.pinnedDatabases, recent, known), spaces, owners),
             severalWorkspaces = several,
-            recentGroups = if (several) Workspaces.group(recent.orEmpty(), owners, spaces, SearchResults::idsOf) else emptyList(),
+            treeGroups = if (several) {
+                Workspaces.group(recent.orEmpty(), owners, spaces, SearchResults::idsOf).map { WorkspaceGroup(it.workspace, PageTree.build(it.items)) }
+            } else {
+                emptyList()
+            },
             collapsed = folded,
             pinnedWorkspaces = if (several) {
                 settings.pinnedDatabases.mapNotNull { pin ->
@@ -345,6 +372,12 @@ class MainViewModel(
     fun createPage(workspace: String?, onCreated: (String) -> Unit) = viewModelScope.launch {
         onCreated(repository.createPage(null, workspace = workspace))
     }
+
+    /** Shows the databases and pages inside Home's tree entry [id], or hides them again. */
+    fun toggleExpanded(id: String) = expanded.update { if (id in it) it - id else it + id }
+
+    /** Shows more of the top level of Home's tree. */
+    fun showMore() = treeLimit.update { it + PageTree.PAGE_SIZE }
 
     /** Folds workspace [id] away on Home, or unfolds it. */
     fun toggleCollapsed(id: String) {

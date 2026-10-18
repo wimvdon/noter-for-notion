@@ -165,6 +165,9 @@
     <string name="source_missing_body">Elle a peut-être été supprimée ou mise à la corbeille, ou la connexion n’y a plus accès.</string>
     <string name="action_new">Nouveau</string>
     <string name="section_recent">Bases de données et pages</string>
+    <string name="tree_show_more">Afficher plus</string>
+    <string name="tree_show_inside">Afficher son contenu</string>
+    <string name="tree_hide_inside">Masquer son contenu</string>
     <string name="action_share">Partager</string>
     <string name="action_select_lines">Sélectionner des lignes</string>
     <string name="action_select_all">Tout sélectionner</string>
