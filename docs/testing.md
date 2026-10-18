@@ -32,22 +32,22 @@ python3 -m unittest discover -s scripts/tests
 | `data/sync/OutboxTest` | The queue of unsent changes (merging, renaming new notes) |
 | `data/sync/SyncPolicyTest` | When to refresh, and merging refreshed notes |
 | `data/sync/SaveTimingTest` | How soon edits are saved while typing (within Notion's rate limit) |
-| `data/sync/SourceKeysTest` | Keys saved before data sources renamed to the data source (views, order, layouts, waiting new notes) |
-| `data/NotesRepositoryTest` | The repository against a fake Notion server (`FakeNotion`, the JDK's own HTTP server): a view saved before data sources moves to its data source, pages made inside a page and a refused top-level page removed, new notes stay open while Notion creates them, nothing is sent for a note in the trash, table rows, expired image links, pages from Browse and linked pages, new to-dos added once (also after a lost answer), nested blocks downloaded and added to their parent, columns downloaded and new lines added to their column |
+| `data/sync/SourceKeysTest` | Keys saved before data sources renamed to the data source (setups, pinned databases, order, layouts, waiting new notes) |
+| `data/NotesRepositoryTest` | The repository against a fake Notion server (`FakeNotion`, the JDK's own HTTP server): a setup saved before data sources moves to its data source, every database with a copy read at start and a pinned page without one downloaded, a waiting new subpage of a page's notebook from before still made inside the page, Home's list of databases and pages kept on the phone, setups kept at once and databases pinned and unpinned, pages made inside a page and a refused top-level page removed, new notes stay open while Notion creates them, nothing is sent for a note in the trash, table rows, expired image links, pages from Browse and linked pages, new to-dos added once (also after a lost answer), nested blocks downloaded and added to their parent, columns downloaded and new lines added to their column |
 | `data/SyncStressTest` | Random editing (typing, Enter, ticking, changing kinds, indenting, outdenting, deleting) while a slow fake Notion that keeps the blocks, nested ones too, answers: Notion ends with exactly the note on the phone, also when it can't insert at the start |
 | `data/store/CacheStoreTest` | On-phone copies survive a restart |
-| `logic/NoteOrderingTest`, `logic/ChipFilterTest` | Pins, custom order, filters (checkbox, date ranges, relations, created by, formulas, numbers in order of their value) |
+| `logic/NoteOrderingTest`, `logic/ChipFilterTest` | Pins (Home's pinned notes of every database), custom order, filters (checkbox, date ranges, relations, created by, formulas, numbers in order of their value) |
 | `data/api/NotionErrorsTest` | Which errors the screens say in the user's language |
 | `logic/NewOptionsTest` | When the picker of a select or multi-select offers to add what was typed (not for an existing name in any case, nor with a comma) |
 | `logic/SchemaOptionsTest` | An option a note has (added on the phone or in Notion) joins its property's options once, so every picker shows it |
-| `logic/NotebookStructureTest` | Notebooks following Notion: a data source moved into another database becomes a sub-notebook (keeping its settings), a second data source, a database left with one, a sub-notebook moved away, a second notebook of the same data source, unknown parts and page notebooks untouched |
-| `logic/NotebooksTest` | Sub-notebooks (leaves, changing one in place, names on Pinned); a notebook's notes: filters per property, sorts, a new notebook's first chip row, the order of the chip rows, old notebooks that followed a Notion view |
+| `logic/DatabaseSetupsTest` | A database's notes as its setup shows them: filters per property, sorts, the first chip row of a database opened for the first time, the setup found with or without dashes, the order of the chip rows, a page's order from before read as the custom order |
+| `logic/LegacyNotebooksTest` | Notebooks from before the redesign: each database keeps its notebook's setup and is pinned in the order of the tabs (also a notebook of several data sources), a page's notebook becomes a pinned page, the first notebook of a database wins, a setup made since then stays, old filter properties |
 | `logic/ColumnsTest` | Columns: how far their blocks are indented, and that blocks stay in their column |
 | `ui/main/PresetForTest` | The value a new note gets from the selected filter |
-| `logic/DestinationsTest`, `data/notion/WorkspaceCodecTest` | The destinations (Pinned, Notebooks, Search), the bar's order (Search always last) and where the app opens, which notebook Notebooks shows, a removed notebook; Browse's list from Notion's search, data sources (grouped by their database; one the database doesn't list is left out) and the data source a page belongs to |
+| `data/notion/WorkspaceCodecTest` | The list of databases and pages from Notion's search, data sources (grouped by their database; one the database doesn't list is left out) and the data source a page belongs to |
 | `data/icons/IconCatalogTest` | Reading the icon file, icon search, old icon keys, and that the bundled file has every suggested icon |
-| `logic/NoteTargetsTest` | The databases "New note" offers on Pinned and Browse |
-| `logic/PropertyLayoutsTest` | Which properties are shown, collapsed and on the card, and in which order; header image and content on cards; cards per notebook, starting from the database's |
+| `logic/NoteTargetsTest` | Where + on Home offers a new note: the pinned databases, then the others on Home's list, each data source of a database of several |
+| `logic/PropertyLayoutsTest` | Which properties are shown, collapsed and on the card, and in which order; header image and content on cards; cards per database setup, starting from what its cards showed before |
 | `logic/NotePreviewsTest` | Which previews are downloaded, and the preview text |
 | `logic/NotionDatesTest` | Dates as Notion sends them |
 | `BackupRulesTest` | Only the settings file is backed up |

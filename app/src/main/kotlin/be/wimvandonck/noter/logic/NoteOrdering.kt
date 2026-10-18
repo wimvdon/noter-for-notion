@@ -30,7 +30,7 @@ object NoteOrdering {
         return ArrangedNotes(top, rest)
     }
 
-    /** [items] with the item at [from] moved to [to] (notes, notebooks). */
+    /** [items] with the item at [from] moved to [to] (notes). */
     fun <T> move(items: List<T>, from: Int, to: Int): List<T> {
         if (from !in items.indices || to !in items.indices || from == to) return items
         return items.toMutableList().apply { add(to, removeAt(from)) }

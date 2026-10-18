@@ -1,22 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Noter</string>
-    <string name="tab_home">Vastgezet</string>
     <string name="browse_search">Zoeken in Notion</string>
     <string name="browse_databases">Databases</string>
     <string name="search_notes">Notities op deze telefoon</string>
-    <string name="action_search">Zoeken</string>
     <string name="browse_pages">Pagina’s</string>
     <string name="browse_empty">Nog niets in Notion dat dit token kan zien.</string>
     <string name="browse_nothing_found">Niets gevonden</string>
     <string name="browse_edited">Bewerkt %1$s</string>
-    <string name="source_pages">Pagina’s</string>
-    <string name="add_view">Toevoegen als notebook</string>
     <string name="page_open_failed">Kon de pagina niet openen. Controleer je verbinding.</string>
     <string name="settings_title">Instellingen</string>
     <string name="back">Terug</string>
     <string name="cancel">Annuleren</string>
-    <string name="save">Opslaan</string>
     <string name="clear">Wissen</string>
     <string name="retry">Opnieuw proberen</string>
     <string name="ok">OK</string>
@@ -26,7 +21,6 @@
     <string name="untitled">Zonder titel</string>
     <string name="section_expanded">Uitgevouwen</string>
     <string name="section_collapsed">Ingevouwen</string>
-    <string name="chip_all">Alle</string>
     <string name="section_pinned">Vastgezet</string>
     <string name="section_others">Overige</string>
     <string name="action_new_note">Nieuwe notitie</string>
@@ -42,7 +36,6 @@
     <string name="trash_confirm">Naar prullenbak</string>
     <string name="empty_no_key">Voeg in Instellingen een persoonlijk toegangstoken toe om je notities te zien.</string>
     <string name="empty_no_key_action">Naar instellingen</string>
-    <string name="empty_home">Zet een notitie of pagina vast, vanuit een notebook of Zoeken, om ze hier te bewaren.</string>
     <string name="empty_database">Tik op + om er een te maken.</string>
     <string name="empty_filtered">Geen notities met deze filters</string>
     <string name="status_offline">Offline. Wijzigingen worden op deze telefoon bewaard en later verstuurd.</string>
@@ -113,14 +106,6 @@
     <string name="key_removed">Token verwijderd. De notities op deze telefoon zijn gewist.</string>
     <string name="sync_all_saved">Alles is opgeslagen in Notion.</string>
     <string name="sync_now">Nu synchroniseren</string>
-    <string name="section_views">Notebooks</string>
-    <string name="add_database">Notebook toevoegen</string>
-    <string name="edit_database">Notebook bewerken</string>
-    <string name="database_name">Naam</string>
-    <string name="database_icon">Pictogram</string>
-    <string name="remove_database">Verwijderen</string>
-    <string name="remove_database_title">Dit notebook verwijderen?</string>
-    <string name="remove_database_body">Het verdwijnt uit de navigatie. In Notion wordt niets verwijderd.</string>
     <string name="section_appearance">Weergave</string>
     <string name="theme">Thema</string>
     <string name="theme_system">Systeem</string>
@@ -142,15 +127,7 @@
         <item quantity="one">%d gekoppelde pagina</item>
         <item quantity="other">%d gekoppelde pagina’s</item>
     </plurals>
-    <!-- Manage views and the navigation bar -->
-    <string name="manage_views">Notebooks beheren</string>
-    <plurals name="views_count">
-        <item quantity="one">%d notebook</item>
-        <item quantity="other">%d notebooks</item>
-    </plurals>
-    <string name="icon_search">Pictogrammen zoeken (in het Engels)</string>
-    <string name="icon_none_found">Geen pictogrammen gevonden. Probeer een ander woord, zoals “list”, “food” of “work”.</string>
-    <string name="cards_title">Kaarten in het overzicht</string>
+    <string name="cards_title">Kaarten</string>
     <string name="card_cover">Omslagafbeelding</string>
     <string name="card_content">Begin van de inhoud</string>
     <string name="action_indent">Inspringen (in het blok erboven zetten)</string>
@@ -158,9 +135,6 @@
     <string name="chip_checked">%1$s</string>
     <string name="chip_unchecked">Niet %1$s</string>
     <string name="cards_properties">Eigenschappen op de kaart (maximaal %1$d)</string>
-    <string name="edit_named">“%1$s” bewerken</string>
-    <string name="sub_notebook_of">Onderdeel van %1$s</string>
-    <string name="edit_view">Notebook bewerken</string>
     <string name="new_page">Nieuwe pagina</string>
     <string name="new_page_top_level">Bovenaan in je werkruimte</string>
     <string name="new_page_top_level_help">Bij je privépagina’s</string>
@@ -168,12 +142,10 @@
     <string name="create_failed">Notion kon de pagina niet maken: %1$s</string>
     <string name="browse_empty_title">Nog niets te zien</string>
     <string name="empty_no_key_title">Verbind met Notion</string>
-    <string name="empty_home_title">Geen vastgezette notities</string>
     <string name="empty_database_title">Nog geen notities</string>
     <string name="empty_clear_filters">Filters wissen</string>
     <string name="filters">Filters</string>
     <string name="filters_count">Filters · %1$d</string>
-    <string name="sort_notion">Volgorde van de pagina</string>
     <string name="sort_custom">Eigen volgorde</string>
     <string name="sort_last_edited">Laatst bewerkt</string>
     <string name="sort_created">Aangemaakt</string>
@@ -186,11 +158,9 @@
     <string name="chip_next_7_days">Komende 7 dagen</string>
     <string name="chip_later">Later</string>
     <string name="chip_no_date">Geen datum</string>
-    <string name="no_notebooks">Nog geen notebooks</string>
     <string name="sort_by">Sorteren: %1$s</string>
     <string name="sort_ascending">Oplopend</string>
     <string name="sort_descending">Aflopend</string>
-    <string name="no_notebooks_body">Een notebook toont de notities van een Notion-database of de subpagina’s van een pagina.</string>
     <string name="error_offline">Geen verbinding met Notion. Controleer je internet en probeer opnieuw.</string>
     <string name="error_not_found">Notion vindt dit niet. Misschien is het verwijderd, of het is niet gedeeld met je verbinding.</string>
     <string name="error_busy">Notion is druk. Probeer het zo meteen opnieuw.</string>
@@ -198,15 +168,11 @@
     <string name="clear_row">Niet meer filteren op %1$s</string>
     <string name="chip_rows_shown">Getoond</string>
     <string name="new_subpage">Nieuwe subpagina</string>
-    <string name="cards_of">Kaarten: %1$s</string>
     <string name="filter_no_values">Nog geen waarden</string>
-    <string name="section_navigation_bar">Navigatiebalk</string>
-    <string name="navigation_start">Hier opent de app</string>
-    <string name="navigation_search_last">Altijd als laatste</string>
     <string name="search_or_add">Zoeken of toevoegen</string>
     <string name="add_option">“%1$s” toevoegen</string>
     <string name="source_missing_title">Notion vindt deze gegevensbron niet</string>
     <string name="source_missing_body">Misschien is ze verwijderd of naar de prullenbak verplaatst, of heeft de koppeling er geen toegang meer toe.</string>
-    <string name="source_missing_remove">Notebook verwijderen</string>
-    <string name="source_missing_remove_sub">Uit dit notebook verwijderen</string>
+    <string name="action_new">Nieuw</string>
+    <string name="section_recent">Databases en pagina’s</string>
 </resources>

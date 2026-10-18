@@ -1,6 +1,6 @@
 # Privacy policy
 
-_Last updated: 2026-10-17 (notebooks, personal access tokens, page icons)_
+_Last updated: 2026-10-18 (pinned databases and per-database setups instead of notebooks; Home's list)_
 
 Noter for Notion shows and edits notes in **your own Notion workspace**. It has no server of its
 own, no analytics, no advertising and no crash reporting.
@@ -24,14 +24,14 @@ own, no analytics, no advertising and no crash reporting.
 ## What the app stores on your phone
 
 - **Your token** (and whether it is a personal access token), encrypted with the Android Keystore. It is never included in a backup.
-- **A copy of your notes** (titles, properties and content of the notes and pages you have seen) and the
-  list of changes that still have to be sent to Notion, so the app opens instantly and works
-  offline. This copy is never included in a backup; Notion is the real copy.
+- **A copy of your notes** (titles, properties and content of the notes and pages you have seen),
+  the list of databases and pages Home shows (their names and icons), and the list of changes that
+  still have to be sent to Notion, so the app opens instantly and works offline. This copy is
+  never included in a backup; Notion is the real copy.
 - **Images you have seen**, in the app's cache folder (up to 100 MB), so they don't have to be
   downloaded again. Android may clear this folder when space runs low; it is never backed up.
-- **Your settings**: your notebooks (their names, icons, database or page, their filters,
-  sort and what their cards show), pinned
-  notes, your own note order, which properties are shown (and in which order) per database,
+- **Your settings**: per database, its filters, sort and what its cards show; the databases you
+  pinned (their IDs, names and icons), pinned notes and pages, your own note order, which properties are shown (and in which order) per database,
   theme and dynamic colour. Only these settings may be included in
   Android's own backup (to your Google account, if you turned that on) and in a transfer to a new
   phone.

@@ -1,12 +1,6 @@
 package be.wimvandonck.noter.ui.settings
 
 import android.content.Intent
-import be.wimvandonck.noter.logic.Destinations
-import androidx.compose.material3.ListItem
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.PushPin
-import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -17,11 +11,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.ViewList
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
@@ -57,9 +48,6 @@ import be.wimvandonck.noter.data.model.ThemeMode
 import be.wimvandonck.noter.data.notion.TokenKind
 import be.wimvandonck.noter.ui.theme.AppShapes
 import be.wimvandonck.noter.ui.theme.AppearanceSettings
-import be.wimvandonck.noter.ui.theme.DragHandle
-import be.wimvandonck.noter.ui.theme.ReorderableColumn
-import be.wimvandonck.noter.ui.theme.SettingItem
 import be.wimvandonck.noter.ui.theme.SettingsBlock
 import be.wimvandonck.noter.ui.theme.SettingsSection
 import be.wimvandonck.noter.ui.theme.SettingsFooter
@@ -67,7 +55,7 @@ import be.wimvandonck.noter.ui.theme.SettingsScaffold
 import be.wimvandonck.noter.ui.theme.rememberAppVersion
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpenViews: () -> Unit) {
+fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -79,22 +67,6 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpenViews
         item(key = "connection") {
             SettingsSection(title = stringResource(R.string.section_connection)) {
                 SettingsBlock { ConnectionSettings(state, viewModel) }
-            }
-        }
-        item(key = "views") {
-            SettingsSection(title = stringResource(R.string.section_views)) {
-                SettingItem(
-                    title = stringResource(R.string.manage_views),
-                    summary = pluralStringResource(R.plurals.views_count, state.settings.databases.size, state.settings.databases.size),
-                    onClick = onOpenViews,
-                    icon = rememberVectorPainter(Icons.Rounded.ViewList),
-                    trailing = { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null) },
-                )
-            }
-        }
-        item(key = "navigation") {
-            SettingsSection(title = stringResource(R.string.section_navigation_bar)) {
-                NavigationBarSettings(state.settings.navigation, onMove = viewModel::moveDestination)
             }
         }
         item(key = "appearance") {
@@ -123,43 +95,6 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpenViews
         }
     }
 
-}
-
-/**
- * The navigation bar's order: drag Pinned and Notebooks; the first is where the app opens.
- * Search is locked at the end (it opens the keyboard).
- */
-@Composable
-private fun NavigationBarSettings(saved: List<String>, onMove: (Destinations.Section, to: Int) -> Unit) {
-    val bar = Destinations.bar(saved)
-    ReorderableColumn(
-        items = bar,
-        key = { it },
-        onMove = { from, to -> onMove(bar[from], to) },
-        movable = { it != Destinations.Section.SEARCH },
-    ) { destination ->
-        val (label, icon) = when (destination) {
-            Destinations.Section.PINNED -> stringResource(R.string.tab_home) to Icons.Rounded.PushPin
-            Destinations.Section.NOTEBOOKS -> stringResource(R.string.section_views) to Icons.AutoMirrored.Rounded.LibraryBooks
-            Destinations.Section.SEARCH -> stringResource(R.string.action_search) to Icons.Rounded.Search
-        }
-        ListItem(
-            headlineContent = { Text(label) },
-            supportingContent = when {
-                destination == Destinations.Section.SEARCH -> { { Text(stringResource(R.string.navigation_search_last)) } }
-                bar.indexOf(destination) == 0 -> { { Text(stringResource(R.string.navigation_start)) } }
-                else -> null
-            },
-            leadingContent = { Icon(icon, contentDescription = null) },
-            trailingContent = {
-                if (destination == Destinations.Section.SEARCH) {
-                    Icon(Icons.Rounded.Lock, contentDescription = null, Modifier.padding(horizontal = 12.dp))
-                } else {
-                    DragHandle(handleModifier)
-                }
-            },
-        )
-    }
 }
 
 @Composable

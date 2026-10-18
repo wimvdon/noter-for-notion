@@ -48,7 +48,7 @@ import be.wimvandonck.noter.ui.theme.DragHandle
 /**
  * Arranging a database's properties in place, where they are shown in the note: drag a property
  * by its handle to change the order, and past the "Hidden" line to hide it (or back to show it);
- * the eye does the same with one tap. Applies to every note of the database. A notebook's Filters
+ * the eye does the same with one tap. Applies to every note of the database. A database's Filters
  * panel arranges its rows of chips the same way ([shownTitle], no [onDone]), with each property's
  * values to filter by [below] its row (they move along with it).
  */

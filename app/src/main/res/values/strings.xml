@@ -1,22 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Noter</string>
-    <string name="tab_home">Pinned</string>
     <string name="browse_search">Search Notion</string>
     <string name="browse_databases">Databases</string>
     <string name="search_notes">Notes on this phone</string>
-    <string name="action_search">Search</string>
     <string name="browse_pages">Pages</string>
     <string name="browse_empty">Nothing in Notion yet that this token can see.</string>
     <string name="browse_nothing_found">Nothing found</string>
     <string name="browse_edited">Edited %1$s</string>
-    <string name="source_pages">Pages</string>
-    <string name="add_view">Add as notebook</string>
     <string name="page_open_failed">Couldn’t open the page. Check your connection.</string>
     <string name="settings_title">Settings</string>
     <string name="back">Back</string>
     <string name="cancel">Cancel</string>
-    <string name="save">Save</string>
     <string name="clear">Clear</string>
     <string name="retry">Retry</string>
     <string name="ok">OK</string>
@@ -26,7 +21,6 @@
     <string name="untitled">Untitled</string>
     <string name="section_expanded">Expanded</string>
     <string name="section_collapsed">Collapsed</string>
-    <string name="chip_all">All</string>
     <string name="section_pinned">Pinned</string>
     <string name="section_others">Others</string>
     <string name="action_new_note">New note</string>
@@ -42,7 +36,6 @@
     <string name="trash_confirm">Move to trash</string>
     <string name="empty_no_key">Add a personal access token in Settings to see your notes.</string>
     <string name="empty_no_key_action">Open settings</string>
-    <string name="empty_home">Pin any note or page, from a notebook or from Search, to keep it here.</string>
     <string name="empty_database">Tap + to add one.</string>
     <string name="empty_filtered">No notes match the filters</string>
     <string name="status_offline">Offline. Changes are saved on this phone and sent later.</string>
@@ -113,14 +106,6 @@
     <string name="key_removed">Token removed. Notes copied to this phone were deleted.</string>
     <string name="sync_all_saved">Everything is saved in Notion.</string>
     <string name="sync_now">Sync now</string>
-    <string name="section_views">Notebooks</string>
-    <string name="add_database">Add notebook</string>
-    <string name="edit_database">Edit notebook</string>
-    <string name="database_name">Name</string>
-    <string name="database_icon">Icon</string>
-    <string name="remove_database">Remove</string>
-    <string name="remove_database_title">Remove this notebook?</string>
-    <string name="remove_database_body">It disappears from the navigation. Nothing is deleted in Notion.</string>
     <string name="section_appearance">Appearance</string>
     <string name="theme">Theme</string>
     <string name="theme_system">System</string>
@@ -142,15 +127,7 @@
         <item quantity="one">%d linked page</item>
         <item quantity="other">%d linked pages</item>
     </plurals>
-    <!-- Manage views and the navigation bar -->
-    <string name="manage_views">Manage notebooks</string>
-    <plurals name="views_count">
-        <item quantity="one">%d notebook</item>
-        <item quantity="other">%d notebooks</item>
-    </plurals>
-    <string name="icon_search">Search icons (in English)</string>
-    <string name="icon_none_found">No icons found. Try another word, such as “list”, “food” or “work”.</string>
-    <string name="cards_title">Cards in the overview</string>
+    <string name="cards_title">Cards</string>
     <string name="card_cover">Header image</string>
     <string name="card_content">Start of the content</string>
     <string name="action_indent">Indent (put in the block above)</string>
@@ -158,9 +135,6 @@
     <string name="chip_checked">%1$s</string>
     <string name="chip_unchecked">Not %1$s</string>
     <string name="cards_properties">Properties on the card (up to %1$d)</string>
-    <string name="edit_named">Edit “%1$s”</string>
-    <string name="sub_notebook_of">Part of %1$s</string>
-    <string name="edit_view">Edit notebook</string>
     <string name="new_page">New page</string>
     <string name="new_page_top_level">At the top of your workspace</string>
     <string name="new_page_top_level_help">Among your private pages</string>
@@ -168,12 +142,10 @@
     <string name="create_failed">Notion couldn’t make the page: %1$s</string>
     <string name="browse_empty_title">Nothing here yet</string>
     <string name="empty_no_key_title">Connect to Notion</string>
-    <string name="empty_home_title">No pinned notes</string>
     <string name="empty_database_title">No notes yet</string>
     <string name="empty_clear_filters">Clear filters</string>
     <string name="filters">Filters</string>
     <string name="filters_count">Filters · %1$d</string>
-    <string name="sort_notion">Page order</string>
     <string name="sort_custom">Custom order</string>
     <string name="sort_last_edited">Last edited</string>
     <string name="sort_created">Created</string>
@@ -186,11 +158,9 @@
     <string name="chip_next_7_days">Next 7 days</string>
     <string name="chip_later">Later</string>
     <string name="chip_no_date">No date</string>
-    <string name="no_notebooks">No notebooks yet</string>
     <string name="sort_by">Sort: %1$s</string>
     <string name="sort_ascending">Ascending</string>
     <string name="sort_descending">Descending</string>
-    <string name="no_notebooks_body">A notebook shows the notes of a Notion database or the subpages of a page.</string>
     <string name="error_offline">No connection to Notion. Check your internet and try again.</string>
     <string name="error_not_found">Notion can’t find this. It may have been deleted, or it isn’t shared with your connection.</string>
     <string name="error_busy">Notion is busy. Try again in a moment.</string>
@@ -198,15 +168,11 @@
     <string name="clear_row">Stop filtering by %1$s</string>
     <string name="chip_rows_shown">Shown</string>
     <string name="new_subpage">New subpage</string>
-    <string name="cards_of">Cards: %1$s</string>
     <string name="filter_no_values">No values yet</string>
-    <string name="section_navigation_bar">Navigation bar</string>
-    <string name="navigation_start">Opens when the app starts</string>
-    <string name="navigation_search_last">Always last</string>
     <string name="search_or_add">Search or add</string>
     <string name="add_option">Add “%1$s”</string>
     <string name="source_missing_title">Notion can\'t find this data source</string>
     <string name="source_missing_body">It may have been deleted or moved to the trash, or the connection no longer has access to it.</string>
-    <string name="source_missing_remove">Remove notebook</string>
-    <string name="source_missing_remove_sub">Remove from this notebook</string>
+    <string name="action_new">New</string>
+    <string name="section_recent">Databases and pages</string>
 </resources>

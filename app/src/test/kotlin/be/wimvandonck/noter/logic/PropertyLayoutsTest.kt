@@ -1,7 +1,7 @@
 package be.wimvandonck.noter.logic
 
 import be.wimvandonck.noter.data.model.CardLayout
-import be.wimvandonck.noter.data.model.DatabaseConfig
+import be.wimvandonck.noter.data.model.DatabaseSetup
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.data.model.PropertyValue
@@ -69,21 +69,19 @@ class PropertyLayoutsTest {
     }
 
     @Test
-    fun `each notebook has its own cards, starting from what its database's cards showed`() {
+    fun `a database's setup chooses its cards, starting from what its cards showed before`() {
         val legacy = PropertyLayout(order = listOf("B", "A"), onCard = listOf("A"), coverOnCard = true)
-        val first = DatabaseConfig("n1", "First", databaseId = "db")
-        val second = DatabaseConfig("n2", "Second", databaseId = "db", cards = CardLayout(content = false, properties = listOf("B")))
-        assertEquals(CardLayout(cover = true, content = true, properties = listOf("A")), PropertyLayouts.cards(first, legacy))
-        assertEquals(second.cards, PropertyLayouts.cards(second, legacy))
+        val chosen = DatabaseSetup(cards = CardLayout(content = false, properties = listOf("B")))
+        assertEquals(CardLayout(cover = true, content = true, properties = listOf("A")), PropertyLayouts.cards(DatabaseSetup(), legacy))
+        assertEquals(CardLayout(cover = true, content = true, properties = listOf("A")), PropertyLayouts.cards(null, legacy))
+        assertEquals(chosen.cards, PropertyLayouts.cards(chosen, legacy))
 
-        val layouts = mapOf("db" to legacy)
-        // The notebook shown decides; elsewhere (Pinned) the database's first notebook.
-        val shown = PropertyLayouts.cardLayouts(layouts, listOf(first, second), current = second).getValue("db")
+        val shown = PropertyLayouts.cardLayouts(mapOf("db" to legacy, "other" to legacy), mapOf("db" to chosen)).getValue("db")
         assertEquals(listOf("B"), shown.onCard)
         assertFalse(shown.contentOnCard)
         assertEquals(listOf("B", "A"), shown.order)
-        assertEquals(listOf("A"), PropertyLayouts.cardLayouts(layouts, listOf(first, second)).getValue("db").onCard)
-        // A notebook of a database that has no layout yet.
-        assertEquals(listOf("B"), PropertyLayouts.cardLayouts(emptyMap(), listOf(second)).getValue("db").onCard)
+        assertEquals(listOf("A"), PropertyLayouts.cardLayouts(mapOf("other" to legacy), mapOf("db" to chosen)).getValue("other").onCard)
+        // A database that has no layout yet.
+        assertEquals(listOf("B"), PropertyLayouts.cardLayouts(emptyMap(), mapOf("db" to chosen)).getValue("db").onCard)
     }
 }

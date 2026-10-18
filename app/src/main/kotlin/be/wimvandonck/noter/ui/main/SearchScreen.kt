@@ -1,9 +1,7 @@
 package be.wimvandonck.noter.ui.main
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,11 +14,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.StickyNote2
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Explore
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
-import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,104 +28,63 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import be.wimvandonck.noter.R
-import be.wimvandonck.noter.data.NotesRepository
 import be.wimvandonck.noter.data.model.NoteSummary
-import be.wimvandonck.noter.data.model.PageIcon
 import be.wimvandonck.noter.data.model.WorkspaceItem
 import be.wimvandonck.noter.data.notion.InlineMarkdown
 import be.wimvandonck.noter.logic.NotionDates
 import be.wimvandonck.noter.ui.common.PageIconView
 import be.wimvandonck.noter.ui.theme.readableWidth
 import be.wimvandonck.noter.ui.theme.EmptyState
-import be.wimvandonck.noter.ui.theme.SkeletonLine
-import java.util.Locale
 
 /**
- * Search, a destination of its own in the navigation bar ([bottomBar]), with + ([newButton]): the notes on this phone whose title matches (at once, also
+ * Search, opened from Home's search bar: the notes on this phone whose title matches (at once, also
  * offline), then the pages and databases Notion finds. Before anything is typed, Notion's most
- * recently edited pages and databases. A database opens its notes (and can become a notebook); a
- * page opens in the editor.
+ * recently edited pages and databases. A database opens its notes; a page opens in the editor; a
+ * long press pins or unpins it.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     viewModel: MainViewModel,
+    onBack: () -> Unit,
     onOpenNote: (String) -> Unit,
     onOpenDatabase: (String) -> Unit,
-    bottomBar: @Composable () -> Unit,
-    newButton: @Composable () -> Unit,
-) {
-    SearchContent(viewModel, onOpenNote, onOpenDatabase, onPick = null, onBack = null, bottomBar, newButton)
-}
-
-/**
- * Search to add a notebook (from Manage notebooks): only databases and pages on their own; tapping
- * one gives its key (a page's: its notebook key, see NotesRepository.pageNotebookKey) and title.
- */
-@Composable
-fun PickNotebookScreen(viewModel: MainViewModel, onBack: () -> Unit, onPick: (key: String, title: String) -> Unit) {
-    SearchContent(viewModel, onOpenNote = {}, onOpenDatabase = {}, onPick = onPick, onBack = onBack, bottomBar = {}, newButton = {})
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SearchContent(
-    viewModel: MainViewModel,
-    onOpenNote: (String) -> Unit,
-    onOpenDatabase: (String) -> Unit,
-    onPick: ((key: String, title: String) -> Unit)?,
-    onBack: (() -> Unit)?,
-    bottomBar: @Composable () -> Unit,
-    newButton: @Composable () -> Unit,
 ) {
     val state by viewModel.browse.collectAsStateWithLifecycle()
+    val home by viewModel.state.collectAsStateWithLifecycle()
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         if (state.items == null || state.query.isNotEmpty()) viewModel.search(state.query)
         runCatching { focus.requestFocus() }
     }
     Scaffold(
-        bottomBar = bottomBar,
-        floatingActionButton = newButton,
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    if (onBack != null) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
-                        }
-                    } else {
-                        Icon(
-                            Icons.Rounded.Search,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 16.dp, end = 4.dp),
-                        )
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 title = {
                     TextField(
                         value = state.query,
                         onValueChange = viewModel::search,
-                        placeholder = { Text(stringResource(if (onPick != null) R.string.add_database else R.string.browse_search)) },
+                        placeholder = { Text(stringResource(R.string.browse_search)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         colors = TextFieldDefaults.colors(
@@ -157,20 +111,20 @@ private fun SearchContent(
             onRefresh = { viewModel.search(state.query) },
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
-            // Picking a notebook: databases and pages on their own, not notes.
-            val items = if (onPick == null) state.items else state.items?.filter { it.isDatabase || it.note?.databaseId == NotesRepository.PAGES }
-            val notes = if (onPick == null) state.notes else emptyList()
+            val items = state.items
+            val notes = state.notes
             val error = state.error
             when {
                 notes.isNotEmpty() || !items.isNullOrEmpty() -> Results(
                     notes,
                     items.orEmpty(),
                     searching = state.loading,
+                    pinnedDatabases = home.pinnedDatabases.map { it.id.replace("-", "") }.toSet(),
+                    pinnedPages = home.notes.pinnedIds.map { it.replace("-", "") }.toSet(),
                     onOpenNote = onOpenNote,
-                    onOpenPage = { item ->
-                        if (onPick != null) onPick(NotesRepository.pageNotebookKey(item.id), item.title) else viewModel.openItem(item, onOpenNote)
-                    },
-                    onOpenDatabase = { id -> if (onPick != null) onPick(id, items.orEmpty().firstOrNull { it.id == id }?.title.orEmpty()) else onOpenDatabase(id) },
+                    onOpenPage = { item -> viewModel.openItem(item, onOpenNote) },
+                    onOpenDatabase = onOpenDatabase,
+                    onTogglePin = viewModel::togglePinItem,
                 )
                 items == null && error == null -> LoadingRows()
                 error != null -> LoadFailed(error) { viewModel.search(state.query) }
@@ -190,9 +144,12 @@ private fun Results(
     notes: List<NoteSummary>,
     items: List<WorkspaceItem>,
     searching: Boolean,
+    pinnedDatabases: Set<String>,
+    pinnedPages: Set<String>,
     onOpenNote: (String) -> Unit,
     onOpenPage: (WorkspaceItem) -> Unit,
     onOpenDatabase: (String) -> Unit,
+    onTogglePin: (WorkspaceItem) -> Unit,
 ) {
     val noteIds = notes.map { it.id.replace("-", "") }.toSet()
     // A page already listed among the notes isn't listed again under Notion's results.
@@ -200,72 +157,45 @@ private fun Results(
     val locale = LocalConfiguration.current.locales[0]
     LazyColumn(Modifier.fillMaxSize().readableWidth(), contentPadding = PaddingValues(bottom = 24.dp)) {
         if (notes.isNotEmpty()) {
-            item(key = "__notes") { Header(stringResource(R.string.search_notes)) }
+            item(key = "__notes") { ListHeader(stringResource(R.string.search_notes)) }
             items(notes, key = { "n" + it.id }) { note ->
-                ResultRow(InlineMarkdown.stripped(note.title), note.lastEditedTime, note.icon, locale, Icons.AutoMirrored.Rounded.StickyNote2) {
-                    onOpenNote(note.id)
-                }
+                ListItem(
+                    headlineContent = {
+                        Text(InlineMarkdown.stripped(note.title).ifBlank { stringResource(R.string.untitled) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    },
+                    supportingContent = if (note.lastEditedTime.isNotBlank()) {
+                        { Text(stringResource(R.string.browse_edited, NotionDates.display(note.lastEditedTime, locale))) }
+                    } else {
+                        null
+                    },
+                    leadingContent = {
+                        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                            val icon = note.icon
+                            if (icon != null) {
+                                PageIconView(icon, size = 24.dp)
+                            } else {
+                                Icon(Icons.AutoMirrored.Rounded.StickyNote2, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    },
+                    modifier = Modifier.clickable { onOpenNote(note.id) },
+                )
             }
         }
         if (databases.isNotEmpty()) {
-            item(key = "__databases") { Header(stringResource(R.string.browse_databases)) }
+            item(key = "__databases") { ListHeader(stringResource(R.string.browse_databases)) }
             items(databases, key = { "d" + it.id }) { item ->
-                ResultRow(item.title, item.lastEditedTime, item.icon, locale, Icons.Rounded.TableChart) { onOpenDatabase(item.id) }
+                WorkspaceRow(item, item.id.replace("-", "") in pinnedDatabases, onClick = { onOpenDatabase(item.id) }, onTogglePin = { onTogglePin(item) })
             }
         }
         if (pages.isNotEmpty()) {
-            item(key = "__pages") { Header(stringResource(R.string.browse_pages)) }
+            item(key = "__pages") { ListHeader(stringResource(R.string.browse_pages)) }
             items(pages, key = { "p" + it.id }) { item ->
-                ResultRow(item.title, item.lastEditedTime, item.icon, locale, Icons.Rounded.Description) { onOpenPage(item) }
+                WorkspaceRow(item, item.id.replace("-", "") in pinnedPages, onClick = { onOpenPage(item) }, onTogglePin = { onTogglePin(item) })
             }
         }
         if (searching) {
             item(key = "__searching") { LoadingRows(count = 2) }
         }
-    }
-}
-
-@Composable
-private fun Header(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp).semantics { heading() },
-    )
-}
-
-@Composable
-private fun ResultRow(title: String, edited: String, icon: PageIcon?, locale: Locale, fallbackIcon: ImageVector, onClick: () -> Unit) {
-    ListItem(
-        headlineContent = {
-            Text(title.ifBlank { stringResource(R.string.untitled) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        },
-        supportingContent = if (edited.isNotBlank()) {
-            { Text(stringResource(R.string.browse_edited, NotionDates.display(edited, locale))) }
-        } else {
-            null
-        },
-        leadingContent = {
-            Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                if (icon != null) {
-                    PageIconView(icon, size = 24.dp)
-                } else {
-                    Icon(fallbackIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        },
-        modifier = Modifier.clickable(onClick = onClick),
-    )
-}
-
-@Composable
-private fun LoadingRows(count: Int = 6) {
-    val loading = stringResource(R.string.loading)
-    Column(
-        Modifier.fillMaxWidth().padding(16.dp).semantics(mergeDescendants = true) { contentDescription = loading },
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-    ) {
-        repeat(count) { SkeletonLine(Modifier.fillMaxWidth(if (it % 2 == 0) 0.7f else 0.5f)) }
     }
 }

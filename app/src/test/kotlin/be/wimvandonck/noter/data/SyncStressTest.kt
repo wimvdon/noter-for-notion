@@ -4,7 +4,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import be.wimvandonck.noter.data.api.NotionClient
 import be.wimvandonck.noter.data.model.Block
 import be.wimvandonck.noter.data.model.BlockType
-import be.wimvandonck.noter.data.model.DatabaseConfig
+import be.wimvandonck.noter.data.model.DatabaseSetup
 import be.wimvandonck.noter.data.store.CacheStore
 import be.wimvandonck.noter.data.store.SettingsStore
 import be.wimvandonck.noter.logic.DocumentEditor
@@ -161,7 +161,7 @@ class SyncStressTest {
             cache = CacheStore(folder.newFolder("cache-$seed")),
             scope = scope,
         ).also { repo ->
-            runBlocking { settings.update { it.copy(databases = listOf(DatabaseConfig("db", "Notes"))) } }
+            runBlocking { settings.update { it.copy(setups = mapOf("db" to DatabaseSetup())) } }
             repo.start()
         }
     }

@@ -11,13 +11,13 @@ import be.wimvandonck.noter.data.NotesRepository
 import be.wimvandonck.noter.data.RepoEvent
 import be.wimvandonck.noter.data.api.NotionErrors
 import be.wimvandonck.noter.data.api.NotionException
-import be.wimvandonck.noter.data.model.DatabaseConfig
-import be.wimvandonck.noter.data.model.NotebookSort
-import be.wimvandonck.noter.data.model.SortKind
-import be.wimvandonck.noter.data.model.ViewResult
+import be.wimvandonck.noter.data.model.DatabaseInfo
+import be.wimvandonck.noter.data.model.DatabaseSetup
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.NotionUser
+import be.wimvandonck.noter.data.model.PageIcon
+import be.wimvandonck.noter.data.model.PinnedDatabase
 import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.data.model.PropertyValue
@@ -25,94 +25,85 @@ import be.wimvandonck.noter.data.model.WorkspaceItem
 import be.wimvandonck.noter.data.notion.TokenKind
 import be.wimvandonck.noter.data.store.AppSettings
 import be.wimvandonck.noter.logic.ChipFilter
-import be.wimvandonck.noter.logic.Destinations
 import be.wimvandonck.noter.logic.ChipGroup
+import be.wimvandonck.noter.logic.DatabaseSetups
 import be.wimvandonck.noter.logic.FilterChip
-import be.wimvandonck.noter.logic.Notebooks
 import be.wimvandonck.noter.logic.NoteLists
 import be.wimvandonck.noter.logic.NoteSearch
-import be.wimvandonck.noter.logic.NoteSource
+import be.wimvandonck.noter.logic.NoteTarget
+import be.wimvandonck.noter.logic.NoteTargets
 import be.wimvandonck.noter.logic.PropertyLayouts
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-/** A notebook, as a tab under Notebooks. */
-data class Tab(val key: String, val name: String, val icon: String?)
-
-data class MainUiState(
+/** What a list of notes shows: Home's pinned notes, or a database's notes with its filters. */
+data class NotesUiState(
     val ready: Boolean = false,
     val hasKey: Boolean = false,
-    /**
-     * Pages can be added at the top of the workspace: only with a personal access token (Notion
-     * refuses it to an internal connection).
-     */
-    val canAddTopLevel: Boolean = false,
-    /** The notebooks, as tabs under Notebooks. */
-    val tabs: List<Tab> = emptyList(),
-    /** The navigation bar's destinations, in the user's order; the first is where the app opens. */
-    val bar: List<Destinations.Section> = Destinations.bar(emptyList()),
-    /** The shown notebook's sub-notebooks (one per data source), as tabs below its own. */
-    val subTabs: List<Tab> = emptyList(),
-    /** Pinned, Search, a notebook's ID, or Notebooks without one (see Destinations). */
-    val currentTab: String = Destinations.PINNED,
-    /** The filter chips above the notes, per property (on Pinned: one group, the sources). */
+    /** True on Home: its cards show which database a note is in ([sourceIcons]). */
+    val isHome: Boolean = false,
+    /** The filter chips above the notes, one row per property. */
     val chipGroups: List<ChipGroup> = emptyList(),
     val pinned: List<NoteSummary> = emptyList(),
     val others: List<NoteSummary> = emptyList(),
     val pinnedIds: Set<String> = emptySet(),
-    /** Icons of the sources on Pinned, by database ID (the first view's icon). */
-    val databaseIcons: Map<String, String> = emptyMap(),
+    /** Icons of the databases, by data source ID (for Home's cards). */
+    val sourceIcons: Map<String, PageIcon> = emptyMap(),
     /** The property cards show when no properties were chosen for them (the first quick filter). */
     val cardProperty: String? = null,
     /** How each database shows its properties, with what its cards show (see PropertyLayouts.cardLayouts). */
     val propertyLayouts: Map<String, PropertyLayout> = emptyMap(),
-    /** True while nothing is cached yet for this tab and the first download runs. */
+    /** True while nothing is cached yet and the first download runs. */
     val loading: Boolean = false,
     val refreshing: Boolean = false,
     val error: String? = null,
     val pendingCount: Int = 0,
     val offline: Boolean = false,
-    /** The database shown (null on Pinned). */
+    /** The data source shown (null on Home). */
     val databaseId: String? = null,
     /** Titles of linked pages, by page ID, for relation filters. */
     val chipTitles: Map<String, String> = emptyMap(),
-    /** The notebooks, for the navigation bar and "New note" on Pinned. */
-    val views: List<DatabaseConfig> = emptyList(),
-    /** The notebook shown, with its filters and sort (null on Pinned and a database on its own). */
-    val notebook: DatabaseConfig? = null,
-    /** How many properties filter the notebook now. */
+    /** How the database shows its notes (null on Home). */
+    val setup: DatabaseSetup? = null,
+    /** How many properties filter the notes now. */
     val filterCount: Int = 0,
-    /** Every property the notebook can filter by, with its values, for the Filters panel. */
+    /** Every property the database can filter by, with its values, for the Filters panel. */
     val filterOptions: List<ChipGroup> = emptyList(),
-    /** Notion can't find the notebook's data source (deleted, in the trash, or no access). */
+    /** Notion can't find the data source (deleted, in the trash, or no access). */
     val sourceMissing: Boolean = false,
 ) {
-    val isHome: Boolean get() = currentTab == Destinations.PINNED
-
-    val section: Destinations.Section get() = Destinations.section(currentTab)
-
     /** Related databases whose pages name relation chips. */
     val chipRelationDatabases: Set<String>
-        get() = (chipGroups + filterOptions).mapNotNull { it.property?.takeIf { p -> p.type == "relation" }?.relationDatabaseId }.toSet()
+        get() = (chipGroups + filterOptions).mapNotNull { it.property.takeIf { p -> p.type == "relation" }?.relationDatabaseId }.toSet()
 }
 
-/** Something the overview tells the user once. */
-sealed interface MainEvent {
-    /** Dragging a note switched the notebook from [previous] to the custom order (Undo restores it). */
-    data class SortedByHand(val notebookId: String, val previous: NotebookSort?) : MainEvent
-}
+/** Home: a search bar, then what is pinned (databases, notes and pages), then Notion's databases and pages. */
+data class HomeUiState(
+    val notes: NotesUiState = NotesUiState(),
+    /**
+     * Pages can be added at the top of the workspace: only with a personal access token (Notion
+     * refuses it to an internal connection).
+     */
+    val canAddTopLevel: Boolean = false,
+    val pinnedDatabases: List<PinnedDatabase> = emptyList(),
+    /** The most recently edited databases and pages (null until known). */
+    val recent: List<WorkspaceItem>? = null,
+    /** Asking Notion for [recent] failed (an error from NotionErrors). */
+    val recentError: String? = null,
+    /** Where + can put a new note. */
+    val targets: List<NoteTarget> = emptyList(),
+)
 
 /**
  * Search: the notes on this phone whose title matches ([notes], at once), then the pages and
@@ -127,29 +118,23 @@ data class BrowseState(
 )
 
 /**
- * The notes of one database ([db]) as notebook [config] shows them: filtered, sorted, its quick
- * filters on top ([pageOrder]: a page's order of its subpages, for a page's notebook). Also for a database opened on its own (a notebook that isn't
- * saved, see DatabaseViewModel).
+ * The notes of data source [sourceId] ([db]) as [setup] shows them: filtered, sorted, its quick
+ * filters on top (see DatabaseViewModel).
  */
-internal fun notebookContent(
-    base: MainUiState,
-    config: DatabaseConfig,
-    db: DatabaseState?,
-    pageOrder: ViewResult?,
-    settings: AppSettings,
-): MainUiState {
+internal fun setupContent(base: NotesUiState, setup: DatabaseSetup, db: DatabaseState?, settings: AppSettings, sourceId: String): NotesUiState {
     val notes = db?.notes.orEmpty()
-    val content = Notebooks.content(notes, db?.schema, config, pageOrder, settings.pinned, settings.order[config.sourceId].orEmpty())
-    val selected = Notebooks.selection(config, db?.schema)
+    val content = DatabaseSetups.content(notes, db?.schema, setup, settings.pinned, settings.order[sourceId].orEmpty())
+    val selected = DatabaseSetups.selection(setup, db?.schema)
     return base.copy(
         chipGroups = content.groups,
         pinned = content.pinned,
         others = content.others,
-        cardProperty = config.quickFilters.firstOrNull(),
+        cardProperty = setup.quickFilters.firstOrNull(),
         loading = db?.loaded != true,
         refreshing = db?.refreshing == true,
         error = db?.error,
-        databaseId = config.sourceId,
+        databaseId = sourceId,
+        setup = setup,
         filterCount = content.filterCount,
         filterOptions = db?.schema?.properties.orEmpty().filter { it.isChipCandidate }.map { property ->
             ChipGroup(property, ChipFilter.chips(property, notes), selected[property.name].orEmpty())
@@ -157,22 +142,12 @@ internal fun notebookContent(
     )
 }
 
-/** The filter property a database opened on its own uses: a notebook's first quick filter, else status or select. */
-internal fun defaultChipProperty(databaseId: String, settings: AppSettings, db: DatabaseState?): PropertySchema? {
-    val schema = db?.schema ?: return null
-    val chosen = Notebooks.leaves(settings.databases).firstOrNull { it.sourceId == databaseId && it.quickFilters.isNotEmpty() }?.quickFilters?.first()
-    return chosen?.let { schema.property(it) }
-        ?: schema.properties.firstOrNull { it.type == "status" }
-        ?: schema.properties.firstOrNull { it.type == "select" }
-}
-
 /** The values selected in [groups] that a new note gets (the first of each property, where it can). */
 internal fun presets(groups: List<ChipGroup>, selected: Map<String, Set<String>>): List<NoteProperty> =
     groups.mapNotNull { group ->
-        val property = group.property ?: return@mapNotNull null
-        val key = selected[property.name]?.firstOrNull() ?: return@mapNotNull null
+        val key = selected[group.property.name]?.firstOrNull() ?: return@mapNotNull null
         val chip = group.chips.firstOrNull { it.key == key } ?: return@mapNotNull null
-        presetFor(property, chip)
+        presetFor(group.property, chip)
     }
 
 /** A filter property's value for a new note made while filter [key] is selected. */
@@ -191,184 +166,97 @@ internal fun presetFor(schema: PropertySchema, chip: FilterChip, today: LocalDat
     return NoteProperty(schema.name, schema.type, value)
 }
 
+/**
+ * The icons of the databases Home knows, by the ID their notes are kept under (a data source; also
+ * the database's), for the cards of pinned notes.
+ */
+internal fun sourceIcons(pinned: List<PinnedDatabase>, recent: List<WorkspaceItem>?, infos: Map<String, DatabaseInfo> = emptyMap()): Map<String, PageIcon> = buildMap {
+    recent.orEmpty().filter { it.isDatabase }.forEach { item ->
+        val icon = item.icon ?: return@forEach
+        put(item.id, icon)
+        item.sources.forEach { put(it.id, icon) }
+    }
+    pinned.forEach { pin ->
+        val icon = pin.icon ?: return@forEach
+        put(pin.id, icon)
+        infos[pin.id]?.sources.orEmpty().forEach { put(it.id, icon) }
+    }
+}
+
 class MainViewModel(
     private val repository: NotesRepository,
     hasKey: StateFlow<Boolean>,
     tokenKind: StateFlow<TokenKind?>,
 ) : ViewModel() {
-    private val chipTitles = MutableStateFlow<Map<String, String>>(emptyMap())
-
-    /** Loads the titles of a related database's pages, for the chips of a relation filter. */
-    fun loadChipTitles(databaseId: String) = viewModelScope.launch {
-        val pages = repository.relatedPages(databaseId) ?: return@launch
-        chipTitles.update { it + pages.associate { page -> page.id to page.title } }
-    }
-
-    private val currentTab = MutableStateFlow(Destinations.START)
-
-    /** The sub-notebook shown per notebook (else its first). */
-    private val subTab = MutableStateFlow<Map<String, String>>(emptyMap())
-
-    /** Sources picked on Pinned since the app started (a notebook keeps its own filters). */
-    private val pinnedChips = MutableStateFlow<Set<String>>(emptySet())
-
     val events: Flow<RepoEvent> = repository.events
 
-    private val _mainEvents = MutableSharedFlow<MainEvent>(extraBufferCapacity = 4)
-    val mainEvents: SharedFlow<MainEvent> = _mainEvents
+    private val recentError = MutableStateFlow<String?>(null)
 
-    private data class Status(val pending: Int, val offline: Boolean, val hasKey: Boolean, val kind: TokenKind?, val missing: Set<String>)
+    /** What Notion said about the pinned databases (their data sources, for +), by pinned ID. */
+    private val infos = MutableStateFlow<Map<String, DatabaseInfo>>(emptyMap())
 
-    private val status = combine(repository.pendingCount, repository.offline, hasKey, tokenKind, repository.missingSources, ::Status)
+    private data class Status(val pending: Int, val offline: Boolean, val hasKey: Boolean, val kind: TokenKind?)
 
-    val state: StateFlow<MainUiState> = combine(
+    private val status = combine(repository.pendingCount, repository.offline, hasKey, tokenKind, ::Status)
+
+    val state: StateFlow<HomeUiState> = combine(
         repository.settingsFlow(),
         repository.databases,
-        currentTab,
-        combine(pinnedChips, repository.viewResults, subTab) { chips, orders, subs -> Triple(chips, orders, subs) },
+        combine(repository.recent, recentError, infos, ::Triple),
         status,
-    ) { settings, databases, tab, (chips, pageOrders, subs), (pending, offline, key, kind, missing) ->
-        val notebooks = settings.databases
-        val tabKey = Destinations.valid(tab, notebooks, settings.navigation)
-        val tabs = notebooks.map { Tab(it.id, it.name, it.icon) }
-        val base = MainUiState(
-            ready = true,
-            hasKey = key,
+    ) { settings, databases, (recent, error, known), (pending, offline, key, kind) ->
+        val pinned = NoteLists.pinned(databases.values.flatMap { it.notes }, settings.pinned, settings.order[AppSettings.HOME].orEmpty())
+        HomeUiState(
+            notes = NotesUiState(
+                ready = true,
+                hasKey = key,
+                isHome = true,
+                pinned = pinned,
+                pinnedIds = settings.pinned.toSet(),
+                sourceIcons = sourceIcons(settings.pinnedDatabases, recent, known),
+                propertyLayouts = PropertyLayouts.cardLayouts(settings.propertyLayouts, settings.setups),
+                refreshing = databases.values.any { it.refreshing },
+                pendingCount = pending,
+                offline = offline,
+            ),
             canAddTopLevel = kind == TokenKind.PERSONAL,
-            tabs = tabs,
-            bar = Destinations.bar(settings.navigation),
-            currentTab = tabKey,
-            pinnedIds = settings.pinned.toSet(),
-            databaseIcons = Notebooks.named(notebooks).reversed().associate { it.sourceId to it.icon },
-            propertyLayouts = PropertyLayouts.cardLayouts(settings.propertyLayouts, Notebooks.leaves(notebooks)),
-            pendingCount = pending,
-            offline = offline,
-            views = notebooks,
+            pinnedDatabases = settings.pinnedDatabases,
+            recent = recent,
+            recentError = error,
+            targets = NoteTargets.of(settings.pinnedDatabases, recent, known),
         )
-        when (tabKey) {
-            Destinations.PINNED -> {
-                val content = NoteLists.home(
-                    sources(settings, databases),
-                    databases.mapValues { it.value.notes },
-                    settings.pinned,
-                    settings.order[AppSettings.HOME].orEmpty(),
-                    chips,
-                )
-                base.copy(
-                    chipGroups = if (content.chips.isEmpty()) emptyList() else listOf(ChipGroup(null, content.chips, chips)),
-                    pinned = content.pinned,
-                    loading = databases.values.any { !it.loaded } && content.pinned.isEmpty(),
-                    refreshing = databases.values.any { it.refreshing },
-                )
-            }
-            Destinations.SEARCH, Destinations.NOTEBOOKS -> base
-            else -> {
-                val top = notebooks.first { it.id == tabKey }
-                // A notebook of several data sources shows one of them (a sub-notebook) at a time.
-                val notebook = top.children.firstOrNull { it.id == subs[top.id] } ?: top.children.firstOrNull() ?: top
-                val pageOrder = if (notebook.pageId != null) pageOrders[notebook.sourceId] else null
-                val withCards = base.copy(
-                    propertyLayouts = PropertyLayouts.cardLayouts(settings.propertyLayouts, Notebooks.leaves(notebooks), notebook),
-                    subTabs = top.children.map { Tab(it.id, it.name, null) },
-                )
-                notebookContent(withCards, notebook, databases[notebook.sourceId], pageOrder, settings)
-                    .copy(notebook = notebook, sourceMissing = notebook.sourceId.replace("-", "") in missing)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
+
+    init {
+        // Home's list, at start and once a token is saved.
+        viewModelScope.launch {
+            hasKey.filter { it }.collect { refreshRecent() }
+        }
+        // What is kept about the pinned databases (a database of several data sources offers each to +).
+        viewModelScope.launch {
+            repository.settingsFlow().collect { settings ->
+                settings.pinnedDatabases.filter { it.id !in infos.value }.forEach { pin ->
+                    repository.databaseInfo(pin.id, fresh = false)?.let { info -> infos.update { it + (pin.id to info) } }
+                }
             }
         }
-    }.combine(chipTitles) { state, titles -> state.copy(chipTitles = titles) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
-
-    /** Every source of notes, named after its first view, else its database title ("" for the pages). */
-    private fun sources(settings: AppSettings, databases: Map<String, DatabaseState>): List<NoteSource> {
-        val fromViews = Notebooks.named(settings.databases).distinctBy { it.sourceId }.map { NoteSource(it.sourceId, it.name) }
-        val others = databases.filterKeys { id -> fromViews.none { it.id == id } }.map { (id, db) ->
-            NoteSource(id, if (id == NotesRepository.PAGES) "" else db.schema?.title.orEmpty())
-        }
-        return fromViews + others
     }
 
-    /** The notebook seen last, for tapping Notebooks. */
-    private var lastNotebook: String? = null
-
-    /** Shows Pinned, Search or a notebook (its key). */
-    fun selectTab(key: String) {
-        // Search starts afresh each time it is opened.
-        if (currentTab.value == Destinations.SEARCH && key != Destinations.SEARCH) resetSearch()
-        currentTab.value = key
-        if (Destinations.section(key) == Destinations.Section.NOTEBOOKS && key != Destinations.NOTEBOOKS) lastNotebook = key
-        viewModelScope.launch {
-            val view = repository.currentSettings().databases.firstOrNull { it.id == key } ?: return@launch
-            view.leaves.forEach { repository.refresh(it.sourceId, userAsked = false) }
+    private suspend fun refreshRecent() {
+        try {
+            repository.refreshRecent()
+            recentError.value = null
+        } catch (e: NotionException) {
+            recentError.value = NotionErrors.of(e)
         }
     }
 
-    /** Shows sub-notebook [childId] of notebook [notebookId]. */
-    fun selectSubTab(notebookId: String, childId: String) {
-        subTab.update { it + (notebookId to childId) }
-    }
-
-    /** Removes the notebook (or sub-notebook) shown, whose data source Notion can't find. */
-    fun removeMissingNotebook() {
-        val id = state.value.notebook?.id ?: return
-        viewModelScope.launch { repository.removeDatabase(id) }
-    }
-
-    /** The navigation bar's first destination (where back goes before leaving the app). */
-    fun selectStart() {
-        if (state.value.bar.first() == Destinations.Section.NOTEBOOKS) selectNotebooks() else selectTab(Destinations.PINNED)
-    }
-
-    /** Notebooks in the navigation bar: the notebook seen last, else the first. */
-    fun selectNotebooks() = viewModelScope.launch {
-        selectTab(Destinations.notebook(lastNotebook, repository.currentSettings().databases))
-    }
-
-    /** Changes the notebook shown, kept on this phone (Notion isn't changed). */
-    private fun updateNotebook(transform: (DatabaseConfig) -> DatabaseConfig) {
-        val id = state.value.notebook?.id ?: return
-        viewModelScope.launch {
-            repository.updateSettings { s -> s.copy(databases = Notebooks.update(s.databases, id, transform)) }
-        }
-    }
-
-    /** A chip was tapped: a source on Pinned ([property] null), or a value of a notebook's property. */
-    fun toggleChip(property: String?, key: String) {
-        if (property == null) {
-            pinnedChips.update { if (key in it) it - key else it + key }
-        } else {
-            updateNotebook { it.copy(selected = Notebooks.toggle(it.selected, property, key)) }
-        }
-    }
-
-    fun clearChips() {
-        if (state.value.isHome) pinnedChips.value = emptySet() else updateNotebook { it.copy(selected = emptyMap()) }
-    }
-
-    /** The properties with a row of chips above the notes, in this order (filters stay as they are). */
-    fun setQuickFilters(properties: List<String>) = updateNotebook { it.copy(quickFilters = properties) }
-
-    /** The × at the end of a row of chips: [property] doesn't filter any more. */
-    fun clearRow(property: String) = updateNotebook { it.copy(selected = it.selected - property) }
-
-    fun setSort(sort: NotebookSort?) = updateNotebook { it.copy(sort = sort) }
-
-    /** Undo after dragging switched a notebook to the custom order. */
-    fun undoSortedByHand(event: MainEvent.SortedByHand) {
-        viewModelScope.launch {
-            repository.updateSettings { s -> s.copy(databases = Notebooks.update(s.databases, event.notebookId) { it.copy(sort = event.previous) }) }
-        }
-    }
-
+    /** Pull-to-refresh: sends what waits, refreshes the pinned notes' databases and the list. */
     fun refresh() {
-        val ui = state.value
         viewModelScope.launch {
             repository.flush()
-            when {
-                ui.isHome -> repository.databases.value.keys.forEach { launch { repository.refresh(it, userAsked = true) } }
-                else -> ui.databaseId?.let { repository.refresh(it, userAsked = true) }
-            }
-            // Also picks up data sources moved between databases in Notion.
-            repository.reconcileNotebooks()
+            repository.pinnedSources().forEach { launch { repository.refresh(it, userAsked = true) } }
+            refreshRecent()
         }
     }
 
@@ -380,84 +268,50 @@ class MainViewModel(
 
     fun togglePin(id: String) = viewModelScope.launch { repository.togglePin(id) }
 
+    fun togglePinDatabase(pin: PinnedDatabase) = viewModelScope.launch { repository.togglePinDatabase(pin) }
+
+    /** Pins a database or page from a list (Home's or Search's), or unpins it. */
+    fun togglePinItem(item: WorkspaceItem) = viewModelScope.launch {
+        if (item.isDatabase) {
+            repository.togglePinDatabase(PinnedDatabase(item.id, item.title, item.icon))
+        } else {
+            val note = item.note ?: return@launch
+            repository.togglePin(repository.openNote(note))
+        }
+    }
+
     fun trash(id: String) = viewModelScope.launch { repository.trashNote(id) }
 
-    /**
-     * Saves the new order after the user dragged notes in [group] (the pinned ones or the others),
-     * per database; Pinned has its own. In a notebook sorted another way, dragging switches it to
-     * the custom order, starting from the order on screen.
-     */
-    fun saveOrder(group: List<String>) {
-        val ui = state.value
-        val key = if (ui.isHome) AppSettings.HOME else ui.databaseId ?: return
-        val notebook = ui.notebook
-        val switching = notebook != null && notebook.currentSort.kind != SortKind.CUSTOM
-        val ids = if (!switching) {
-            group
-        } else if (ui.pinned.any { it.id in group }) {
-            group + ui.others.map { it.id }
-        } else {
-            ui.pinned.map { it.id } + group
-        }
-        viewModelScope.launch {
-            repository.saveOrder(key, ids)
-            if (switching && notebook != null) {
-                repository.updateSettings { s ->
-                    s.copy(databases = Notebooks.update(s.databases, notebook.id) { it.copy(sort = NotebookSort(SortKind.CUSTOM)) })
-                }
-                _mainEvents.tryEmit(MainEvent.SortedByHand(notebook.id, notebook.sort))
-            }
-        }
+    /** Saves the order of Home's pinned notes after the user dragged them. */
+    fun saveOrder(ids: List<String>) = viewModelScope.launch { repository.saveOrder(AppSettings.HOME, ids) }
+
+    /** Creates a note in data source [databaseId] and calls [onCreated] with its ID. */
+    fun createNote(databaseId: String, onCreated: (String) -> Unit) = viewModelScope.launch {
+        val id = repository.createNote(databaseId) ?: return@launch
+        onCreated(id)
     }
 
-    /**
-     * Creates a note in [databaseId] (the current notebook's when null) and calls [onCreated] with
-     * its ID. In a notebook with filters selected, the new note gets their values where it can; on
-     * Pinned the new note is pinned so it shows up there.
-     */
-    fun createNote(databaseId: String? = null, onCreated: (String) -> Unit) {
-        val ui = state.value
-        val target = databaseId ?: ui.databaseId ?: return
-        viewModelScope.launch {
-            val notebook = ui.notebook
-            val preset = if (target == ui.databaseId && notebook != null) {
-                presets(ui.filterOptions, notebook.selected.mapValues { it.value.toSet() })
-            } else {
-                emptyList()
-            }
-            val id = repository.createNote(target, preset) ?: return@launch
-            if (ui.isHome) repository.togglePin(id)
-            onCreated(id)
-        }
+    /** Makes a page at the top of the workspace. */
+    fun createPage(onCreated: (String) -> Unit) = viewModelScope.launch {
+        onCreated(repository.createPage(null))
     }
 
-    /** Makes a page on its own: inside page [parentPageId], or at the top of the workspace. */
-    fun createPage(parentPageId: String?, onCreated: (String) -> Unit) {
-        val home = state.value.isHome
-        viewModelScope.launch {
-            val id = repository.createPage(parentPageId)
-            // Made on Pinned: pinned, so it shows up there.
-            if (home) repository.togglePin(id)
-            onCreated(id)
-        }
-    }
-
-    // ---- Browse ----
+    // ---- Search ----
 
     private val _browse = MutableStateFlow(BrowseState())
     val browse: StateFlow<BrowseState> = _browse.asStateFlow()
     private var searchJob: Job? = null
 
-    /**
-     * Searches the notes here at once, and Notion's pages and databases after a short pause in
-     * typing (each letter isn't a request).
-     */
     /** Back to an empty search (when leaving Search). */
     fun resetSearch() {
         searchJob?.cancel()
         _browse.value = BrowseState()
     }
 
+    /**
+     * Searches the notes here at once, and Notion's pages and databases after a short pause in
+     * typing (each letter isn't a request).
+     */
     fun search(query: String) {
         val notes = NoteSearch.matches(repository.databases.value.values.flatMap { it.notes }, query)
         _browse.update { it.copy(query = query, notes = notes, loading = true, error = null) }
@@ -476,7 +330,7 @@ class MainViewModel(
         }
     }
 
-    /** Opens a page from Browse (it becomes known here first). */
+    /** Opens a page from a list (it becomes known here first). */
     fun openItem(item: WorkspaceItem, onOpenNote: (String) -> Unit) {
         val note = item.note ?: return
         viewModelScope.launch { onOpenNote(repository.openNote(note)) }

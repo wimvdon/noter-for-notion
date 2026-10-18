@@ -4,10 +4,17 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import be.wimvandonck.noter.data.api.NotionClient
 import be.wimvandonck.noter.data.model.Block
 import be.wimvandonck.noter.data.model.BlockType
-import be.wimvandonck.noter.data.model.DatabaseConfig
+import be.wimvandonck.noter.data.model.DatabaseSchema
+import be.wimvandonck.noter.data.model.DatabaseSetup
+import be.wimvandonck.noter.data.model.NoteSummary
+import be.wimvandonck.noter.data.model.PageIcon
+import be.wimvandonck.noter.data.model.PinnedDatabase
+import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.store.CacheStore
+import be.wimvandonck.noter.data.store.DatabaseCache
+import be.wimvandonck.noter.data.sync.PendingOp
 import be.wimvandonck.noter.data.store.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,19 +46,22 @@ class NotesRepositoryTest {
         notion.close()
     }
 
-    private fun repository(): NotesRepository {
-        val settings = SettingsStore(PreferenceDataStoreFactory.create { folder.newFile("settings.preferences_pb").also { it.delete() } })
-        return NotesRepository(
+    private fun repository(
+        cache: CacheStore = CacheStore(folder.newFolder("cache")),
+        settings: SettingsStore = newSettings(),
+    ): NotesRepository =
+        NotesRepository(
             client = NotionClient(apiKey = { "secret_test" }, baseUrl = notion.baseUrl),
             hasKey = { true },
             settings = settings,
-            cache = CacheStore(folder.newFolder("cache")),
+            cache = cache,
             scope = scope,
         ).also { repo ->
-            runBlocking { settings.update { it.copy(databases = listOf(DatabaseConfig("db", "Notes"))) } }
+            runBlocking { settings.update { it.copy(setups = it.setups + ("db" to DatabaseSetup())) } }
             repo.start()
         }
-    }
+
+    private fun newSettings() = SettingsStore(PreferenceDataStoreFactory.create { folder.newFile("settings-${java.util.UUID.randomUUID()}.preferences_pb").also { it.delete() } })
 
     @Test
     fun `a new note stays open while Notion creates it`() = runBlocking {
@@ -287,7 +297,7 @@ class NotesRepositoryTest {
     }
 
     @Test
-    fun `a view saved before data sources moves to its database's data source`() = runBlocking {
+    fun `a setup saved before data sources moves to its database's data source`() = runBlocking {
         notion.respond = { sent ->
             when {
                 sent.path.startsWith("/data_sources/ds-1/query") -> 200 to FakeNotion.list(FakeNotion.page("page-1", "ds-1", "Note"))
@@ -304,7 +314,7 @@ class NotesRepositoryTest {
         repo.refresh("db", userAsked = true)
 
         val settings = repo.currentSettings()
-        assertEquals(listOf("ds-1"), settings.databases.map { it.sourceId })
+        assertEquals(setOf("ds-1"), settings.setups.keys)
         assertEquals(listOf("page-1"), settings.order["ds-1"])
         assertEquals(listOf("page-1"), repo.databases.value["ds-1"]?.notes?.map { it.id })
         assertFalse(repo.databases.value.containsKey("db"))
@@ -390,31 +400,96 @@ class NotesRepositoryTest {
     }
 
     @Test
-    fun `a page's notebook has its subpages as notes, in the page's order`() = runBlocking {
-        val child = { id: String, title: String ->
-            """{"object":"block","id":"$id","type":"child_page","has_children":false,"created_time":"2026-10-01T10:00:00.000Z",
-               "last_edited_time":"2026-10-01T10:00:00.000Z","child_page":{"title":"$title"}}"""
-        }
+    fun `every database with a copy here is read at start, and a pinned page without one is downloaded`() = runBlocking {
         notion.respond = { sent ->
             when {
-                sent.method == "GET" && sent.path.startsWith("/blocks/parent/children") ->
-                    200 to FakeNotion.list(child("s2", "Second"), FakeNotion.todo("t", "Not a page"), child("s1", "First"))
-                sent.method == "GET" && sent.path == "/pages/s1" -> 200 to FakeNotion.page("s1", "parent", "First")
-                sent.method == "GET" && sent.path == "/pages/s2" -> 200 to FakeNotion.page("s2", "parent", "Second")
-                sent.method == "POST" && sent.path == "/pages" -> 200 to FakeNotion.page("s3", "parent", "")
+                sent.method == "GET" && sent.path == "/pages/p-1" ->
+                    200 to """{"object":"page","id":"p-1","parent":{"type":"workspace","workspace":true},"properties":{"title":{"id":"title","type":"title","title":[{"plain_text":"Journal"}]}}}"""
                 else -> 200 to "{}"
             }
         }
-        val repo = repository()
-        val key = NotesRepository.pageNotebookKey("parent")
-        repo.refresh(key, userAsked = true)
-        assertEquals(setOf("s1", "s2"), repo.databases.value[key]?.notes?.map { it.id }?.toSet())
-        assertEquals(listOf("s2", "s1"), repo.viewResults.value[key]?.ids)
+        val cache = CacheStore(folder.newFolder("cache"))
+        cache.saveDatabase("ds-x", DatabaseCache(notes = listOf(NoteSummary("n-1", "ds-x", "Kept"))))
+        val settings = newSettings()
+        settings.update { it.copy(pinned = listOf("n-1", "p-1")) }
 
-        // A new note in the notebook is a new subpage of the page.
-        repo.createNote(key)
+        val repo = repository(cache, settings)
+
+        withTimeout(5_000) { repo.databases.first { db -> db[NotesRepository.PAGES]?.notes?.any { it.id == "p-1" } == true } }
+        assertEquals(listOf("n-1"), repo.databases.value["ds-x"]?.notes?.map { it.id })
+        assertEquals(listOf("ds-x"), repo.pinnedSources())
+        // The note with a copy isn't downloaded again.
+        assertEquals(listOf("/pages/p-1"), notion.requests.filter { it.path.startsWith("/pages/") }.map { it.path })
+    }
+
+    @Test
+    fun `a new subpage of a page's notebook from before is still made inside the page`() = runBlocking {
+        notion.respond = { sent ->
+            when {
+                sent.method == "POST" && sent.path == "/pages" ->
+                    200 to """{"object":"page","id":"s-1","parent":{"type":"page_id","page_id":"parent"},"properties":{"title":{"id":"title","type":"title","title":[]}}}"""
+                else -> 200 to "{}"
+            }
+        }
+        val cache = CacheStore(folder.newFolder("cache"))
+        cache.saveDatabase("page:parent", DatabaseCache(notes = listOf(NoteSummary("local-1", "page:parent", ""))))
+        cache.saveOutbox(listOf(PendingOp.CreatePage("local-1", "page:parent", "parent")))
+
+        val repo = repository(cache)
+        withTimeout(5_000) { repo.databases.first { it["page:parent"]?.notes?.isNotEmpty() == true } }
         repo.flush()
+
         val create = notion.requests.single { it.method == "POST" && it.path == "/pages" }
         assertTrue(create.body, create.body.contains("\"page_id\":\"parent\""))
+        assertEquals("s-1", repo.resolve("local-1"))
+        // Its copy stays as it is: nothing to ask Notion about it.
+        repo.refresh("page:parent", userAsked = true)
+        assertFalse(notion.requests.any { it.path.contains("parent/children") })
+    }
+
+    @Test
+    fun `Home's databases and pages are kept on this phone`() = runBlocking {
+        notion.respond = { sent ->
+            when {
+                sent.method == "POST" && sent.path == "/search" -> 200 to FakeNotion.list(
+                    """{"object":"data_source","id":"ds-1","title":[{"plain_text":"Tasks"}],"parent":{"type":"database_id","database_id":"db-1"},"last_edited_time":"2026-10-01T10:00:00.000Z"}""",
+                    """{"object":"page","id":"p-1","parent":{"type":"workspace","workspace":true},"properties":{"title":{"id":"title","type":"title","title":[{"plain_text":"Journal"}]}}}""",
+                    FakeNotion.page("row-1", "ds-1", "A note"),
+                )
+                sent.path == "/databases/db-1" -> 200 to """{"object":"database","id":"db-1","title":[{"plain_text":"Tasks"}],"data_sources":[{"id":"ds-1","name":"Tasks"}]}"""
+                else -> 200 to "{}"
+            }
+        }
+        val cache = CacheStore(folder.newFolder("cache"))
+        val repo = repository(cache)
+        repo.refreshRecent()
+        // A database's notes aren't listed, only databases and pages.
+        assertEquals(listOf("ds-1", "p-1"), repo.recent.value?.map { it.id })
+        assertEquals("Tasks", repo.knownItem("ds1")?.title)
+
+        notion.respond = { 503 to "{}" }
+        val again = repository(cache, newSettings())
+        withTimeout(5_000) { again.recent.first { it != null } }
+        assertEquals(listOf("ds-1", "p-1"), again.recent.value?.map { it.id })
+    }
+
+    @Test
+    fun `a database's setup is kept at once, and databases are pinned and unpinned`() = runBlocking {
+        val repo = repository()
+        val schema = DatabaseSchema("ds-9", "Tasks", listOf(PropertySchema("st", "Status", "status")))
+
+        repo.updateSetup("ds-9", schema) { it.copy(selected = mapOf("Status" to listOf("Done"))) }
+        // A database never changed starts from its first status property as a row of chips.
+        assertEquals(DatabaseSetup(quickFilters = listOf("Status"), selected = mapOf("Status" to listOf("Done"))), repo.currentSettings().setups["ds-9"])
+        repo.updateSetup("ds9", schema) { it.copy(quickFilters = emptyList()) }
+        assertEquals(setOf("db", "ds-9"), repo.currentSettings().setups.keys)
+
+        repo.togglePinDatabase(PinnedDatabase("ds-9", "Tasks"))
+        repo.togglePinDatabase(PinnedDatabase("db-2", "Books"))
+        assertEquals(listOf("db-2", "ds-9"), repo.currentSettings().pinnedDatabases.map { it.id })
+        repo.renamePinnedDatabase("ds9", "Todo", PageIcon(emoji = "✅"))
+        assertEquals(PinnedDatabase("ds-9", "Todo", PageIcon(emoji = "✅")), repo.currentSettings().pinnedDatabases.last())
+        repo.togglePinDatabase(PinnedDatabase("ds9", "Todo"))
+        assertEquals(listOf("db-2"), repo.currentSettings().pinnedDatabases.map { it.id })
     }
 }

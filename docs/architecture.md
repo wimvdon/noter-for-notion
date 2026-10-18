@@ -6,57 +6,56 @@ Noter shows Notion pages as notes, in the style of Google Keep, and edits their 
 properties and content: the pages of databases and pages on their own.
 
 ### Screens
-- **Overview** (`ui/main/`): three top-level destinations in the navigation bar
-  (`logic/Destinations.kt`): **Pinned**, **Notebooks** and **Search**. The notebooks are peers
-  inside Notebooks, as scrollable tabs under the top app bar (in the order of Manage notebooks);
-  tapping Notebooks shows the notebook seen last. The top app bar has the sync button, a
-  notebook's **Filters** and **Sort** buttons, and a ⋮ menu with Edit notebook (in a notebook; in a sub-notebook also Edit for that sub-notebook on its own),
-  Manage notebooks and Settings. The header (app bar, tabs and rows of chips) scrolls away with
-  the notes and comes back on the first scroll up, and on another notebook
-  (`ui/main/QuickReturnHeader.kt`, offset in `logic/QuickReturn.kt`). The bar's order is a setting (`AppSettings.navigation`,
-  `Destinations.bar`): Pinned and Notebooks can swap, Search is always last; the app opens on the
-  first one (`Destinations.START`) and back goes there before leaving the app.
-  - **Pinned**: the pinned notes of everything (databases and pages), filtered by source. Any
-    page can be pinned, also one that isn't in a notebook; a note made with + on Pinned is pinned.
-  - **Notebooks** (`DatabaseConfig`, kept under `AppSettings.databases`; the code still calls them
-    views, the screens say "notebook" in every language, as a name of the app's own): all notes of
-    a database (its raw data source; Notion's views aren't used), set up on this phone
-    (`logic/Notebooks.kt`): the notebook's own filters per property (a note shows when it has one
-    of the selected values of every filtering property), and its sort: the custom order (dragged),
-    last edited, created, title or a date property. **Filters** (a dot on the button while
-    filters are on) opens the panel: the properties it can filter by, arranged like a note's
-    properties with `PropertyArranger` ("Shown" ones have a row of chips above the notes, in
-    that order; dragged past the "Hidden" line, or the eye, it loses its row), each with its
-    values to filter by right below it (`PropertyArranger`'s `below`; also the hidden ones); Clear
-    filters. **Sort** is a menu: tapping the current sort again turns it around, an arrow shows
-    which way. Above the notes, one row of chips per quick filter (`DatabaseConfig.quickFilters`),
-    each starting with the property's name and, while something in it is selected, ending in ×;
-    a row only shows once a note has a value for its property (`ChipFilter.anyValue`).
-    Dragging a note in another sort switches to the custom order, starting from the order on
-    screen, with an Undo snackbar. Notebooks that followed a Notion view before (`viewId` in old
-    settings) now show all notes of their database, in the custom order.
-  - **A notebook of several data sources** (`DatabaseConfig.children`): a Notion database with
-    more than one data source (`DatabaseInfo.sources`) is one notebook with a sub-notebook per
-    data source, shown as secondary tabs below the notebook tabs. Each sub-notebook is a notebook
-    of its own (filters, sort, cards, its notes); `Notebooks.leaves`, `update` and `named` treat
-    them as such, and on Pinned and for + they are named "Notebook · Sub-notebook".
-  - **Following Notion's structure** (`NotesRepository.reconcileNotebooks`,
-    `logic/NotebookStructure.kt`): opening the app (at most every 15 minutes) and pull-to-refresh
-    ask Notion which database each notebook's data source is in and which data sources each of
-    those databases has. A data source moved into another database becomes a sub-notebook of that
-    database's notebook (keeping its filters, sort and cards); a database that got a second data
-    source gets sub-notebooks; one left with a single data source becomes a plain notebook again;
-    a sub-notebook whose data source moved to another database becomes a notebook of its own. A
-    second notebook of the same data source stays on its own. Nothing changes while offline.
-  - **A data source Notion can't find** (`NotesRepository.missingSources`: a 404, or in the
-    trash): the notebook shows "Notion can't find this data source" with Remove notebook (or
-    Remove from this notebook, for a sub-notebook) and Retry, instead of its notes.
-  - **A page's notebook** (`DatabaseConfig.pageId`, kept under the key
-    `NotesRepository.pageNotebookKey`): its notes are the page's subpages (the child pages directly
-    on it), "Page order" is their order on the page (`ViewResult`, `views.json`), and a new
-    note is a new subpage. Each refresh lists the page's blocks and downloads only the subpages
-    that changed (`refreshSubpages`). It has nothing to filter by. Added from "Add notebook"
-    (a page in the search) or a page's ⋮ menu, "Add as notebook".
+- **Home** (`ui/main/MainScreen.kt`, `MainViewModel`): no navigation bar. On top a large, rounded
+  search bar ("Search Notion") with the sync button (while changes wait or the phone is offline)
+  and Settings at its end; tapping it opens Search. Below it, one scrolling grid:
+  - **Pinned**: the pinned databases as rows (`AppSettings.pinnedDatabases`: the key that opens
+    each, with its name and icon as last seen, so Home shows them offline; a pinned database keeps
+    Notion's name and icon each time it is opened), then the pinned notes and pages as cards
+    (`AppSettings.pinned`, `logic/NoteLists.kt`), in the order they were pinned unless dragged.
+    Every database with a copy on this phone is read when the app starts, so they show at once;
+    coming to the front refreshes the databases the pinned notes are in (`pinnedSources`).
+    Any database, page or note can be pinned: a long press on a row (Home, Search), the pin in a
+    note's app bar, a database's ⋮ menu, or a card's menu.
+  - **Databases and pages**: the most recently edited databases and pages Notion's search lists
+    (not the notes in databases), grouped by database as in Search, at most 30
+    (`NotesRepository.recent`, `refreshRecent`). The list is kept on this phone (`recent.json`), so
+    Home shows it at once and offline; it is asked again when the app starts (with a token) and on
+    pull-to-refresh. A pin at the end of a row shows it is pinned.
+  - **+** (`logic/NoteTargets.kt`) offers a page at the top of the workspace (with a personal
+    access token; when Notion refuses, the page is removed again and the app explains) and a note
+    in the pinned databases, then the other databases on Home's list; a database of several data
+    sources offers each, named "Database · Data source". A new note opens at once.
+  Without a token the screen says "Connect to Notion" with "Open settings" (`DESIGN.md`, "Empty
+  and setup states"). Back on Home leaves the app.
+- **Database** (`DatabaseScreen.kt`, `DatabaseViewModel`): a database opened from Home, Search or a
+  link in a note. All notes of its data source (Notion's views aren't used), shown as its setup
+  says (`DatabaseSetup` in `AppSettings.setups`, per data source; `logic/DatabaseSetups.kt`): the
+  values selected per property (a note shows when it has one of the selected values of every
+  filtering property), the properties with a row of chips above the notes, the sort (the custom
+  order (dragged), last edited, created, title or a date property) and what the cards show.
+  Every change is kept at once; there is nothing to save. A database opened for the first time
+  shows all notes in the custom order, with its status (else select) property as its first row
+  of chips (`DatabaseSetups.initial`). The top app bar has the sync button, **Filters** (a dot on
+  the button while filters are on: the panel lists the properties it can filter by, arranged like
+  a note's properties with `PropertyArranger` ("Shown" ones have a row of chips above the notes, in
+  that order; dragged past the "Hidden" line, or the eye, it loses its row), each with its values
+  to filter by right below it (`PropertyArranger`'s `below`; also the hidden ones); Clear
+  filters), **Sort** (a menu: tapping the current sort again turns it around, an arrow shows which
+  way) and ⋮: Pin (or Unpin) and Cards (the header image (off by default), the start of the
+  content (on; when off, no previews are downloaded for it) and up to three properties, else the
+  card shows the first row's property). Above the notes, one row of chips per quick filter,
+  each starting with the property's name and, while something in it is selected, ending in ×; a
+  row only shows once a note has a value for its property (`ChipFilter.anyValue`). The header
+  (app bar, tabs and rows of chips) scrolls away with the notes and comes back on the first scroll
+  up, and on another data source (`ui/main/QuickReturnHeader.kt`, offset in `logic/QuickReturn.kt`).
+  Dragging a note in another sort switches to the custom order, starting from the order on screen,
+  with an Undo snackbar.
+  - **A database of several data sources** (`DatabaseInfo.sources`): a tab per data source, each
+    with its own setup. It is pinned as the database; a database of one data source as its data
+    source.
+  - **A data source Notion can't find** (`NotesRepository.missingSources`: a 404): "Notion can't
+    find this data source" with Unpin (when pinned) and Retry, instead of its notes.
   Notes are cards in a staggered grid with a preview of their content; pinned notes come first
   under "Pinned". Long-press and drag moves a note within its section; a long press without
   moving opens its menu (pin, move to trash). While dragging, the card's place is worked out from
@@ -71,24 +70,26 @@ properties and content: the pages of databases and pages on their own.
   A chip's count of notes is set apart in a small pill, so an option "5" with one note doesn't
   read as "5 1". A new note made with a filter selected
   gets its value where it can (not for computed properties; a date only for Today).
-- **Search** (`SearchScreen.kt`, a destination in the navigation bar): the notes on this phone whose
-  title has every word typed (`logic/NoteSearch.kt`, at once and offline), then the databases and
-  pages Notion's search finds; before anything is typed, Notion's most recently edited ones.
-  Notion's search lists data sources, not databases. Each data source names its database; the app
-  asks Notion about that database once (`NotesRepository.databaseInfo`, kept in
-  `databases.json`) and groups the results (`WorkspaceCodec.group`): a database of several data
-  sources is listed once, as the database; a data source its database doesn't list is left out
-  (the search can show one the connection can't read). The list shows at once with what is kept,
-  then again after asking. The search starts afresh each time Search
-  is opened. + offers a new note as on Pinned (not pinned). "Add notebook" in Manage notebooks
-  opens the same search (`PickNotebookScreen`) with only databases and pages on their own.
-- **Database** (`DatabaseScreen.kt`): a database opened from Search or a link in a note, as a
-  child page with its notes and filters; "Add as notebook" makes it a notebook, after which the
-  button is "Edit notebook" and opens its setup (Manage notebooks), so it isn't added twice.
-- **New pages**: + on Pinned offers a note in one of the notebooks and, with a personal access
-  token, a page at the top of the workspace (among the user's private pages; when Notion refuses,
-  the page is removed again and the app explains); a page made there is pinned. A page's ⋮ menu
-  has "New subpage".
+- **Pages** open in the editor, also a page with subpages: its subpages are links in its content
+  (child pages), which open in the app. A page's ⋮ menu has "New subpage".
+- **Search** (`SearchScreen.kt`, a child page from Home's search bar, sharing Home's ViewModel): the
+  notes on this phone whose title has every word typed (`logic/NoteSearch.kt`, at once and
+  offline), then the databases and pages Notion's search finds; before anything is typed,
+  Notion's most recently edited ones. Notion's search lists data sources, not databases. Each data
+  source names its database; the app asks Notion about that database once
+  (`NotesRepository.databaseInfo`, kept in `databases.json`) and groups the results
+  (`WorkspaceCodec.group`): a database of several data sources is listed once, as the database; a
+  data source its database doesn't list is left out (the search can show one the connection can't
+  read). The list shows at once with what is kept, then again after asking. The search starts
+  afresh each time Search is opened; a long press on a database or page pins it.
+- **Notebooks from before** (`logic/LegacyNotebooks.kt`): until this redesign the app had
+  notebooks (tabs set up in Manage notebooks, kept under `AppSettings.databases`). They are read
+  once, when the settings are read: each database keeps the filters, rows of chips, sort and cards
+  of its notebook (the first one, when there were several) and is pinned on Home, in the order of
+  the tabs; a page's notebook becomes a pinned page (downloaded at start when there is no copy
+  of it, `NotesRepository.openPinnedPages`). Copies of a page notebook's subpages (keys
+  `page:<id>`) are still read, so a change or new subpage waiting to be sent isn't lost; they
+  aren't refreshed.
 - **Note** (`ui/note/`): header image, icon (tap it, or "Add icon", to choose an emoji in
   `PageIconSheet.kt`: common ones, any other typed with the keyboard (`logic/EmojiInput.kt`), or
   none; sent as `PendingOp.SetIcon`, or with the create for a new note), title, properties (`PropertyEditors.kt`; the
@@ -104,29 +105,16 @@ properties and content: the pages of databases and pages on their own.
   more properties". The tune button turns the properties into a list to arrange in place: drag a
   property by its handle to change the order, and below the "Hidden" line to hide it (the eye does
   the same with one tap); "Done" goes back. This is kept per database in
-  `AppSettings.propertyLayouts` (backed up). What the cards in the overview show is set up per
-  notebook (`DatabaseConfig.cards`, in Edit notebook): the header image (off by default), the
-  start of the content (on; when off, no previews are downloaded for it) and up to three
-  properties (else the card shows the filter property). A notebook from before starts from what
-  its database's cards showed (`PropertyLayouts.cards`); on Pinned a note's card follows the
-  first notebook of its database (`PropertyLayouts.cardLayouts`).
-- **Manage notebooks** (`ui/views/`): the notebooks in their order (up/down; the order of the
-  tabs); tapping one edits its name, icon and what the cards show. "Add notebook" opens Search to pick a database (all its notes;
-  `Notebooks.newNotebook` gives it a status, else a select, property as its first row of chips,
-  in the custom order) or a page (its subpages). Filters and sort are changed in the notebook
-  itself. "Add as notebook" on a database's page opens the same step. Opens from the ⋮ menu
-  and from Settings.
-- **View icons** (`data/icons/IconCatalog.kt`, `ui/common/IconPicker.kt`, `DatabaseIcons.kt`):
-  the Material Symbols set (4 229 icons) from `assets/material_symbols.txt` (name, categories and
-  SVG path data per icon, from RSS Reader), drawn as vectors and searchable by English name,
-  category and a few related words. Views store the icon's name; the 29 keys from before are
-  mapped to their Material Symbols names.
+  `AppSettings.propertyLayouts` (backed up). What the cards show is part of the database's setup
+  (`DatabaseSetup.cards`); a database set up before starts from what its cards showed
+  (`PropertyLayouts.cards`), and on Home a note's card follows its database's setup
+  (`PropertyLayouts.cardLayouts`).
+- **Icons of Notion's own** (`data/icons/IconCatalog.kt`, `DatabaseIcons.kt`): the Material Symbols
+  set (4 229 icons) from `assets/material_symbols.txt` (name, categories and SVG path data per icon,
+  from RSS Reader), drawn as vectors, for the closest match to a Notion icon (`logic/PageIcons.kt`).
 - **Settings** (`ui/settings/`): Connection (a personal access token, with the steps to make one,
-  and sync status), Views (a link to Manage views), Navigation bar (the order of Pinned and
-  Notebooks by their drag handles, the first marked as where the app opens; Search locked
-  last), Appearance; built from the shared
-  `SettingsKit.kt`.
-- **Data sources** (`NotesRepository.resolveSource`): a key is asked about as a database first
+  and sync status) and Appearance; built from the shared `SettingsKit.kt`.
+- **Which data source** (`NotesRepository.resolveSource`): a key is asked about as a database first
   (its first data source), then as a data source, because Notion may answer for a database's ID
   as if it were a data source. The answers are kept in `sources_v2.json`.
 - **Errors** (`data/api/NotionErrors.kt`, `ui/common/ErrorText.kt`): the screens keep an error as
@@ -139,18 +127,17 @@ properties and content: the pages of databases and pages on their own.
   with it, and "New page at the top of your workspace" isn't offered (Notion refuses it). A
   personal access token can't list the workspace's people, so person properties offer the people
   in the notes here and the token's owner (`logic/KnownUsers.kt`).
-- **New note** on Pinned asks which notebook (`logic/NoteTargets.kt`). A note made on Pinned is pinned.
 - **Empty lists** use the shared `ui/theme/EmptyState.kt`: an icon in a circle, a title, one sentence and, where it helps, a button (Clear filters, Retry). Without an API key the whole screen says "Connect to Notion" with an "Open settings" button, the same words as Time Tracker for Notion (`DESIGN.md`, "Empty and setup states").
-- `ui/AppNavigation.kt`: a small back stack of five screens (no navigation library).
+- `ui/AppNavigation.kt`: a small back stack of five screens (Home, Search, Settings, notes and
+  databases; no navigation library).
 - **Pages on their own** (not in a database) are kept like a database's notes under the key
   `NotesRepository.PAGES`, so editing, pinning and the trash work the same. Linked pages and
   databases in a note (child pages, links to pages) open in the app.
 
 - **Data sources** (Notion API 2025-09-03): a Notion database holds one or more data sources,
-  each with its own properties and pages. The app treats every data source as a database of its
-  own: Browse and Add view list them separately, and notes, views, order and property layouts are
-  kept under the data source's ID. A link to a database (a child database or a link in a note)
-  opens its first data source, with a tab per data source when it has several. Keys saved before
+  each with its own properties and pages. The app keeps notes, setups, order and property layouts
+  under the data source's ID. A link to a database (a child database or a link in a note) opens
+  its first data source, with a tab per data source when it has several. Keys saved before
   (database IDs) are looked up once (`NotesRepository.resolveSource`, remembered in
   `sources.json`) and renamed everywhere to the data source's ID (`data/sync/SourceKeys.kt`).
 
@@ -186,7 +173,7 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
   nested but not taken out of its column. Tabs work the same way: each tab's name (Notion's text
   line directly in the tab block, `BlockCodec.asTab`) is a label with its emoji, and the tab's
   blocks follow it; the names themselves are edited in Notion. What is nested in images, synced blocks and the like
-  stays in Notion; such a block says it has nested content. Previews in the overview download only the top level
+  stays in Notion; such a block says it has nested content. Previews on the cards download only the top level
   (`PageContent.nestedLoaded`), and opening the note gets the rest. Until it arrives, the blocks
   whose nested content is missing show a loading placeholder (`logic/NestedContent.kt`) and the
   note can't be edited, so an edit can't keep the incomplete copy on screen; when it can't be
@@ -216,8 +203,8 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
 - **Offline**: unsent changes are retried after 15 s, then waiting longer each time (at most a
   minute without a connection, five minutes after server errors), and at once when the app comes
   to the front or the sync button is tapped. The app doesn't sync while it is closed.
-- **Sync button** (`ui/common/SyncButton.kt`): in a note's app bar, and in the overview's while
-  changes wait or the phone is offline. It sends what is waiting and gets the latest version.
+- **Sync button** (`ui/common/SyncButton.kt`): in a note's app bar, and on Home and in a database
+  while changes wait or the phone is offline. It sends what is waiting and gets the latest version.
 - **Saving** (`data/sync/SaveTiming.kt`): an edit reaches the on-phone copy after a short pause in
   typing (at most 1 s later), and the queue goes to Notion after a pause (at most 1 s after the
   first unsent change). While typing, that is about one round of requests per second, one per
@@ -228,18 +215,18 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
   `cacheDir/images` (100 MB). Links to files Notion hosts work for about an hour: content with an
   expired link is downloaded again when the note opens (`NotionFiles`), and images are cached
   under the link without its signature, so a fresh link doesn't download the image again.
-- **Previews** (`logic/NotePreviews.kt`): the overview shows the start of each note's content from
+- **Previews** (`logic/NotePreviews.kt`): the cards show the start of each note's content from
   the on-phone copy. Copies that are missing or older than the note's last edit in Notion are
   downloaded one note at a time (at most 24 per round).
-- **Order and pins** are only on this phone (`AppSettings.order`, `AppSettings.pinned`); Notion is
-  not changed.
+- **Order and pins** are only on this phone (`AppSettings.order`, `AppSettings.pinned`,
+  `AppSettings.pinnedDatabases`); Notion is not changed.
 
 ### Where data lives
 | What | Where | Backed up |
 |---|---|---|
-| Notebooks (with their filters and sort), pins, order, property layouts, theme | DataStore `backed_up_settings` | Yes |
+| Each database's setup (filters, rows of chips, sort, cards), pinned databases (key, name, icon), pinned notes and pages, order, property layouts, theme | DataStore `backed_up_settings` | Yes |
 | Token and its kind | `EncryptedSharedPreferences` `notion_key_encrypted_prefs` | No |
-| Copies of notes, schemas, users, pages' order of their subpages; unsent changes | JSON files in `noBackupFilesDir/notion_cache` | No |
+| Copies of notes, schemas, users, Home's list of databases and pages; unsent changes | JSON files in `noBackupFilesDir/notion_cache` | No |
 | Images | Coil's cache in `cacheDir/images` | No |
 
 ## Structure
@@ -266,7 +253,7 @@ scripts/                         Release helpers (Python/Java) with their own te
 - **UI state**: small screens use `rememberSaveable`. When a screen gets real logic or data,
   add a `ViewModel` (`androidx.lifecycle:lifecycle-viewmodel-compose`) that exposes a
   `StateFlow<UiState>` and calls into the plain-Kotlin logic. Record it in `decisions.md`.
-- **Navigation**: four screens on a small back stack in `ui/AppNavigation.kt` (see `decisions.md`).
+- **Navigation**: five screens on a small back stack in `ui/AppNavigation.kt` (see `decisions.md`).
 - **Persistence**: Jetpack DataStore (version already in the catalog). Wrap it behind a small
   repository interface so logic tests can use a fake. Decide per value whether it is backed up
   (see "Backup" below).

@@ -1,7 +1,7 @@
 package be.wimvandonck.noter.data.store
 
 import be.wimvandonck.noter.data.model.DatabaseInfo
-import be.wimvandonck.noter.data.model.ViewResult
+import be.wimvandonck.noter.data.model.WorkspaceItem
 import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.NotionUser
@@ -118,12 +118,20 @@ class CacheStore(private val dir: File) {
     @Synchronized
     fun saveDatabaseInfos(infos: Map<String, DatabaseInfo>) = write(DATABASES, MapSerializer(String.serializer(), DatabaseInfo.serializer()), infos)
 
-    /** Each page notebook's order of its subpages when last asked, by its key. */
+    /** Home's databases and pages, as Notion's search listed them when last asked. */
     @Synchronized
-    fun views(): Map<String, ViewResult> = read(VIEWS, MapSerializer(String.serializer(), ViewResult.serializer())).orEmpty()
+    fun recent(): List<WorkspaceItem>? = read(RECENT, ListSerializer(WorkspaceItem.serializer()))
 
     @Synchronized
-    fun saveViews(views: Map<String, ViewResult>) = write(VIEWS, MapSerializer(String.serializer(), ViewResult.serializer()), views)
+    fun saveRecent(items: List<WorkspaceItem>) = write(RECENT, ListSerializer(WorkspaceItem.serializer()), items)
+
+    /** The keys of the databases with a copy here (see [database]), as written in the file names. */
+    @Synchronized
+    fun databaseKeys(): List<String> =
+        dir.listFiles().orEmpty().map { it.name }
+            .filter { it.startsWith("db_") && it.endsWith(".json") }
+            .map { it.removePrefix("db_").removeSuffix(".json") }
+            .sorted()
 
     /** Removes everything (another Notion workspace was connected). */
     @Synchronized
@@ -137,7 +145,7 @@ class CacheStore(private val dir: File) {
         // v2: a database is asked about before a data source (see NotesRepository.resolveSource), so
         // keys resolved the other way round before are asked about again.
         const val SOURCES = "sources_v2.json"
-        const val VIEWS = "views.json"
+        const val RECENT = "recent.json"
         const val DATABASES = "databases.json"
     }
 }
