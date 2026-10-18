@@ -1,5 +1,7 @@
 package be.wimvandonck.noter
 
+import be.wimvandonck.noter.logic.SharedContent
+import kotlinx.coroutines.flow.MutableStateFlow
 import android.app.Application
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -30,6 +32,9 @@ class NoterApp : Application(), SingletonImageLoader.Factory {
         private set
     lateinit var repository: NotesRepository
         private set
+
+    /** What another app shared and Home hasn't saved yet (#63; MainActivity sets it). */
+    val shares = MutableStateFlow<SharedContent?>(null)
 
     /** View icons (Material Symbols), read from the assets the first time they are needed. */
     val iconCatalog: IconCatalog by lazy {

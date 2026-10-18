@@ -20,6 +20,11 @@ import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.model.WorkspaceItem
 import be.wimvandonck.noter.data.notion.BlockCodec
 import be.wimvandonck.noter.data.notion.InlineMarkdown
+import be.wimvandonck.noter.data.web.WebPageClient
+import be.wimvandonck.noter.logic.SharedContent
+import be.wimvandonck.noter.logic.SharedNotes
+import be.wimvandonck.noter.logic.WebArticles
+import kotlinx.serialization.json.JsonObject
 import be.wimvandonck.noter.data.notion.PropertyCodec
 import be.wimvandonck.noter.data.notion.TokenCodec
 import be.wimvandonck.noter.data.notion.TokenInfo
@@ -111,6 +116,8 @@ class NotesRepository(
     private val cache: CacheStore,
     private val scope: CoroutineScope,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** Downloads links shared to the app (#63, [saveShared]). */
+    private val web: WebPageClient = WebPageClient(),
 ) {
     private val lock = Mutex()
     private val flushLock = Mutex()
@@ -460,20 +467,55 @@ class NotesRepository(
      * Creates a page on its own on this phone (it is sent to Notion right after): inside page
      * [parentPageId], or at the top of the workspace when that is null. Returns its ID.
      */
-    suspend fun createPage(parentPageId: String?, key: String = PAGES, workspace: String? = null): String = withContext(Dispatchers.IO) {
+    suspend fun createPage(
+        parentPageId: String?,
+        key: String = PAGES,
+        workspace: String? = null,
+        /** Its title (plain text), for a page made from a share. */
+        title: String = "",
+        /** Content made with the page (a share, #63). */
+        children: List<Block> = emptyList(),
+    ): String = withContext(Dispatchers.IO) {
         loadDatabase(key)
         val id = NoteSummary.LOCAL_PREFIX + UUID.randomUUID()
         val now = Instant.ofEpochMilli(clock()).toString()
-        val title = NoteProperty(PAGE_TITLE, "title", PropertyValue.Text(""))
-        val page = NoteSummary(id, key, title = "", createdTime = now, lastEditedTime = now, properties = listOf(title))
+        val markdown = InlineMarkdown.escape(title)
+        val titleProperty = NoteProperty(PAGE_TITLE, "title", PropertyValue.Text(markdown))
+        val page = NoteSummary(id, key, title = markdown, createdTime = now, lastEditedTime = now, properties = listOf(titleProperty))
         lock.withLock {
             setState(key) { it.copy(notes = listOf(page) + it.notes, loaded = true) }
             _databases.value[key]?.let { saveDatabaseCache(key, it) }
             cache.saveContent(PageContent(id, blocks = emptyList(), base = emptyList(), nestedLoaded = true))
-            enqueue(PendingOp.CreatePage(id, key, parentPageId?.let(::resolve), workspace.takeIf { parentPageId == null }))
+            enqueue(PendingOp.CreatePage(id, key, parentPageId?.let(::resolve), workspace.takeIf { parentPageId == null }, children))
         }
         scheduleFlush()
         id
+    }
+
+    /**
+     * A new note from what another app shared (#63): in data source [databaseId], or a page at
+     * the top of [workspace] when that is null. A shared link is downloaded first ([web]) so the
+     * page's text and images go into the note; when that fails (offline, not a web page) the note
+     * still has the link as a bookmark. Offline, the note is made (with its content) once the
+     * phone is back online. Returns the new note's ID (null: the database's properties couldn't
+     * be read).
+     */
+    suspend fun saveShared(shared: SharedContent, databaseId: String?, workspace: String?): String? {
+        val article = shared.url?.let { url ->
+            web.fetch(url)?.let { page ->
+                withContext(Dispatchers.Default) { runCatching { WebArticles.parse(page.html, page.url) }.getOrNull() }
+            }
+        }
+        val title = SharedNotes.title(shared, article)
+        val blocks = SharedNotes.blocks(shared, article)
+        val id = if (databaseId != null) {
+            createNote(databaseId, title = title, children = blocks)
+        } else {
+            createPage(null, workspace = workspace, title = title, children = blocks)
+        } ?: return null
+        // Made in Notion before the note opens (when online), so it opens with the shared content.
+        flush()
+        return resolve(id)
     }
 
     /** Removes a note that only exists on this phone (Notion refused to make it). */
@@ -493,7 +535,14 @@ class NotesRepository(
      * Creates a note on this phone (it is sent to Notion right after) and returns its ID.
      * [preset] values are filled in, e.g. the chip that is selected.
      */
-    suspend fun createNote(databaseId: String, preset: List<NoteProperty> = emptyList()): String? =
+    suspend fun createNote(
+        databaseId: String,
+        preset: List<NoteProperty> = emptyList(),
+        /** Its title (plain text), for a note made from a share. */
+        title: String = "",
+        /** Content made with the note (a share, #63). */
+        children: List<Block> = emptyList(),
+    ): String? =
         withContext(Dispatchers.IO) {
             loadDatabase(databaseId)
             var schema = _databases.value[databaseId]?.schema
@@ -505,15 +554,17 @@ class NotesRepository(
             val id = NoteSummary.LOCAL_PREFIX + UUID.randomUUID()
             val now = Instant.ofEpochMilli(clock()).toString()
             val presetByName = preset.associateBy { it.name }
+            val markdown = InlineMarkdown.escape(title)
             val properties = schema.properties
                 .filter { it.type in NoteProperty.EDITABLE_TYPES }
                 .map { presetByName[it.name] ?: PropertyCodec.emptyValue(it) }
-            val note = NoteSummary(id, databaseId, title = "", createdTime = now, lastEditedTime = now, properties = properties)
+                .map { if (markdown.isNotEmpty() && it.type == "title") it.copy(value = PropertyValue.Text(markdown)) else it }
+            val note = NoteSummary(id, databaseId, title = markdown, createdTime = now, lastEditedTime = now, properties = properties)
             lock.withLock {
                 setState(databaseId) { it.copy(notes = listOf(note) + it.notes) }
                 _databases.value[databaseId]?.let { saveDatabaseCache(databaseId, it) }
                 cache.saveContent(PageContent(id, blocks = emptyList(), base = emptyList()))
-                enqueue(PendingOp.CreatePage(id, databaseId))
+                enqueue(PendingOp.CreatePage(id, databaseId, children = children))
             }
             scheduleFlush()
             id
@@ -808,11 +859,23 @@ class NotesRepository(
         val note = findNote(_databases.value, op.pageId) ?: return true
         val sent = note.properties
         val sentEmoji = note.icon?.emoji
-        val page = if (op.databaseId == PAGES || isPageNotebook(op.databaseId)) {
-            client.createPageIn(op.parentPageId, PropertyCodec.toCreateRequest(sent), sentEmoji, op.workspace)
-        } else {
-            client.createPage(resolveSource(op.databaseId), PropertyCodec.toCreateRequest(sent), children = emptyList(), emoji = sentEmoji)
+        val source = if (op.databaseId == PAGES || isPageNotebook(op.databaseId)) null else resolveSource(op.databaseId)
+        // Shared content goes with the page; when Notion refuses it (an image link it can't use), less of it.
+        val attempts = BlockCodec.createAttempts(op.children)
+        var made: JsonObject? = null
+        for ((i, children) in attempts.withIndex()) {
+            try {
+                made = if (source == null) {
+                    client.createPageIn(op.parentPageId, PropertyCodec.toCreateRequest(sent), sentEmoji, op.workspace, children)
+                } else {
+                    client.createPage(source, PropertyCodec.toCreateRequest(sent), children = children, emoji = sentEmoji)
+                }
+                break
+            } catch (e: NotionException) {
+                if (e.status != 400 || i == attempts.lastIndex) throw e
+            }
         }
+        val page = made ?: throw NotionException("Notion did not create the page", status = 500)
         val newId = page.stringOrNull("id") ?: throw NotionException("Notion did not return a page ID", status = 500)
         val created = PropertyCodec.parsePage(page, op.databaseId) ?: note.copy(id = newId)
         val oldId = op.pageId
@@ -843,7 +906,10 @@ class NotesRepository(
             _databases.value[op.databaseId]?.let { saveDatabaseCache(op.databaseId, it) }
 
             val content = cache.content(oldId)
-            if (content != null) {
+            if (content != null && op.children.isNotEmpty() && content.blocks.isEmpty()) {
+                // The shared content went with the page: it is downloaded when the note opens.
+                cache.deleteContent(oldId)
+            } else if (content != null) {
                 val moved = content.copy(pageId = newId, base = emptyList(), dirty = content.blocks.isNotEmpty())
                 cache.saveContent(moved)
                 cache.deleteContent(oldId)

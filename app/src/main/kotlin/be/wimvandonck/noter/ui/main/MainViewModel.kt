@@ -34,6 +34,7 @@ import be.wimvandonck.noter.logic.PageTree
 import be.wimvandonck.noter.logic.PropertyLayouts
 import be.wimvandonck.noter.logic.SearchKind
 import be.wimvandonck.noter.logic.SearchResults
+import be.wimvandonck.noter.logic.SharedContent
 import be.wimvandonck.noter.logic.TargetGroup
 import be.wimvandonck.noter.logic.TreeNode
 import be.wimvandonck.noter.logic.Workspace
@@ -227,6 +228,8 @@ class MainViewModel(
     /** The workspaces folded away on Home, and keeping a change to them. */
     collapsed: StateFlow<Set<String>>,
     private val setCollapsed: (Set<String>) -> Unit,
+    /** What another app shared and isn't saved yet (#63, NoterApp.shares). */
+    private val shares: MutableStateFlow<SharedContent?> = MutableStateFlow(null),
 ) : ViewModel() {
     val events: Flow<RepoEvent> = repository.events
 
@@ -379,6 +382,41 @@ class MainViewModel(
     /** Shows more of the top level of Home's tree. */
     fun showMore() = treeLimit.update { it + PageTree.PAGE_SIZE }
 
+    // ---- Shared from another app (#63) ----
+
+    /** What another app shared, waiting for the user to say where it goes; null when nothing is. */
+    val sharing: StateFlow<SharedContent?> = shares.asStateFlow()
+
+    private val _savingShare = MutableStateFlow(false)
+
+    /** True while a share is saved (its page downloaded, the note made). */
+    val savingShare: StateFlow<Boolean> = _savingShare.asStateFlow()
+
+    /** Leaves the share unsaved. */
+    fun dismissShare() {
+        shares.value = null
+    }
+
+    /**
+     * Saves the share as a note in data source [databaseId], or as a page at the top of
+     * [workspace] when that is null, then opens it with [onCreated]. When the note can't be made
+     * the share stays, so another place can be chosen.
+     */
+    fun saveShared(databaseId: String?, workspace: String?, onCreated: (String) -> Unit) {
+        val shared = shares.value ?: return
+        if (_savingShare.value) return
+        _savingShare.value = true
+        viewModelScope.launch {
+            try {
+                val id = repository.saveShared(shared, databaseId, workspace) ?: return@launch
+                shares.value = null
+                onCreated(id)
+            } finally {
+                _savingShare.value = false
+            }
+        }
+    }
+
     /** Folds workspace [id] away on Home, or unfolds it. */
     fun toggleCollapsed(id: String) {
         val now = state.value.collapsed
@@ -468,6 +506,7 @@ class MainViewModel(
                     keys.avatarUrl,
                     keys.collapsed,
                     keys::setCollapsed,
+                    app.shares,
                 )
             }
         }

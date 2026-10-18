@@ -291,11 +291,17 @@ class NotionClient(
      * one when null or no longer there) when it is null. Notion allows the top only to a personal
      * access token; a connection gets an error.
      */
-    suspend fun createPageIn(parentPageId: String?, properties: Map<String, Any?>, emoji: String? = null, workspace: String? = null): JsonObject =
+    suspend fun createPageIn(
+        parentPageId: String?,
+        properties: Map<String, Any?>,
+        emoji: String? = null,
+        workspace: String? = null,
+        children: List<Map<String, Any?>> = emptyList(),
+    ): JsonObject =
         createPage(
             if (parentPageId != null) mapOf("type" to "page_id", "page_id" to parentPageId) else mapOf("type" to "workspace", "workspace" to true),
             properties,
-            emptyList(),
+            children,
             emoji,
             key = if (parentPageId == null) workspace?.let(::keyOf) else null,
         )

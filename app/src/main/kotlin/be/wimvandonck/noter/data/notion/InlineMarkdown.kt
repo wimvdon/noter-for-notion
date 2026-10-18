@@ -83,6 +83,9 @@ object InlineMarkdown {
         return out.toString()
     }
 
+    /** [text] as Markdown that reads back as exactly this text (its markers escaped). */
+    fun escape(text: String): String = escapeText(text)
+
     private fun escapeText(text: String): String =
         buildString { text.forEach { if (it in SPECIAL) append('\\'); append(it) } }
 

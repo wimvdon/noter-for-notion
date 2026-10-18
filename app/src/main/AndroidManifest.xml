@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Only to talk to Notion (api.notion.com). Ask before adding any other permission (see CLAUDE.md). -->
+    <!-- To talk to Notion (api.notion.com), download the images in notes and a link shared to the app
+         (PRIVACY.md). Ask before adding any other permission (see CLAUDE.md). -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
@@ -20,6 +21,12 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Text and links shared from other apps (#63). -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
     </application>

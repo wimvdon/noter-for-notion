@@ -7,6 +7,7 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.CompositionLocalProvider
@@ -22,6 +23,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
@@ -98,6 +100,12 @@ fun AppNavigation() {
     }
 
     BackHandler(enabled = stack.size > 1) { pop() }
+
+    // Something shared from another app (#63): back to Home, which asks where it goes.
+    val sharing by mainViewModel.sharing.collectAsStateWithLifecycle()
+    LaunchedEffect(sharing) {
+        if (sharing != null) while (stack.size > 1) pop()
+    }
 
     AnimatedContent(
         targetState = stack,

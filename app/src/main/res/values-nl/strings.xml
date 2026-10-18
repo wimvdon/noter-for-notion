@@ -162,6 +162,8 @@
     <string name="source_missing_body">Misschien is ze verwijderd of naar de prullenbak verplaatst, of heeft de koppeling er geen toegang meer toe.</string>
     <string name="action_new">Nieuw</string>
     <string name="section_recent">Databases en pagina’s</string>
+    <string name="share_save_to">Opslaan in</string>
+    <string name="share_saving">Opslaan…</string>
     <string name="tree_show_more">Meer tonen</string>
     <string name="tree_show_inside">Pagina’s erin tonen</string>
     <string name="tree_hide_inside">Pagina’s erin verbergen</string>

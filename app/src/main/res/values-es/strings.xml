@@ -165,6 +165,8 @@
     <string name="source_missing_body">Puede que se haya eliminado o movido a la papelera, o que la conexión ya no tenga acceso.</string>
     <string name="action_new">Nuevo</string>
     <string name="section_recent">Bases de datos y páginas</string>
+    <string name="share_save_to">Guardar en</string>
+    <string name="share_saving">Guardando…</string>
     <string name="tree_show_more">Mostrar más</string>
     <string name="tree_show_inside">Mostrar las páginas que contiene</string>
     <string name="tree_hide_inside">Ocultar las páginas que contiene</string>
