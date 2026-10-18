@@ -1082,6 +1082,22 @@ class NotesRepository(
     }
 
     /** What Home's list or the last search said about database or page [id] (its name and icon), if anything. */
+    /**
+     * The database data source [sourceId] is in, for links to Notion: from its properties or the
+     * last search when the phone knows, else asked from Notion. Null when nobody can tell (offline).
+     */
+    suspend fun databaseOf(sourceId: String): String? {
+        _databases.value[sourceId]?.schema?.databaseId?.let { return it }
+        knownItem(sourceId)?.databaseId?.let { return it }
+        return withContext(Dispatchers.IO) {
+            try {
+                PropertyCodec.parseSchema(client.getDataSource(sourceId)).databaseId
+            } catch (e: NotionException) {
+                null
+            }
+        }
+    }
+
     fun knownItem(id: String): WorkspaceItem? =
         (lastFound + _recent.value.orEmpty()).firstOrNull { plain(it.id) == plain(id) }
 

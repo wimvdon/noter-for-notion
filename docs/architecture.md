@@ -42,7 +42,7 @@ properties and content: the pages of databases and pages on their own.
   that order; dragged past the "Hidden" line, or the eye, it loses its row; the order of the hidden ones is kept too, `DatabaseSetup.filterOrder`), each with its values
   to filter by right below it (`PropertyArranger`'s `below`; also the hidden ones); Clear
   filters), **Sort** (a menu: tapping the current sort again turns it around, an arrow shows which
-  way) and ⋮: Pin (or Unpin), Share (Notion's link to the database) and Cards (the header image (off by default), the start of the
+  way), **Cards** (the Tune icon, as a page's properties button) and ⋮: Pin (or Unpin), Open in Notion and Share (Notion's link to the database; a data source's database comes from `DatabaseSchema.databaseId`, the last search or Notion, `NotesRepository.databaseOf`). Cards sets the header image (off by default), the start of the
   content (on; when off, no previews are downloaded for it) and up to three properties, else the
   card shows the first row's property). Above the notes, one row of chips per quick filter,
   each starting with the property's name and, while something in it is selected, ending in ×; a
@@ -96,9 +96,9 @@ properties and content: the pages of databases and pages on their own.
   picker of a select or multi-select can add an option: type a name, tap Add, and Notion makes the
   option when the note is saved, `logic/NewOptions.kt`; an option any cached note has is added to
   the database's properties at once, `logic/SchemaOptions.kt`, and opening a note downloads its
-  database's properties again so options added in Notion show), then the content as a
+  database's properties again so options added in Notion show; every picker lists what is selected first when it opens and then keeps its order while ticking, `logic/ChoiceOrder.kt`), then the content as a
   list of blocks, each its own text field. To-do items have an × to delete them. A toolbar above the keyboard changes the block's kind,
-  adds a divider, deletes the block or starts selecting lines (a tap selects a line; the bar then has Select all, Copy as Markdown text and Delete, `logic/BlockSelection.kt`). A new line is scrolled into view just above the keyboard and no further (`logic/Reveal.kt`). The title row ends in the button that arranges the properties; the ⋮ menu has Share (the page's Notion link). Tapping below the content continues at the end. Moving a
+  adds a divider, deletes the block or starts selecting lines (a tap selects a line; the bar then has Select all, Copy as Markdown text and Delete, `logic/BlockSelection.kt`). A new line is scrolled into view just above the keyboard and no further (`logic/Reveal.kt`). The title row ends in the button that arranges the properties; the ⋮ menu has Share (the page's Notion link) and Select text: the note as plain text in one selection area, so a selection can run across lines (`SelectTextView.kt`, `logic/ReadingText.kt`; nothing can be changed there). Tapping below the content continues at the end. Moving a
   note to the trash asks first.
 - **Properties per database** (`logic/PropertyLayouts.kt`, `ui/note/PropertyArranger.kt`): as in
   Notion, every property is shown until the user hides it; hidden ones are folded away under "N

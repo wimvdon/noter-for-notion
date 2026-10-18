@@ -45,6 +45,7 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -68,6 +69,7 @@ import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.model.SelectOption
 import be.wimvandonck.noter.data.notion.PropertyCodec
+import be.wimvandonck.noter.logic.ChoiceOrder
 import be.wimvandonck.noter.logic.NewOptions
 import be.wimvandonck.noter.logic.NotionDates
 import be.wimvandonck.noter.ui.common.OptionChip
@@ -394,6 +396,13 @@ private fun <T> ChoiceSheet(
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     val newOption = onAdd?.let { NewOptions.offer(query, items.map(searchText)) }
+    // What is selected comes first when the sheet opens; after that nothing moves while the user
+    // ticks and unticks (see ChoiceOrder).
+    var order by remember { mutableStateOf(emptyList<String>()) }
+    val arranged = ChoiceOrder.arrange(items.map(key), items.filter(isSelected).map(key).toSet(), order)
+    SideEffect { order = arranged }
+    val byKey = items.associateBy(key)
+    val ordered = arranged.mapNotNull { byKey[it] }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.navigationBarsPadding()) {
             Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
@@ -420,7 +429,7 @@ private fun <T> ChoiceSheet(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            val filtered = if (query.isBlank()) items else items.filter { searchText(it).contains(query.trim(), ignoreCase = true) }
+            val filtered = if (query.isBlank()) ordered else ordered.filter { searchText(it).contains(query.trim(), ignoreCase = true) }
             LazyColumn(Modifier.heightIn(max = 480.dp)) {
                 if (newOption != null && onAdd != null) {
                     item(key = "\u0000add") {

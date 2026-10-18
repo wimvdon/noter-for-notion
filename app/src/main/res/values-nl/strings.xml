@@ -89,7 +89,7 @@
     <string name="add_line">Regel toevoegen aan het eind</string>
     <string name="nested_content">Bevat geneste inhoud: bewerk die in Notion</string>
     <string name="section_connection">Verbinding</string>
-    <string name="connection_help">Noter maakt verbinding met een persoonlijk toegangstoken. Dat werkt namens jou, dus Noter ziet de pagina’s die jij in Notion ziet.</string>
+    <string name="connection_help">Noter maakt verbinding met een persoonlijk toegangstoken.</string>
     <string name="connection_step_1">Open de persoonlijke toegangstokens van Notion en tik op New token.</string>
     <string name="connection_step_2">Geef het een naam, zet Notion API aan en kies je werkruimte en een vervaldatum.</string>
     <string name="connection_step_3">Kopieer het token en plak het hieronder. Notion toont het maar één keer.</string>
@@ -184,4 +184,6 @@
     <string name="delete_lines_title">Geselecteerde regels verwijderen?</string>
     <string name="delete_lines_body">Ze worden uit de notitie verwijderd, ook in Notion.</string>
     <string name="delete_lines_confirm">Verwijderen</string>
+    <string name="action_select_text">Tekst selecteren</string>
+    <string name="close">Sluiten</string>
 </resources>

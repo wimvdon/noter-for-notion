@@ -146,6 +146,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import be.wimvandonck.noter.data.notion.BlockCodec
 import be.wimvandonck.noter.data.notion.InlineMarkdown
+import be.wimvandonck.noter.logic.ReadingText
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.os.Build
@@ -182,6 +183,8 @@ fun NoteScreen(
     var selecting by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf(emptySet<String>()) }
     var confirmDeleteLines by remember { mutableStateOf(false) }
+    // The note as text in one selection area, to select across lines (see SelectTextView).
+    var selectingText by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val openFailed by viewModel.openFailed.collectAsStateWithLifecycle()
     val openFailedText = stringResource(R.string.page_open_failed)
@@ -262,6 +265,14 @@ fun NoteScreen(
         )
     }
 
+    if (selectingText && note != null) {
+        SelectTextView(
+            title = InlineMarkdown.stripped(note.title),
+            lines = ReadingText.lines(state.blocks),
+            onDismiss = { selectingText = false },
+        )
+    }
+
     if (confirmDeleteLines) {
         AlertDialog(
             onDismissRequest = { confirmDeleteLines = false },
@@ -331,6 +342,16 @@ fun NoteScreen(
                                         },
                                     )
                                 }
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.action_select_text)) },
+                                    leadingIcon = { Icon(Icons.Rounded.SelectAll, null) },
+                                    onClick = {
+                                        menu = false
+                                        keyboard?.hide()
+                                        focusManager.clearFocus()
+                                        selectingText = true
+                                    },
+                                )
                                 // Notion only adds a page inside a page it already has.
                                 if (!note.isLocal) {
                                     DropdownMenuItem(

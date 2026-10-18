@@ -492,4 +492,18 @@ class NotesRepositoryTest {
         repo.togglePinDatabase(PinnedDatabase("ds9", "Todo"))
         assertEquals(listOf("db-2"), repo.currentSettings().pinnedDatabases.map { it.id })
     }
+
+    @Test
+    fun `links to Notion use the database a data source is in`() = runBlocking {
+        notion.respond = { sent ->
+            when (sent.path) {
+                "/data_sources/ds-1" -> 200 to """{"object":"data_source","id":"ds-1","title":[],"parent":{"type":"database_id","database_id":"db-1"},"properties":{}}"""
+                else -> 404 to """{"object":"error","status":404,"code":"object_not_found","message":"Not found"}"""
+            }
+        }
+        val repo = repository()
+        assertEquals("db-1", repo.databaseOf("ds-1"))
+        // Notion can't tell: no link to a database, the screen falls back to the data source.
+        assertEquals(null, repo.databaseOf("ds-2"))
+    }
 }

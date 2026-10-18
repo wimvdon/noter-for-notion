@@ -89,7 +89,7 @@
     <string name="add_line">Add a line at the end</string>
     <string name="nested_content">Has nested content: edit it in Notion</string>
     <string name="section_connection">Connection</string>
-    <string name="connection_help">Noter connects with a personal access token. It acts as you, so Noter sees the pages you see in Notion.</string>
+    <string name="connection_help">Noter connects with a personal access token.</string>
     <string name="connection_step_1">Open Notion’s personal access tokens and tap New token.</string>
     <string name="connection_step_2">Give it a name, turn on Notion API, choose your workspace and an expiry date.</string>
     <string name="connection_step_3">Copy the token and paste it below. Notion shows it only once.</string>
@@ -184,4 +184,6 @@
     <string name="delete_lines_title">Delete selected lines?</string>
     <string name="delete_lines_body">They are removed from the note, also in Notion.</string>
     <string name="delete_lines_confirm">Delete</string>
+    <string name="action_select_text">Select text</string>
+    <string name="close">Close</string>
 </resources>

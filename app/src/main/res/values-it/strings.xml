@@ -89,7 +89,7 @@
     <string name="add_line">Aggiungi una riga alla fine</string>
     <string name="nested_content">Ha contenuti annidati: modificali in Notion</string>
     <string name="section_connection">Connessione</string>
-    <string name="connection_help">Noter si collega con un token di accesso personale. Agisce per conto tuo, quindi Noter vede le pagine che vedi tu in Notion.</string>
+    <string name="connection_help">Noter si collega con un token di accesso personale.</string>
     <string name="connection_step_1">Apri i token di accesso personale di Notion e tocca New token.</string>
     <string name="connection_step_2">Dagli un nome, attiva Notion API e scegli il tuo workspace e una data di scadenza.</string>
     <string name="connection_step_3">Copia il token e incollalo qui sotto. Notion lo mostra una sola volta.</string>
@@ -187,4 +187,6 @@
     <string name="delete_lines_title">Eliminare le righe selezionate?</string>
     <string name="delete_lines_body">Vengono rimosse dalla nota, anche in Notion.</string>
     <string name="delete_lines_confirm">Elimina</string>
+    <string name="action_select_text">Seleziona testo</string>
+    <string name="close">Chiudi</string>
 </resources>
