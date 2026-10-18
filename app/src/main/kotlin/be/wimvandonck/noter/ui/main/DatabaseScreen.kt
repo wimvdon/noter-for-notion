@@ -1,5 +1,7 @@
 package be.wimvandonck.noter.ui.main
 
+import android.content.Intent
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.WindowInsets
@@ -14,12 +16,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.DashboardCustomize
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.SearchOff
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -61,9 +64,10 @@ import be.wimvandonck.noter.ui.common.shareLink
 
 /**
  * A database, opened from Home, Search or a link in a note: its notes with rows of filter chips.
- * The top app bar has Filters, Sort and a ⋮ menu (pin on Home, what the cards show). Everything
- * changed here is kept for the database at once; there is nothing to save. A database of several
- * data sources has a tab per data source, each with its own filters, sort and cards.
+ * The top app bar has Filters, Sort, Cards (what the cards show) and a ⋮ menu (pin on Home, open
+ * in Notion, share). Everything changed here is kept for the database at once; there is nothing
+ * to save. A database of several data sources has a tab per data source, each with its own
+ * filters, sort and cards.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -130,6 +134,10 @@ fun DatabaseScreen(
                             actions = {
                                 SyncButton(content.pendingCount, content.offline, syncing = false, onSync = { viewModel.refresh() }, alwaysShown = false)
                                 if (content.hasKey) SetupBarActions(content, actions, onOpenFilters = { filtersOpen = true })
+                                // What the cards show: the same icon as the properties button of a page.
+                                IconButton(onClick = { cardsOpen = true }) {
+                                    Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.cards_title))
+                                }
                                 Box {
                                     IconButton(onClick = { menu = true }) {
                                         Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more_options))
@@ -144,19 +152,19 @@ fun DatabaseScreen(
                                             },
                                         )
                                         DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.action_open_in_notion)) },
+                                            leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null) },
+                                            onClick = {
+                                                menu = false
+                                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, state.notionUrl.toUri())) }
+                                            },
+                                        )
+                                        DropdownMenuItem(
                                             text = { Text(stringResource(R.string.action_share)) },
                                             leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null) },
                                             onClick = {
                                                 menu = false
-                                                shareLink(context, state.title, viewModel.shareUrl())
-                                            },
-                                        )
-                                        DropdownMenuItem(
-                                            text = { Text(stringResource(R.string.cards_title)) },
-                                            leadingIcon = { Icon(Icons.Rounded.DashboardCustomize, contentDescription = null) },
-                                            onClick = {
-                                                menu = false
-                                                cardsOpen = true
+                                                shareLink(context, state.title.ifBlank { untitled }, state.notionUrl)
                                             },
                                         )
                                     }

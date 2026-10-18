@@ -1,7 +1,9 @@
 package be.wimvandonck.noter.ui.settings
 
 import android.content.Intent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
@@ -32,6 +35,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -107,11 +111,21 @@ private fun ConnectionSettings(state: SettingsUiState, viewModel: SettingsViewMo
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    // How to make a personal access token, step by step (Notion's form changes rarely).
+    // How to make a personal access token, step by step (Notion's form changes rarely), with the
+    // same numbered circles as the guide in Snoozer.
     listOf(R.string.connection_step_1, R.string.connection_step_2, R.string.connection_step_3).forEachIndexed { index, step ->
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("${index + 1}.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-            Text(stringResource(step), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(
+                Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("${index + 1}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
+            }
+            Text(
+                stringResource(step),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
+            )
         }
     }
     TextButton(onClick = {

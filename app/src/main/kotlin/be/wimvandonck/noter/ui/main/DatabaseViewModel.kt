@@ -45,6 +45,8 @@ data class DatabaseUiState(
     val cards: CardLayout = CardLayout(),
     /** The data source's properties (the cards can show some). */
     val properties: List<PropertySchema> = emptyList(),
+    /** Notion's web link to the database, for Open in Notion and Share. */
+    val notionUrl: String = "",
 )
 
 /** Something the database's screen tells the user once. */
@@ -77,6 +79,11 @@ class DatabaseViewModel(
 
     /** The database's own name and icon, when Notion says (a database rather than a data source). */
     private val label = MutableStateFlow<Pair<String, PageIcon?>?>(null)
+
+    /** The database itself, for links to Notion (a data source's ID doesn't open in Notion). */
+    private val databaseLink = MutableStateFlow<String?>(null)
+
+    private data class Shown(val id: String, val sources: List<PageRef>?, val label: Pair<String, PageIcon?>?, val link: String?)
     private val sourceId: String get() = source.value
 
     private val _events = MutableSharedFlow<DatabaseEvent>(extraBufferCapacity = 4)
@@ -89,9 +96,9 @@ class DatabaseViewModel(
     val state: StateFlow<DatabaseUiState> = combine(
         repository.settingsFlow(),
         repository.databases,
-        combine(source, sources, label, ::Triple),
+        combine(source, sources, label, databaseLink, ::Shown),
         status,
-    ) { settings, databases, (id, list, named), (pending, offline, key, missing) ->
+    ) { settings, databases, (id, list, named, link), (pending, offline, key, missing) ->
         val db = databases[id]
         val setup = DatabaseSetups.of(settings.setups, id, db?.schema)
         val base = NotesUiState(
@@ -113,6 +120,7 @@ class DatabaseViewModel(
             sourceId = id,
             cards = PropertyLayouts.cards(setup, settings.propertyLayouts[id]),
             properties = db?.schema?.properties.orEmpty(),
+            notionUrl = ReadOnlyBlocks.notionUrl(link ?: db?.schema?.databaseId ?: pinKey(id, list)),
         )
     }.combine(chipTitles) { state, titles -> state.copy(content = state.content.copy(chipTitles = titles)) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DatabaseUiState())
@@ -138,6 +146,8 @@ class DatabaseViewModel(
             val known = repository.knownItem(openedId)
             val title = label.value?.first ?: known?.title ?: repository.databases.value[resolved]?.schema?.title
             repository.renamePinnedDatabase(pinKey(resolved, sources.value), title.orEmpty(), label.value?.second ?: known?.icon)
+            // Opened as a database: that is the link. Opened as a data source: the database it is in.
+            databaseLink.value = if (plain(resolved) != plain(openedId)) openedId else repository.databaseOf(resolved)
         }
     }
 
@@ -183,12 +193,6 @@ class DatabaseViewModel(
     /** Undo after dragging switched the data source to the custom order. */
     fun undoSortedByHand(event: DatabaseEvent.SortedByHand) = viewModelScope.launch {
         repository.updateSetup(event.sourceId, repository.databases.value[event.sourceId]?.schema) { it.copy(sort = event.previous) }
-    }
-
-    /** Notion's web link to this database, for Share. */
-    fun shareUrl(): String {
-        val ui = state.value
-        return ReadOnlyBlocks.notionUrl(pinKey(ui.sourceId, ui.sources))
     }
 
     /** Pins the database on Home, or unpins it. */

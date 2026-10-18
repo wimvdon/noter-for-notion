@@ -134,6 +134,16 @@ class PropertyCodecTest {
     }
 
     @Test
+    fun `a data source's schema knows the database it is in`() {
+        val source = PropertyCodec.parseSchema(
+            obj("""{"object":"data_source","id":"ds","title":[],"parent":{"type":"database_id","database_id":"db"},"properties":{}}"""),
+        )
+        assertEquals("db", source.databaseId)
+        // A database (or an old schema) doesn't say.
+        assertNull(PropertyCodec.parseSchema(obj("""{"object":"database","id":"db","title":[],"parent":{"type":"page_id","page_id":"p"},"properties":{}}""")).databaseId)
+    }
+
+    @Test
     fun `trashed pages are recognised in old and new API versions`() {
         assertTrue(PropertyCodec.isTrashed(obj("""{"archived":true}""")))
         assertTrue(PropertyCodec.isTrashed(obj("""{"in_trash":true}""")))

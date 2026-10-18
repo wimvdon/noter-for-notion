@@ -235,6 +235,8 @@ data class DatabaseSchema(
     val id: String,
     val title: String,
     val properties: List<PropertySchema>,
+    /** The database this data source is in (Notion's web links use the database, not the data source). */
+    val databaseId: String? = null,
 ) {
     val titleProperty: String? get() = properties.firstOrNull { it.type == "title" }?.name
 

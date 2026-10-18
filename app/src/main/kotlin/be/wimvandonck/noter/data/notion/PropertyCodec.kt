@@ -35,7 +35,9 @@ object PropertyCodec {
                 numberFormat = if (type == "number") config?.stringOrNull("format") else null,
             )
         }
-        return DatabaseSchema(id = id, title = title, properties = sortForDisplay(properties))
+        // A data source's parent is its database.
+        val databaseId = database.objOrNull("parent")?.stringOrNull("database_id")
+        return DatabaseSchema(id = id, title = title, properties = sortForDisplay(properties), databaseId = databaseId)
     }
 
     /** Title first, then the database's own order is unknown to the API, so editable before computed, by name. */

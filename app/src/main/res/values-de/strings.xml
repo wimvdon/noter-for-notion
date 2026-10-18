@@ -89,7 +89,7 @@
     <string name="add_line">Zeile am Ende hinzufügen</string>
     <string name="nested_content">Hat verschachtelten Inhalt: in Notion bearbeiten</string>
     <string name="section_connection">Verbindung</string>
-    <string name="connection_help">Noter verbindet sich mit einem persönlichen Zugriffstoken. Es handelt in deinem Namen, Noter sieht also die Seiten, die du in Notion siehst.</string>
+    <string name="connection_help">Noter verbindet sich mit einem persönlichen Zugriffstoken.</string>
     <string name="connection_step_1">Öffne die persönlichen Zugriffstokens von Notion und tippe auf New token.</string>
     <string name="connection_step_2">Gib ihm einen Namen, schalte Notion API ein und wähle deinen Workspace und ein Ablaufdatum.</string>
     <string name="connection_step_3">Kopiere das Token und füge es unten ein. Notion zeigt es nur einmal.</string>
@@ -184,4 +184,6 @@
     <string name="delete_lines_title">Ausgewählte Zeilen löschen?</string>
     <string name="delete_lines_body">Sie werden aus der Notiz entfernt, auch in Notion.</string>
     <string name="delete_lines_confirm">Löschen</string>
+    <string name="action_select_text">Text auswählen</string>
+    <string name="close">Schließen</string>
 </resources>

@@ -89,7 +89,7 @@
     <string name="add_line">Ajouter une ligne à la fin</string>
     <string name="nested_content">Contient du contenu imbriqué : modifiez-le dans Notion</string>
     <string name="section_connection">Connexion</string>
-    <string name="connection_help">Noter se connecte avec un jeton d’accès personnel. Il agit en votre nom : Noter voit donc les pages que vous voyez dans Notion.</string>
+    <string name="connection_help">Noter se connecte avec un jeton d’accès personnel.</string>
     <string name="connection_step_1">Ouvrez les jetons d’accès personnels de Notion et touchez New token.</string>
     <string name="connection_step_2">Donnez-lui un nom, activez Notion API, choisissez votre espace de travail et une date d’expiration.</string>
     <string name="connection_step_3">Copiez le jeton et collez-le ci-dessous. Notion ne l’affiche qu’une fois.</string>
@@ -187,4 +187,6 @@
     <string name="delete_lines_title">Supprimer les lignes sélectionnées ?</string>
     <string name="delete_lines_body">Elles sont supprimées de la note, aussi dans Notion.</string>
     <string name="delete_lines_confirm">Supprimer</string>
+    <string name="action_select_text">Sélectionner du texte</string>
+    <string name="close">Fermer</string>
 </resources>

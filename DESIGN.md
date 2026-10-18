@@ -252,8 +252,8 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   "Edited …", a small primary pin at the end when pinned). A long press on a row opens a menu with
   Pin or Unpin. One FAB (+): a sheet with "New page" (at the top of the workspace) and "New note
   in" with the databases.
-- A database is a child page: back arrow, Notion's icon and name, then sync, Filters, Sort and ⋮
-  (Pin or Unpin, Cards). A database of several data sources has a primary scrollable tab row, one
+- A database is a child page: back arrow, Notion's icon and name, then sync, Filters, Sort, Cards
+  (Tune icon, as a page's properties button) and ⋮ (Pin or Unpin, Open in Notion, Share). A database of several data sources has a primary scrollable tab row, one
   tab per data source. The whole header (top app bar, tab row and rows of chips, `surface`)
   scrolls away with the notes and comes back on the first scroll up (`QuickReturnHeader`); the
   status bar area stays.
@@ -268,7 +268,7 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   `surfaceContainerHighest` pill after its label.
 - Search, a child page: a back arrow and the query field in the app bar, then "Notes on this
   phone", "Databases" and "Pages" headers (Title Small, primary).
-- Cards panel (⋮ › Cards in a database): a bottom sheet with switches for the header image and
+- Cards panel (the Cards button in a database's top app bar): a bottom sheet with switches for the header image and
   the start of the content, and filter chips for up to three properties.
 - The note editor follows Notion's look: headings in SemiBold, quotes with a bar, callouts and
   code on `surfaceContainerHigh` (code in a monospace font), dividers as `outlineVariant` lines.
@@ -278,3 +278,9 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   Columns are shown one below the other with a thin `outlineVariant` line between them.
 - The block toolbar sits above the keyboard on `surfaceContainerHigh`; the selected kind uses
   `secondaryContainer`.
+- Select text (⋮ in a note): a full-screen view with × and the note as plain text in one
+  selection area, styled like the editor, nothing editable.
+- Steps in a guide (Settings › connection) have numbered circles (32dp, `primary`, the number in
+  Label Large `onPrimary`), as in Snoozer's guide.
+- A picker (options, people, linked pages) lists what is selected first when it opens and keeps
+  its order until it is closed.
