@@ -71,7 +71,7 @@ jobs:
           path: ${{ steps.apk.outputs.path }}
           # Uploaded as a plain .apk (not a zip) so a phone can install it directly.
           archive: false
-          retention-days: 14
+          retention-days: 3
           if-no-files-found: error
 
       - name: Upload test and lint reports
@@ -82,5 +82,5 @@ jobs:
           path: |
             app/build/reports/
             app/build/test-results/
-          retention-days: 14
+          retention-days: 3
           if-no-files-found: ignore
