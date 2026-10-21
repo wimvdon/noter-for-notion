@@ -48,7 +48,9 @@ class SealedBoxTest {
 
     @Test
     fun `a changed message isn't opened`() {
-        val changed = sealed.dropLast(2) + if (sealed.endsWith("JA")) "JB" else "JA"
+        // A character in the middle of the ciphertext (the last one may only hold unused bits).
+        val at = sealed.lastIndexOf('.') + 10
+        val changed = sealed.substring(0, at) + (if (sealed[at] == 'A') 'B' else 'A') + sealed.substring(at + 1)
         assertNull(SealedBox.open(privateKey, changed))
         assertNull(SealedBox.open(privateKey, "not.sealed"))
         assertNull(SealedBox.open(privateKey, ""))
