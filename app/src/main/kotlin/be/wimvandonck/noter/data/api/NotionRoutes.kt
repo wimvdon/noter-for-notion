@@ -1,5 +1,6 @@
 package be.wimvandonck.noter.data.api
 
+import be.wimvandonck.noter.logic.KeyRouter
 import kotlinx.serialization.json.JsonObject
 
 /** How a Notion request is matched to a token when there are several (#58, see [NotionClient]). */
@@ -45,6 +46,8 @@ object NotionRoutes {
         if (lists.size == 1) {
             lists.first().take(limit)
         } else {
-            lists.flatten().sortedByDescending { it.stringOrNull("last_edited_time").orEmpty() }.take(limit)
+            // Two tokens for the same workspace both find its pages: each once.
+            lists.flatten().distinctBy { it.stringOrNull("id")?.let(KeyRouter::normalize) ?: it.toString() }
+                .sortedByDescending { it.stringOrNull("last_edited_time").orEmpty() }.take(limit)
         }
 }

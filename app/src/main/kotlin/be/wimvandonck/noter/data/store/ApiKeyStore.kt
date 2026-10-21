@@ -7,6 +7,7 @@ import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import be.wimvandonck.noter.data.notion.TokenKind
+import be.wimvandonck.noter.logic.Placement
 import be.wimvandonck.noter.logic.WorkspaceToken
 import be.wimvandonck.noter.logic.WorkspaceTokens
 import be.wimvandonck.noter.logic.Workspaces
@@ -102,14 +103,15 @@ class ApiKeyStore(private val context: Context) {
     val main: StateFlow<WorkspaceToken> get() = _main
 
     /** Keeps what Notion now says about the main token (at each start). */
-    fun setMainInfo(kind: TokenKind, name: String, workspace: String) {
+    fun setMainInfo(kind: TokenKind, name: String, workspace: String, workspaceId: String = "") {
         prefs.edit {
             putString(KIND, kind.name)
             putString(NAME, name)
             putString(WORKSPACE, workspace)
+            if (workspaceId.isNotBlank()) putString(WORKSPACE_ID, workspaceId)
         }
         _kind.value = kind
-        _main.value = _main.value.copy(name = name, workspace = workspace, kind = kind)
+        _main.value = _main.value.copy(name = name, workspace = workspace, kind = kind, workspaceId = workspaceId.ifBlank { _main.value.workspaceId })
     }
 
     private val _kind by lazy { MutableStateFlow(prefs.getString(KIND, null)?.let { runCatching { TokenKind.valueOf(it) }.getOrNull() }) }
@@ -138,6 +140,41 @@ class ApiKeyStore(private val context: Context) {
         Workspaces.keepAll(list)
         prefs.edit { putString(EXTRAS, WorkspaceTokens.encode(list)) }
         _extras.value = list
+    }
+
+    /**
+     * Keeps [added] where [WorkspaceTokens.place] says (each Notion workspace once; never in place
+     * of a token that sees more). [avatarUrl] is its person's picture, for when it becomes the
+     * main token.
+     */
+    @Synchronized
+    fun keep(added: WorkspaceToken, avatarUrl: String?): Placement {
+        val oldMain = _main.value
+        val placement = WorkspaceTokens.place(oldMain, _extras.value, added)
+        if (placement is Placement.Added) {
+            if (placement.main != oldMain) {
+                val samePerson = placement.main.token != added.token
+                setMain(placement.main, keepAvatar = samePerson)
+                if (!samePerson) setAvatarUrl(avatarUrl)
+            }
+            setExtras(placement.others)
+        }
+        return placement
+    }
+
+    /**
+     * Each Notion workspace once ([WorkspaceTokens.deduplicate]), for tokens added before that was
+     * checked. Returns the tokens that went.
+     */
+    @Synchronized
+    fun deduplicate(): List<WorkspaceToken> {
+        val before = listOf(_main.value) + _extras.value
+        val (main, others) = WorkspaceTokens.deduplicate(_main.value, _extras.value)
+        val gone = before.filter { old -> old.token.isNotBlank() && old.token != main.token && others.none { it.token == old.token } }
+        if (gone.isEmpty()) return gone
+        if (main != _main.value) setMain(main)
+        setExtras(others)
+        return gone
     }
 
     /** The stored token (main or other) whose token is [token], if any. */

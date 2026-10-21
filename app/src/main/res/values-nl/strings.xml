@@ -191,6 +191,8 @@
     <string name="add_workspace">Werkruimte toevoegen</string>
     <string name="remove_workspace">Verwijderen</string>
     <string name="workspace_added">%1$s toegevoegd.</string>
+    <string name="workspace_replaced">%1$s is nu verbonden met: %2$s (was: %3$s).</string>
+    <string name="workspace_refused">%1$s is al toegevoegd met: %2$s, dat meer ziet. Verwijder het eerst om het op een andere manier toe te voegen.</string>
     <string name="way_sign_in_text">Snelste manier. Kies in Notion welke pagina’s en databases je in Noter ziet.</string>
     <string name="way_personal_text">Volledige toegang tot je eigen werkruimte, zonder pagina’s en databases te kiezen.</string>
     <string name="way_connection_title">Koppelingstoken</string>

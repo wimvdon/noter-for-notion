@@ -49,4 +49,19 @@ class TokenCodecTest {
         )
         assertEquals(TokenInfo(TokenKind.CONNECTION, "Noter integration", workspace = "Home"), info)
     }
+
+    @Test
+    fun `Notion's workspace ID is the same for every kind of token`() {
+        val personal = parse(
+            """{"object":"user","id":"bot-1","type":"bot","name":"Noter",
+               "bot":{"owner":{"type":"user","user":{"object":"user","id":"u1","name":"Wim","type":"person"}},"workspace_name":"Home","workspace_id":"ws-1"}}""",
+        )
+        val connection = parse(
+            """{"object":"user","id":"bot-2","type":"bot","name":"Noter integration",
+               "bot":{"owner":{"type":"workspace","workspace":true},"workspace_name":"Home","workspace_id":"ws-1"}}""",
+        )
+        assertEquals("ws-1", personal.workspaceId)
+        assertEquals("ws-1", connection.workspaceId)
+        assertEquals("", parse("""{"object":"user","type":"bot","bot":{}}""").workspaceId)
+    }
 }

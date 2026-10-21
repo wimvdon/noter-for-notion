@@ -36,7 +36,9 @@ What the app sends and stores: [`PRIVACY.md`](PRIVACY.md). Rules for Claude Code
    - **Connection token**: for a workspace you're a guest in. A member makes a connection, shares
      pages and databases with it and gives you its token.
 3. **Home** lists your databases and pages; open a database and pin it with **⋮ › Pin** to keep it
-   at the top of Home. Add as many workspaces as you like, each its own way.
+   at the top of Home. Add as many workspaces as you like, each its own way. Each workspace is added
+once: adding it again replaces how it is connected, but never a personal access token by a way
+that sees less (personal access token, then Connect to Notion, then connection token).
 
 When the token expires, remove it and add a new one in the same place. For another workspace or
 Notion account, add a token for it too: the app shows everything together and says which

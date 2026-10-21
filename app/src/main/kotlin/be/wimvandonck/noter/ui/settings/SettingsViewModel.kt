@@ -15,7 +15,9 @@ import be.wimvandonck.noter.data.model.ThemeMode
 import be.wimvandonck.noter.data.notion.TokenInfo
 import be.wimvandonck.noter.data.store.ApiKeyStore
 import be.wimvandonck.noter.data.store.AppSettings
+import be.wimvandonck.noter.logic.Placement
 import be.wimvandonck.noter.logic.Workspace
+import be.wimvandonck.noter.logic.WorkspaceWay
 import be.wimvandonck.noter.logic.WorkspaceToken
 import be.wimvandonck.noter.logic.WorkspaceTokens
 import be.wimvandonck.noter.logic.Workspaces
@@ -32,8 +34,14 @@ sealed interface KeyStatus {
 
     data object Testing : KeyStatus
 
-    /** Notion accepted the token: who it acts as and its workspace. */
-    data class Ok(val info: TokenInfo) : KeyStatus
+    /**
+     * Notion accepted the token: who it acts as and its workspace. [replaced]: the workspace was
+     * already added another way, which this one took the place of.
+     */
+    data class Ok(val info: TokenInfo, val replaced: WorkspaceWay? = null, val way: WorkspaceWay? = null) : KeyStatus
+
+    /** Not added: workspace [name] is already added in a way that sees more ([way]). */
+    data class Refused(val name: String, val way: WorkspaceWay?) : KeyStatus
 
     data class Failed(val message: String) : KeyStatus
 
@@ -69,7 +77,8 @@ class SettingsViewModel(
                 when (status) {
                     SignInStatus.Idle -> Unit
                     SignInStatus.Working -> keyStatus.value = KeyStatus.Testing
-                    is SignInStatus.Done -> keyStatus.value = KeyStatus.Ok(status.info)
+                    is SignInStatus.Done -> keyStatus.value = KeyStatus.Ok(status.info, status.replaced, WorkspaceWay.SIGN_IN)
+                    is SignInStatus.Refused -> keyStatus.value = KeyStatus.Refused(status.name, status.way)
                     SignInStatus.Cancelled -> keyStatus.value = KeyStatus.Cancelled
                     is SignInStatus.Failed -> keyStatus.value = KeyStatus.Failed(status.message)
                 }
@@ -98,8 +107,9 @@ class SettingsViewModel(
     }
 
     /**
-     * Tests [token] with Notion and keeps it: as the main token when there is none yet, else next
-     * to the others, with its workspace's name.
+     * Tests [token] with Notion and keeps it, with its workspace's name: as the main token when
+     * there is none yet, in place of the token of the same workspace, or next to the others; not
+     * when its workspace is already added in a way that sees more ([WorkspaceTokens.place]).
      */
     fun addWorkspace(token: String) {
         val trimmed = token.trim()
@@ -108,20 +118,14 @@ class SettingsViewModel(
         viewModelScope.launch {
             keyStatus.value = try {
                 val info = repository.tokenInfo(trimmed)
-                val main = keyStore.get()
-                when {
-                    main.isBlank() -> {
-                        keyStore.set(trimmed, info.kind, info.name, info.workspace.orEmpty())
-                        keyStore.setAvatarUrl(info.avatarUrl)
-                    }
-                    main == trimmed -> keyStore.setMainInfo(info.kind, info.name, info.workspace.orEmpty())
-                    else -> {
-                        val added = WorkspaceToken(trimmed, info.name, info.workspace.orEmpty(), info.kind)
-                        keyStore.setExtras(WorkspaceTokens.add(keyStore.extras.value, main, added))
+                val added = WorkspaceToken(trimmed, info.name, info.workspace.orEmpty(), info.kind, workspaceId = info.workspaceId)
+                when (val placement = keyStore.keep(added, info.avatarUrl)) {
+                    is Placement.Refused -> KeyStatus.Refused(WorkspaceTokens.label(placement.existing), WorkspaceTokens.way(placement.existing))
+                    is Placement.Added -> {
+                        refreshAfterChange()
+                        KeyStatus.Ok(info, placement.replaced?.let(WorkspaceTokens::way), WorkspaceTokens.way(added))
                     }
                 }
-                refreshAfterChange()
-                KeyStatus.Ok(info)
             } catch (e: NotionException) {
                 KeyStatus.Failed(NotionErrors.of(e))
             }

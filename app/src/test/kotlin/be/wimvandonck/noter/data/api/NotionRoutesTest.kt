@@ -72,4 +72,12 @@ class NotionRoutesTest {
         val b = obj("""{"id":"b","last_edited_time":"2026-10-02T10:00:00.000Z"}""")
         assertEquals(listOf(a, b), NotionRoutes.newestFirst(listOf(listOf(a, b))))
     }
+
+    @Test
+    fun `a page two tokens of the same workspace found is listed once`() {
+        val a = obj("""{"id":"a1b2","last_edited_time":"2026-10-02T10:00:00.000Z"}""")
+        val same = obj("""{"id":"A1-B2","last_edited_time":"2026-10-02T10:00:00.000Z"}""")
+        val b = obj("""{"id":"b","last_edited_time":"2026-10-01T10:00:00.000Z"}""")
+        assertEquals(listOf(a, b), NotionRoutes.newestFirst(listOf(listOf(a, b), listOf(same))))
+    }
 }

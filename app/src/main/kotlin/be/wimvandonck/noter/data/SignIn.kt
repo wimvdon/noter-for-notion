@@ -5,10 +5,12 @@ import be.wimvandonck.noter.data.api.NotionException
 import be.wimvandonck.noter.data.api.SignInConfig
 import be.wimvandonck.noter.data.notion.TokenInfo
 import be.wimvandonck.noter.data.store.ApiKeyStore
+import be.wimvandonck.noter.logic.Placement
 import be.wimvandonck.noter.logic.SealedBox
 import be.wimvandonck.noter.logic.SignInReturn
 import be.wimvandonck.noter.logic.SignIns
 import be.wimvandonck.noter.logic.WorkspaceTokens
+import be.wimvandonck.noter.logic.WorkspaceWay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,8 +23,11 @@ sealed interface SignInStatus {
 
     data object Working : SignInStatus
 
-    /** Connected: who the token acts as and its workspace. */
-    data class Done(val info: TokenInfo) : SignInStatus
+    /** Connected: who the token acts as and its workspace; [replaced]: the way it took the place of. */
+    data class Done(val info: TokenInfo, val replaced: WorkspaceWay? = null) : SignInStatus
+
+    /** Not kept: workspace [name] is already added in a way that sees more ([way]). */
+    data class Refused(val name: String, val way: WorkspaceWay?) : SignInStatus
 
     /** The person refused access in Notion. */
     data object Cancelled : SignInStatus
@@ -33,7 +38,7 @@ sealed interface SignInStatus {
 /**
  * "Connect to Notion" (OAuth, see [SignIns]). [start] gives the address of Notion's page;
  * Notion and the sign-in helper send the person back to `<scheme>://oauth` (SignInActivity),
- * which hands the link to [finish]. The token is kept like a pasted one ([WorkspaceTokens.signIn]).
+ * which hands the link to [finish]. The token is kept like a pasted one ([WorkspaceTokens.place]).
  */
 class SignIn(
     private val keyStore: ApiKeyStore,
@@ -83,21 +88,21 @@ class SignIn(
                             kind = info.kind,
                             name = info.name.ifBlank { grant.person },
                             workspace = info.workspace?.ifBlank { null } ?: grant.workspaceName,
+                            workspaceId = grant.workspaceId.ifBlank { info.workspaceId },
                         )
-                        val oldMain = keyStore.main.value
-                        val (main, others) = WorkspaceTokens.signIn(oldMain, keyStore.extras.value, token)
-                        if (main != oldMain) {
-                            keyStore.setMain(main)
-                            keyStore.setAvatarUrl(info.avatarUrl)
+                        when (val placement = keyStore.keep(token, info.avatarUrl)) {
+                            is Placement.Refused ->
+                                SignInStatus.Refused(WorkspaceTokens.label(placement.existing), WorkspaceTokens.way(placement.existing))
+                            is Placement.Added -> {
+                                repository.onForeground()
+                                try {
+                                    repository.refreshRecent()
+                                } catch (_: NotionException) {
+                                    // Home asks again at the next start.
+                                }
+                                SignInStatus.Done(info, placement.replaced?.let(WorkspaceTokens::way))
+                            }
                         }
-                        keyStore.setExtras(others)
-                        repository.onForeground()
-                        try {
-                            repository.refreshRecent()
-                        } catch (_: NotionException) {
-                            // Home asks again at the next start.
-                        }
-                        SignInStatus.Done(info)
                     } catch (e: NotionException) {
                         SignInStatus.Failed(NotionErrors.of(e))
                     }

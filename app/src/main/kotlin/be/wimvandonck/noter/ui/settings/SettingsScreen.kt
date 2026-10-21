@@ -117,7 +117,18 @@ private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewMod
         }
     }
     when (val status = state.keyStatus) {
-        is KeyStatus.Ok -> StatusText(stringResource(R.string.workspace_added, status.info.workspace?.ifBlank { null } ?: status.info.name), error = false)
+        is KeyStatus.Ok -> {
+            val name = status.info.workspace?.ifBlank { null } ?: status.info.name
+            StatusText(
+                if (status.replaced == null) {
+                    stringResource(R.string.workspace_added, name)
+                } else {
+                    stringResource(R.string.workspace_replaced, name, wayTitle(status.way), wayTitle(status.replaced))
+                },
+                error = false,
+            )
+        }
+        is KeyStatus.Refused -> StatusText(stringResource(R.string.workspace_refused, status.name, wayTitle(status.way)), error = true)
         is KeyStatus.Failed -> StatusText(stringResource(R.string.key_failed, errorText(status.message)), error = true)
         KeyStatus.Cancelled -> StatusText(stringResource(R.string.sign_in_cancelled), error = false)
         is KeyStatus.Removed -> StatusText(
