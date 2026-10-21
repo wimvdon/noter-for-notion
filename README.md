@@ -1,4 +1,6 @@
-# Noter for Notion
+# Noter
+
+Listed on the Play Store as **Noter for Notion**; in the app and on the phone it is just **Noter**.
 
 A note app for Android in the style of Google Keep, with your notes kept in **Notion**.
 **Home** has a large search bar, everything you pinned (databases, pages and notes) and the

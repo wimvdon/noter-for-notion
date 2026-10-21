@@ -1,6 +1,6 @@
 # Rules for Claude Code sessions in this repository
 
-Noter for Notion, an Android note app on Notion databases, built from the `android-app` template
+Noter (Play Store listing: "Noter for Notion"), an Android note app on Notion databases, built from the `android-app` template
 (a private repository). The owner is **not a developer and does not review code**. CI, tests, lint and these rules
 are the safety net. Follow them every time.
 

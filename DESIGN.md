@@ -225,6 +225,9 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
 
 ## This app
 
+- Name: **Noter** everywhere in the app and on the phone (launcher, screens, share sheet,
+  notifications, `app_name` in every language). "Noter for Notion" is only the Play Store
+  listing's title; the debug build is "Noter Dev".
 - Icon (owner's sketch, after Notion Calendar's logo): two stacked notes. Of the note behind,
   only the top and left edges show; the note in front has a folded bottom right corner and two
   white text lines, with a white gap between the notes. Gradient `#FFC94D` → `#F5A623` →
