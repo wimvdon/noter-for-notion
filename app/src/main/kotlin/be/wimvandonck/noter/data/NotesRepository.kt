@@ -518,6 +518,28 @@ class NotesRepository(
         return resolve(id)
     }
 
+    /**
+     * Makes database [request] in Notion (#71, see NewDatabases) and returns the ID to open it by:
+     * its first data source. Not queued like notes: it needs Notion now, and throws when Notion
+     * can't be reached or refuses. Home's list is asked again afterwards.
+     */
+    suspend fun createDatabase(request: Map<String, Any?>, workspace: String? = null): String = withContext(Dispatchers.IO) {
+        val created = client.createDatabase(request, workspace)
+        val info = WorkspaceCodec.databaseInfo(created) ?: throw NotionException("Notion did not return a database", status = 500)
+        lock.withLock {
+            if (!databaseInfosRead) {
+                databaseInfos.putAll(cache.databaseInfos())
+                databaseInfosRead = true
+            }
+            val key = info.id.replace("-", "")
+            databaseInfos[key] = info
+            databasesAsked += key
+            cache.saveDatabaseInfos(databaseInfos.toMap())
+        }
+        scope.launch { runCatching { refreshRecent() } }
+        info.sources.firstOrNull()?.id ?: info.id
+    }
+
     /** Removes a note that only exists on this phone (Notion refused to make it). */
     private suspend fun dropLocal(pageId: String) {
         lock.withLock {

@@ -6,11 +6,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PageTreeTest {
-    private fun page(id: String, title: String, parent: String? = null) = WorkspaceItem(id, isDatabase = false, title = title, parentId = parent)
-    private fun database(id: String, title: String, parent: String? = null) = WorkspaceItem(id, isDatabase = true, title = title, parentId = parent)
+    private fun page(id: String, title: String, parent: String? = null, edited: String = "") =
+        WorkspaceItem(id, isDatabase = false, title = title, parentId = parent, lastEditedTime = edited)
+    private fun database(id: String, title: String, parent: String? = null, edited: String = "") =
+        WorkspaceItem(id, isDatabase = true, title = title, parentId = parent, lastEditedTime = edited)
 
     @Test
-    fun `the top level is what isn't in another page of the list, by title`() {
+    fun `the top level is what isn't in another page of the list, by title when times are the same`() {
         val tree = PageTree.build(
             listOf(
                 page("b", "Work"),
@@ -36,6 +38,21 @@ class PageTreeTest {
         )
         assertEquals(listOf("home"), tree.map { it.item.id })
         assertEquals(listOf("db", "child-2"), tree.single().children.map { it.id })
+    }
+
+    @Test
+    fun `the most recently edited come first, a page counting what is right inside it`() {
+        val tree = PageTree.build(
+            listOf(
+                page("old", "Old", edited = "2026-10-01T10:00:00.000Z"),
+                page("new", "New", edited = "2026-10-05T10:00:00.000Z"),
+                page("quiet", "Quiet parent", edited = "2026-09-01T10:00:00.000Z"),
+                page("busy", "Busy child", parent = "quiet", edited = "2026-10-09T10:00:00.000Z"),
+                database("db", "Older child", parent = "quiet", edited = "2026-09-02T10:00:00.000Z"),
+            ),
+        )
+        assertEquals(listOf("quiet", "new", "old"), tree.map { it.item.id })
+        assertEquals(listOf("busy", "db"), tree.first().children.map { it.id })
     }
 
     @Test

@@ -51,7 +51,8 @@ python3 -m unittest discover -s scripts/tests
 | `data/notion/BlockCodecTest` (shares) | Images and bookmarks from a share written as links; a refused shared page tried with less |
 | `data/notion/WorkspaceCodecTest` | The list of databases and pages from Notion's search, data sources (grouped by their database; one the database doesn't list is left out) and the data source a page belongs to; the page each page or database is in, a data source placed where its database is |
 | `data/icons/IconCatalogTest` | Reading the icon file, icon search, old icon keys, and that the bundled file has every suggested icon |
-| `logic/PageTreeTest` | Home's tree of databases and pages: the top level (what isn't in another page of the list) and the level below, by title, IDs with or without dashes |
+| `logic/PageTreeTest` | Home's tree of databases and pages: the top level (what isn't in another page of the list) and the level below, most recently edited first (a page counting what is inside it), IDs with or without dashes |
+| `logic/NewDatabasesTest` | A new database's request: where it goes, its title, the title property and the starter properties picked, each name once |
 | `logic/SharedTextTest`, `logic/SharedNotesTest`, `logic/WebArticlesTest` | Sharing to the app: the title, text and link of a share; the new note's title and blocks; a web page's content read in order without scripts and menus, links made whole, the description when there is nothing to read |
 | `logic/NoteTargetsTest` | Where + on Home offers a new note: the pinned databases, then the others on Home's list, each data source of a database of several; a part per workspace, with a page at the top unless the token is a connection's |
 | `logic/WorkspacesTest` | A token's short ID, the workspaces' names, which workspace a page or database is in, lists split by workspace |

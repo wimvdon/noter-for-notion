@@ -20,11 +20,12 @@ properties and content: the pages of databases and pages on their own.
   - **Databases and pages** (#64): what Notion's search lists (not the notes in databases), as a
     tree of two levels like Notion's sidebar (`logic/PageTree.kt`): on top what isn't inside
     another page of the list (at the top of the workspace, or in a page the connection can't see),
-    by title, at most 30 until "Show more" (30 more each time); a chevron at the end of a row shows
+    most recently edited first (#70; an entry counts as edited when something right inside it
+    was), at most 30 until "Show more" (30 more each time); a chevron at the end of a row shows
     the databases and pages right inside it, indented (closed at first; which are open is kept
     while the app runs). Deeper pages are links in their page's content. Where something is comes
     from Notion's `parent` (`WorkspaceItem.parentId`; a data source is placed where its database
-    is, `DatabaseInfo.parentId`). Notion's API doesn't give the sidebar's own order, hence by title.
+    is, `DatabaseInfo.parentId`). Notion's API doesn't give the sidebar's own order, hence by time.
     With several workspaces, one part per workspace (`Workspaces.group`), each folded away with a
     tap on its name (`ApiKeyStore.collapsed`, on this phone only); pinned databases say their
     workspace (`NotesRepository.recent`, `refreshRecent`: one search's worth, newest first, at most
@@ -98,7 +99,14 @@ properties and content: the pages of databases and pages on their own.
   read as "5 1". A new note made with a filter selected
   gets its value where it can (not for computed properties; a date only for Today).
 - **Pages** open in the editor, also a page with subpages: its subpages are links in its content
-  (child pages), which open in the app. A page's ⋮ menu has "New subpage".
+  (child pages), which open in the app. A page's ⋮ menu has "New subpage" and "New database in
+  this page".
+- **New database** (#71, `logic/NewDatabases.kt`, `ui/common/NewDatabase.kt`): in a page (its ⋮
+  menu) or at the top of a workspace (+, where a page at the top is offered). A dialog asks for a
+  name and the properties it starts with besides Name (Tags, Date, Done, Link: kinds the app edits;
+  more can be added in Notion); `POST /databases` makes it with its first data source, and it opens
+  at once. Unlike notes it isn't queued: it needs Notion, and the dialog shows the error when
+  Notion can't be reached or refuses.
 - **Search** (`SearchScreen.kt`, a child page from Home's search bar, sharing Home's ViewModel): one
   list (#60) of the notes on this phone whose title has every word typed (`logic/NoteSearch.kt`,
   at once and offline) and the databases and pages Notion's search finds, each page once, best

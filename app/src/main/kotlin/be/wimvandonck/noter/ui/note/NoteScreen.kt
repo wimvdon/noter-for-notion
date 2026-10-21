@@ -114,6 +114,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import be.wimvandonck.noter.R
+import be.wimvandonck.noter.ui.common.NewDatabaseDialog
 import be.wimvandonck.noter.ui.common.SyncButton
 import be.wimvandonck.noter.data.model.Block
 import be.wimvandonck.noter.data.model.BlockType
@@ -154,6 +155,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.SelectAll
+import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -177,6 +179,14 @@ fun NoteScreen(
     var focusedKey by remember { mutableStateOf<String?>(null) }
     var menu by remember { mutableStateOf(false) }
     var confirmTrash by remember { mutableStateOf(false) }
+    val newDatabase by viewModel.newDatabase.state.collectAsStateWithLifecycle()
+    newDatabase?.let { dialog ->
+        NewDatabaseDialog(
+            dialog,
+            onCreate = { title, titleName, starters, names -> viewModel.newDatabase.create(title, titleName, starters, names, onOpenDatabase) },
+            onDismiss = viewModel.newDatabase::dismiss,
+        )
+    }
     var arranging by rememberSaveable { mutableStateOf(false) }
     var choosingIcon by rememberSaveable { mutableStateOf(false) }
     // Selecting several lines (to copy or delete them), see BlockSelection.
@@ -360,6 +370,14 @@ fun NoteScreen(
                                         onClick = {
                                             menu = false
                                             viewModel.createSubpage(onOpenNote)
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.new_database_in_page)) },
+                                        leadingIcon = { Icon(Icons.Rounded.TableChart, null) },
+                                        onClick = {
+                                            menu = false
+                                            viewModel.openNewDatabase()
                                         },
                                     )
                                 }

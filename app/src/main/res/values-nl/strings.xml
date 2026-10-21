@@ -191,4 +191,16 @@
     <string name="add_workspace">Werkruimte toevoegen</string>
     <string name="remove_workspace">Verwijderen</string>
     <string name="workspace_added">%1$s toegevoegd.</string>
+    <string name="new_database">Nieuwe database</string>
+    <string name="new_database_in_page">Nieuwe database in deze pagina</string>
+    <string name="new_database_at_top">Nieuwe database bovenaan</string>
+    <string name="new_database_name">Naam van de database</string>
+    <string name="new_database_properties">Hij begint met deze eigenschappen; in Notion kun je er meer toevoegen.</string>
+    <string name="new_database_tags">Tags</string>
+    <string name="new_database_date">Datum</string>
+    <string name="new_database_done">Klaar</string>
+    <string name="new_database_link">Link</string>
+    <string name="new_database_title_property">Naam</string>
+    <string name="new_database_create">Maken</string>
+    <string name="new_database_failed">Notion heeft de database niet gemaakt: %1$s</string>
 </resources>

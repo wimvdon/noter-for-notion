@@ -95,4 +95,23 @@ class MultiWorkspaceClientTest {
             assertEquals(mapOf("p1" to Workspaces.id("a")), client.owners.value)
         }
     }
+
+    @Test
+    fun `a database goes with its page's workspace, or at the top with the workspace asked for`() = runBlocking {
+        FakeNotion { sent ->
+            when {
+                sent.path == "/pages/p1" && sent.auth == "Bearer b" -> 200 to """{"object":"page","id":"p1"}"""
+                sent.path == "/databases" -> 200 to """{"object":"database","id":"db1","data_sources":[{"id":"ds1","name":"Books"}]}"""
+                else -> notFound
+            }
+        }.use { notion ->
+            val client = NotionClient(apiKey = { "a" }, extraKeys = { listOf("b") }, baseUrl = notion.baseUrl)
+            client.getPage("p1")
+            notion.requests.clear()
+            client.createDatabase(mapOf("parent" to mapOf("type" to "page_id", "page_id" to "p1")))
+            client.createDatabase(mapOf("parent" to mapOf("type" to "workspace", "workspace" to true)), workspace = Workspaces.id("b"))
+            assertEquals(listOf("Bearer b", "Bearer b"), notion.requests.map { it.auth })
+            assertEquals(Workspaces.id("b"), client.owners.value["ds1"])
+        }
+    }
 }

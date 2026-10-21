@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import be.wimvandonck.noter.NoterApp
 import be.wimvandonck.noter.data.NotesRepository
+import be.wimvandonck.noter.ui.common.DatabaseCreation
 import be.wimvandonck.noter.data.model.Block
 import be.wimvandonck.noter.data.model.BlockType
 import be.wimvandonck.noter.data.model.DatabaseSchema
@@ -272,6 +273,11 @@ class NoteViewModel(
 
     /** Sets the page's icon to [emoji], or removes it when that is null. */
     fun setIcon(emoji: String?) = viewModelScope.launch { repository.setIcon(pageId, emoji) }
+
+    /** The New database dialog (#71): a database inside this page. */
+    val newDatabase = DatabaseCreation(viewModelScope, repository)
+
+    fun openNewDatabase() = newDatabase.open(repository.resolve(pageId))
 
     /** Makes a new page inside this one and opens it. */
     fun createSubpage(onCreated: (String) -> Unit) = viewModelScope.launch {
