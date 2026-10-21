@@ -434,15 +434,15 @@ class NotionClient(
         return results
     }
 
-    private companion object {
-        const val BASE_URL = "https://api.notion.com/v1"
+    companion object {
+        private const val BASE_URL = "https://api.notion.com/v1"
         /** Data sources (see decisions.md, 2026-10-16), "in_trash" and "position" (2026-10-17). */
-        const val NOTION_VERSION = "2026-03-11"
-        const val MAX_ATTEMPTS = 4
+        private const val NOTION_VERSION = "2026-03-11"
+        private const val MAX_ATTEMPTS = 4
 
         /** Notion accepts at most 100 blocks per request. */
         const val MAX_CHILDREN = 100
-        val JSON = "application/json".toMediaType()
+        private val JSON = "application/json".toMediaType()
     }
 }
 

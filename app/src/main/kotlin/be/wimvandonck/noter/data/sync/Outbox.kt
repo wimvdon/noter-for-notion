@@ -26,6 +26,11 @@ sealed interface PendingOp {
         val workspace: String? = null,
         /** Content made with the page: what another app shared (#63, SharedNotes). */
         val children: List<Block> = emptyList(),
+        /**
+         * When it was first sent (null: not yet). Notion may have made the page even when its
+         * answer was lost, so a later try first looks for it (NotesRepository.findCreated).
+         */
+        val sentAt: Long? = null,
     ) : PendingOp
 
     @Serializable

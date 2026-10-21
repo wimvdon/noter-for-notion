@@ -430,7 +430,10 @@ private fun <T> ChoiceSheet(
                 )
             }
             val filtered = if (query.isBlank()) ordered else ordered.filter { searchText(it).contains(query.trim(), ignoreCase = true) }
-            LazyColumn(Modifier.heightIn(max = 480.dp)) {
+            // A list that can be searched, or is still loading, keeps its height: the sheet doesn't
+            // jump with every letter typed or when the options arrive.
+            val steady = loading || items.size > 8 || onAdd != null
+            LazyColumn(if (steady) Modifier.height(CHOICE_LIST_HEIGHT) else Modifier.heightIn(max = CHOICE_LIST_HEIGHT)) {
                 if (newOption != null && onAdd != null) {
                     item(key = "\u0000add") {
                         ListItem(
@@ -535,3 +538,6 @@ fun Bullet(size: androidx.compose.ui.unit.Dp = 6.dp) {
     val color = MaterialTheme.colorScheme.onSurface
     androidx.compose.foundation.Canvas(Modifier.size(size)) { drawCircle(color) }
 }
+
+/** The most a choice sheet's list takes, and what a searchable one always takes. */
+private val CHOICE_LIST_HEIGHT = 480.dp
