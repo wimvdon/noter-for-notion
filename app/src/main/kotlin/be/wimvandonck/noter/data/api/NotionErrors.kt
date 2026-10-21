@@ -12,6 +12,9 @@ object NotionErrors {
     const val KEY_REJECTED = "error:key_rejected"
     const val NO_DATA_SOURCE = "error:no_data_source"
 
+    /** "Connect to Notion" didn't work (Notion refused it, or what came back couldn't be read). */
+    const val SIGN_IN_FAILED = "error:sign_in"
+
     fun of(e: NotionException): String = when {
         e.code == NO_DATA_SOURCE -> NO_DATA_SOURCE
         e.isOffline -> OFFLINE

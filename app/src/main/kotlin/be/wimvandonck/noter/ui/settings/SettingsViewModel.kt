@@ -7,6 +7,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import be.wimvandonck.noter.NoterApp
 import be.wimvandonck.noter.data.NotesRepository
+import be.wimvandonck.noter.data.SignIn
+import be.wimvandonck.noter.data.SignInStatus
 import be.wimvandonck.noter.data.api.NotionErrors
 import be.wimvandonck.noter.data.api.NotionException
 import be.wimvandonck.noter.data.model.ThemeMode
@@ -35,6 +37,9 @@ sealed interface KeyStatus {
 
     data class Failed(val message: String) : KeyStatus
 
+    /** The person refused access in Notion ("Connect to Notion"). */
+    data object Cancelled : KeyStatus
+
     /** A workspace was removed ([name]); [last]: it was the only one, and the notes here were deleted. */
     data class Removed(val name: String, val last: Boolean) : KeyStatus
 }
@@ -46,13 +51,32 @@ data class SettingsUiState(
     val workspaces: List<Workspace> = emptyList(),
     val keyStatus: KeyStatus = KeyStatus.None,
     val pendingCount: Int = 0,
+    /** "Connect to Notion" (OAuth) is set up in this build. */
+    val canSignIn: Boolean = false,
 )
 
 class SettingsViewModel(
     private val repository: NotesRepository,
     private val keyStore: ApiKeyStore,
+    private val signIn: SignIn,
 ) : ViewModel() {
     private val keyStatus = MutableStateFlow<KeyStatus>(KeyStatus.None)
+
+    init {
+        // "Connect to Notion" finishes after the browser, possibly with this screen already open.
+        viewModelScope.launch {
+            signIn.status.collect { status ->
+                when (status) {
+                    SignInStatus.Idle -> Unit
+                    SignInStatus.Working -> keyStatus.value = KeyStatus.Testing
+                    is SignInStatus.Done -> keyStatus.value = KeyStatus.Ok(status.info)
+                    SignInStatus.Cancelled -> keyStatus.value = KeyStatus.Cancelled
+                    is SignInStatus.Failed -> keyStatus.value = KeyStatus.Failed(status.message)
+                }
+                signIn.shown()
+            }
+        }
+    }
 
     val state: StateFlow<SettingsUiState> = combine(
         repository.settingsFlow(),
@@ -60,8 +84,18 @@ class SettingsViewModel(
         keyStatus,
         repository.pendingCount,
     ) { settings, workspaces, status, pending ->
-        SettingsUiState(settings, workspaces.isNotEmpty(), workspaces, status, pending)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState(hasKey = keyStore.get().isNotBlank()))
+        SettingsUiState(settings, workspaces.isNotEmpty(), workspaces, status, pending, signIn.available)
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        SettingsUiState(hasKey = keyStore.get().isNotBlank(), canSignIn = signIn.available),
+    )
+
+    /** The address of Notion's page for "Connect to Notion" (opened in the browser). */
+    fun startSignIn(): String {
+        keyStatus.value = KeyStatus.None
+        return signIn.start()
+    }
 
     /**
      * Tests [token] with Notion and keeps it: as the main token when there is none yet, else next
@@ -118,7 +152,7 @@ class SettingsViewModel(
                 }
                 else -> {
                     val next = extras.first()
-                    keyStore.set(next.token, next.kind, next.name, next.workspace)
+                    keyStore.setMain(next)
                     keyStore.setExtras(extras.drop(1))
                     repository.forgetWorkspace(id)
                     // Home shows the new main token's owner's picture.
@@ -150,7 +184,7 @@ class SettingsViewModel(
         val Factory = viewModelFactory {
             initializer {
                 val app = this[APPLICATION_KEY] as NoterApp
-                SettingsViewModel(app.repository, app.apiKeyStore)
+                SettingsViewModel(app.repository, app.apiKeyStore, app.signIn)
             }
         }
     }

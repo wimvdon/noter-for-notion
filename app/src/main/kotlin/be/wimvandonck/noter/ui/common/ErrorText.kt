@@ -13,6 +13,7 @@ fun errorText(resources: Resources, error: String): String = when (error) {
     NotionErrors.BUSY -> resources.getString(R.string.error_busy)
     NotionErrors.KEY_REJECTED -> resources.getString(R.string.sync_key_rejected)
     NotionErrors.NO_DATA_SOURCE -> resources.getString(R.string.error_no_data_source)
+    NotionErrors.SIGN_IN_FAILED -> resources.getString(R.string.sign_in_failed)
     else -> error
 }
 

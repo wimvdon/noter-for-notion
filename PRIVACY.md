@@ -1,9 +1,10 @@
 # Privacy policy
 
-_Last updated: 2026-10-18 (sharing to the app)_
+_Last updated: 2026-10-21 (Connect to Notion)_
 
-Noter (listed on the Play Store as Noter for Notion) shows and edits notes in **your own Notion workspace**. It has no server of its
-own, no analytics, no advertising and no crash reporting.
+Noter (listed on the Play Store as Noter for Notion) shows and edits notes in **your own Notion workspace**. It has no server that keeps your data
+(only a small sign-in helper that stores nothing, see below), no analytics, no advertising and no
+crash reporting.
 
 ## What the app sends, and where
 
@@ -14,6 +15,14 @@ own, no analytics, no advertising and no crash reporting.
   is used only for that workspace's pages, and searches ask every workspace. It reads the notes you open and the lists you show (Browse searches by
   title), and writes the changes you make (titles, properties, note content, moving a note to
   Notion's trash).
+- **Noter's sign-in helper**, only when you use **Connect to Notion** (OAuth) instead of pasting a
+  token. Notion requires a secret for that sign-in that can't be kept inside an app, so a small
+  helper run by the developer on Cloudflare Workers adds it. When you allow access in Notion,
+  Notion sends you to the helper, which asks Notion for your tokens and passes them straight back
+  to the app, sealed so that only your phone can read them. Later, when Notion asks for a new
+  token, the app sends the helper its refresh token and gets the new tokens back. The helper
+  stores nothing and keeps no logs of tokens; like any website, Cloudflare sees your IP address.
+  Pasted tokens never go to the helper.
 - **Images** in your notes (header images, image blocks and page icons that are pictures) and your own Notion profile
   picture (shown on Home, when Notion gives its link) are downloaded straight from where
   Notion keeps them: Notion's own file storage for images uploaded to Notion, or the website an
@@ -31,7 +40,9 @@ own, no analytics, no advertising and no crash reporting.
 
 ## What the app stores on your phone
 
-- **Your tokens** (with each workspace's name, whether it is a personal access token, and the link to your profile picture), and which workspaces you folded away on Home, encrypted with the Android Keystore. They are never included in a backup.
+- **Your tokens** (with each workspace's name, whether it is a personal access token, and the link to your profile picture), and which workspaces you folded away on Home, encrypted with the Android Keystore. For Connect to Notion also its refresh token and Notion's ID
+  of the workspace, and during a sign-in a one-time key to open what the helper sends back. They
+  are never included in a backup.
 - **A copy of your notes** (titles, properties and content of the notes and pages you have seen),
   the list of databases and pages Home shows (their names and icons), which workspace each page and
   database is in (marked with a short code made from the token, not the token itself), and the list of changes that
@@ -47,7 +58,7 @@ own, no analytics, no advertising and no crash reporting.
 
 ## Permissions
 
-- **Internet**, to reach Notion's API, download the images in your notes and download a page
+- **Internet**, to reach Notion's API and the sign-in helper, download the images in your notes and download a page
   you share to the app. No other permissions.
 
 ## Deleting your data
@@ -56,7 +67,8 @@ own, no analytics, no advertising and no crash reporting.
   removes the copy of your notes.
 - Uninstalling the app removes everything it stored on your phone.
 - To stop the app's access to Notion completely, revoke the token at
-  <https://www.notion.so/developers/tokens> (or delete the integration, if you used one).
+  <https://www.notion.so/developers/tokens> (or delete the integration, if you used one). For
+  Connect to Notion, remove Noter in Notion under **Settings › Connections**.
 
 If this changes, this file will be updated **before** the change is released.
 

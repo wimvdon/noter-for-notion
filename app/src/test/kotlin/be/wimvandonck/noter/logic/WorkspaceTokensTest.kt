@@ -57,3 +57,67 @@ class WorkspaceTokensTest {
         assertTrue(WorkspaceTokens.decode("not json").isEmpty())
     }
 }
+
+class WorkspaceTokensSignInTest {
+    private val pat = WorkspaceToken("pat", "Wim", "Work", TokenKind.PERSONAL)
+    private val signedIn = WorkspaceToken("old", "Wim", "Home", TokenKind.PERSONAL, refresh = "r1", workspaceId = "ws-home")
+    private val fresh = WorkspaceToken("new", "Wim", "Home", refresh = "r2", workspaceId = "ws-home")
+
+    @Test
+    fun `the first token becomes the main one`() {
+        val (main, others) = WorkspaceTokens.signIn(WorkspaceToken(""), emptyList(), fresh)
+        assertEquals(fresh, main)
+        assertEquals(emptyList<WorkspaceToken>(), others)
+    }
+
+    @Test
+    fun `another workspace goes after the others`() {
+        val (main, others) = WorkspaceTokens.signIn(pat, emptyList(), fresh)
+        assertEquals(pat, main)
+        assertEquals(listOf(fresh), others)
+    }
+
+    @Test
+    fun `connecting a workspace again replaces its token where it was, keeping its ID`() {
+        val (main, others) = WorkspaceTokens.signIn(pat, listOf(signedIn, WorkspaceToken("t3")), fresh)
+        assertEquals(pat, main)
+        assertEquals("new", others[0].token)
+        assertEquals("r2", others[0].refresh)
+        assertEquals(Workspaces.id("old"), others[0].id)
+        assertEquals(TokenKind.PERSONAL, others[0].kind)
+        assertEquals("t3", others[1].token)
+
+        val (again, _) = WorkspaceTokens.signIn(signedIn, emptyList(), fresh)
+        assertEquals("new", again.token)
+        assertEquals(Workspaces.id("old"), again.id)
+    }
+
+    @Test
+    fun `a replaced token keeps the ID it already had`() {
+        val second = WorkspaceTokens.replaced(signedIn.copy(id = "abc"), fresh)
+        assertEquals("abc", second.id)
+        assertEquals("ws-home", WorkspaceTokens.replaced(signedIn, fresh.copy(workspaceId = "")).workspaceId)
+    }
+
+    @Test
+    fun `a pasted token for the same workspace isn't replaced`() {
+        val (main, others) = WorkspaceTokens.signIn(pat.copy(workspace = "Home"), emptyList(), fresh)
+        assertEquals("pat", main.token)
+        assertEquals(listOf(fresh), others)
+    }
+
+    @Test
+    fun `the new fields are stored and old lists still read`() {
+        val list = listOf(signedIn.copy(id = "abc"))
+        assertEquals(list, WorkspaceTokens.decode(WorkspaceTokens.encode(list)))
+        assertEquals(listOf(WorkspaceToken("t", "n", "w")), WorkspaceTokens.decode("""[{"token":"t","name":"n","workspace":"w"}]"""))
+    }
+
+    @Test
+    fun `a kept ID is used for the new token`() {
+        Workspaces.keep("refreshed-token", "abc123")
+        assertEquals("abc123", Workspaces.id("refreshed-token"))
+        assertEquals("abc123", Workspaces.of(listOf(WorkspaceToken("other-new", id = "abc123", refresh = "r"))).single().id)
+        assertTrue(Workspaces.of(listOf(WorkspaceToken("other-new", id = "abc123", refresh = "r"))).single().signedIn)
+    }
+}

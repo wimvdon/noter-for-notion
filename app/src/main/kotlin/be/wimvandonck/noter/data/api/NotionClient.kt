@@ -55,6 +55,11 @@ class NotionClient(
     private val extraKeys: () -> List<String> = { emptyList() },
     /** Only tests change this (to a server on the test machine). */
     private val baseUrl: String = BASE_URL,
+    /**
+     * A new token for one Notion no longer accepts (a "Connect to Notion" token is refreshed,
+     * see TokenRefresher); null when there is none.
+     */
+    private val renewKey: suspend (key: String) -> String? = { null },
 ) {
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -170,13 +175,15 @@ class NotionClient(
                 method != "GET" && method != "DELETE" -> "{}".toRequestBody(JSON)
                 else -> null
             }
-            val request = Request.Builder()
+            fun request(token: String) = Request.Builder()
                 .url("$baseUrl$endpoint")
-                .header("Authorization", "Bearer $key")
+                .header("Authorization", "Bearer $token")
                 .header("Notion-Version", NOTION_VERSION)
                 .method(method, requestBody)
                 .build()
 
+            var request = request(key)
+            var renewed = false
             var lastError = NotionException("Notion API error")
             repeat(MAX_ATTEMPTS) { attempt ->
                 val response = try {
@@ -193,6 +200,16 @@ class NotionClient(
                     status = response.code,
                     code = data.stringOrNull("code"),
                 )
+                // A refused "Connect to Notion" token is refreshed once and the request sent again
+                // (Notion refused it, so nothing was added).
+                if (response.code == 401 && !renewed) {
+                    renewed = true
+                    val fresh = renewKey(key)
+                    if (fresh != null && fresh != key) {
+                        request = request(fresh)
+                        return@repeat
+                    }
+                }
                 val retry = if (adds) response.code == 429 else lastError.isTemporary
                 if (!retry || attempt == MAX_ATTEMPTS - 1) throw lastError
                 val retryAfterMs = response.header("Retry-After")?.toDoubleOrNull()?.times(1000)?.toLong()
