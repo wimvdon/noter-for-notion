@@ -2,6 +2,10 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-21: New databases as in Notion
+
+After trying it, the owner asked for Notion's own defaults instead of the app's choice of starter properties ("Done" isn't one), and for several properties of a kind. A new database now starts like one made in Notion (Name and Tags), and Add property offers every kind Notion's API makes from a name alone, named as Notion names a new one ("Checkbox", "Text 2"). A toast after it opens says that its properties and views are edited in Notion. Rejected: status (the API can't make one), formulas, relations and rollups (they need an expression or another database), and editing options or formats in the app.
+
 ## 2026-10-21: Home newest first (#70); making databases (#71)
 
 Home's tree was by title because Notion's API doesn't give the sidebar's order; the owner found that it didn't feel like Notion's order anyway and asked for the most recently updated first. Both levels now are, and an entry counts as edited when something right inside it was (Notion doesn't change a page's time when only a page inside it changes), so busy pages stay on top. New databases can be made in a page or at the top of a workspace, with a name and a few starter properties of kinds the app already edits (Tags, Date, Done, Link); everything else (status, relations, formulas, views) stays in Notion. A database is made at once rather than queued like a note: it has no local copy to edit meanwhile, and Notion's answer says which data source to open. Rejected: choosing any property type (a full schema editor is much more screen for what Notion does better), a status property (Notion's API can't create one), and queueing it offline.

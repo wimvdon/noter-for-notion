@@ -103,9 +103,11 @@ properties and content: the pages of databases and pages on their own.
   this page".
 - **New database** (#71, `logic/NewDatabases.kt`, `ui/common/NewDatabase.kt`): in a page (its ⋮
   menu) or at the top of a workspace (+, where a page at the top is offered). A dialog asks for a
-  name and the properties it starts with besides Name (Tags, Date, Done, Link: kinds the app edits;
-  more can be added in Notion); `POST /databases` makes it with its first data source, and it opens
-  at once. Unlike notes it isn't queued: it needs Notion, and the dialog shows the error when
+  name and its properties besides Name: Tags at first, as in Notion; Add property adds any kind
+  Notion's API makes with only a name (`PropertyKind`: not status, formulas, relations, rollups),
+  named as Notion names a new one of that kind and numbered when taken ("Text 2"). `POST
+  /databases` makes it with its first data source; it opens at once, with a toast saying that its
+  properties and views are edited in Notion. Unlike notes it isn't queued: it needs Notion, and the dialog shows the error when
   Notion can't be reached or refuses.
 - **Search** (`SearchScreen.kt`, a child page from Home's search bar, sharing Home's ViewModel): one
   list (#60) of the notes on this phone whose title has every word typed (`logic/NoteSearch.kt`,
