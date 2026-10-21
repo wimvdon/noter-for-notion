@@ -27,15 +27,16 @@ What the app sends and stores: [`PRIVACY.md`](PRIVACY.md). Rules for Claude Code
 ## Getting started
 
 1. Install the app (see below) and open it.
-   If **Settings › Workspaces** shows **Connect to Notion**, tap it, choose the pages Noter may use
-   in Notion and tap *Allow access*: that's all. For everything you can see, or another workspace,
-   use a token instead (steps 2 and 3). Setting up Connect to Notion: `worker/README.md`.
-2. In Notion, open <https://www.notion.so/developers/tokens> and make a **personal access token**:
-   give it a name, turn on **Notion API**, choose your workspace and an expiry date, and copy it.
-   It acts as you, so the app sees the pages you see; there is nothing to share with it.
-3. In the app: **Settings › Workspaces**, paste the token and tap **Add workspace**. Then tap
-   **Home** lists your databases and pages; open a database and pin it with **⋮ › Pin** to keep it
-   at the top of Home.
+2. **Settings › Workspaces › Add workspace**, then choose how:
+   - **Connect to Notion**: quickest. Choose in Notion which pages and databases Noter sees and
+     tap *Allow access*. (How the sign-in is set up: `worker/README.md`.)
+   - **Personal access token**: full access to your own workspace. Make one at
+     <https://www.notion.so/developers/tokens> (a name, **Notion API** on, your workspace, an
+     expiry date), copy it and paste it in the app.
+   - **Connection token**: for a workspace you're a guest in. A member makes a connection, shares
+     pages and databases with it and gives you its token.
+3. **Home** lists your databases and pages; open a database and pin it with **⋮ › Pin** to keep it
+   at the top of Home. Add as many workspaces as you like, each its own way.
 
 When the token expires, remove it and add a new one in the same place. For another workspace or
 Notion account, add a token for it too: the app shows everything together and says which

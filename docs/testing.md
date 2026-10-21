@@ -24,6 +24,7 @@ node --test worker/test/noter-sign-in.test.mjs
 ### What the unit tests cover
 | Test | Covers |
 |---|---|
+| `logic/WorkspaceWaysTest` | Which ways Add workspace offers, in which order, and which need a token |
 | `logic/SealedBoxTest`, `logic/SignInsTest` | Connect to Notion: opening what the sign-in helper sealed (a sample sealed by the helper itself), the state and authorize link, reading Notion's token answer |
 | `logic/TokenRefresherTest`, `data/api/RenewKeyClientTest` (in `MultiWorkspaceClientTest.kt`) | Refreshing a refused Connect to Notion token once, one refresh at a time, keeping its workspace's ID; pasted tokens are never refreshed |
 | `logic/WorkspaceTokensSignInTest` (in `WorkspaceTokensTest.kt`) | Where a new Connect to Notion token goes: main, after the others, or in place of the same workspace's token |

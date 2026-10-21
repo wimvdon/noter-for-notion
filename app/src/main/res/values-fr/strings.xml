@@ -182,9 +182,7 @@
     <string name="action_select_text">Sélectionner du texte</string>
     <string name="close">Fermer</string>
     <string name="section_workspaces">Espaces de travail</string>
-    <string name="workspaces_help">Ajoutez un jeton pour chaque espace de travail ou compte Notion.</string>
-    <string name="workspaces_help_personal">Un jeton d’accès personnel est pour votre propre espace de travail : il voit tout ce que vous voyez et peut ajouter des pages en haut.</string>
-    <string name="workspaces_help_connection">Une connexion ne voit que les pages partagées avec elle, par exemple par un membre d’un espace de travail où vous êtes invité.</string>
+    <string name="workspaces_help">Ajoutez chaque espace de travail Notion que vous voulez voir dans Noter.</string>
     <string name="workspace_token">Jeton</string>
     <string name="workspace_personal">Jeton d’accès personnel</string>
     <string name="workspace_connection">Connexion</string>
@@ -196,9 +194,14 @@
     <string name="add_workspace">Ajouter l’espace de travail</string>
     <string name="remove_workspace">Retirer</string>
     <string name="workspace_added">%1$s ajouté.</string>
+    <string name="way_sign_in_text">Configuration la plus rapide. Choisissez dans Notion les pages et bases de données visibles dans Noter.</string>
+    <string name="way_personal_text">Accès complet à votre propre espace de travail, sans choisir de pages ni de bases de données.</string>
+    <string name="way_connection_title">Jeton de connexion</string>
+    <string name="way_connection_text">Pour un espace de travail où vous êtes invité : un membre partage des pages et bases de données avec une connexion et vous donne son jeton.</string>
+    <string name="personal_steps">Dans Notion, créez un jeton d’accès personnel pour cet espace de travail, copiez-le et collez-le ici.</string>
+    <string name="connection_steps">Un membre de l’espace de travail crée une connexion, partage des pages et bases de données avec elle et vous donne son jeton. Collez-le ici.</string>
+    <string name="action_continue">Continuer</string>
     <string name="sign_in">Connexion à Notion</string>
-    <string name="sign_in_help">Choisissez dans Notion les pages que Noter peut utiliser. Aucun jeton à copier.</string>
-    <string name="workspaces_help_tokens">Pour tout ce que vous voyez dans Notion, ou pour un espace de travail auquel vous avez été invité, ajoutez plutôt un jeton.</string>
     <string name="workspace_signed_in">Connecté avec Notion</string>
     <string name="sign_in_cancelled">La connexion a été annulée dans Notion.</string>
     <string name="sign_in_failed">Impossible de se connecter à Notion. Réessayez.</string>

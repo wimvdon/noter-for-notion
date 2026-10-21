@@ -179,9 +179,7 @@
     <string name="action_select_text">Select text</string>
     <string name="close">Close</string>
     <string name="section_workspaces">Workspaces</string>
-    <string name="workspaces_help">Add a token for each workspace or Notion account.</string>
-    <string name="workspaces_help_personal">A personal access token is for a workspace of your own: it sees everything you can see and can add pages at the top.</string>
-    <string name="workspaces_help_connection">A connection only sees the pages shared with it, for example by a member of a workspace you were invited to.</string>
+    <string name="workspaces_help">Add each Notion workspace you want to see in Noter.</string>
     <string name="workspace_token">Token</string>
     <string name="workspace_personal">Personal access token</string>
     <string name="workspace_connection">Connection</string>
@@ -193,9 +191,14 @@
     <string name="add_workspace">Add workspace</string>
     <string name="remove_workspace">Remove</string>
     <string name="workspace_added">Added %1$s.</string>
+    <string name="way_sign_in_text">Quickest set-up. Choose in Notion which pages and databases you see in Noter.</string>
+    <string name="way_personal_text">Full access to your own workspace, without choosing pages and databases.</string>
+    <string name="way_connection_title">Connection token</string>
+    <string name="way_connection_text">For a workspace you’re a guest in: a member shares pages and databases with a connection and gives you its token.</string>
+    <string name="personal_steps">In Notion, make a personal access token for this workspace, copy it and paste it here.</string>
+    <string name="connection_steps">A member of the workspace makes a connection, shares pages and databases with it and gives you its token. Paste it here.</string>
+    <string name="action_continue">Continue</string>
     <string name="sign_in">Connect to Notion</string>
-    <string name="sign_in_help">Choose in Notion which pages Noter may use. No token to copy.</string>
-    <string name="workspaces_help_tokens">For everything you can see in Notion, or for a workspace you were invited to, add a token instead.</string>
     <string name="workspace_signed_in">Connected with Notion</string>
     <string name="sign_in_cancelled">Connecting was cancelled in Notion.</string>
     <string name="sign_in_failed">Couldn’t connect to Notion. Try again.</string>
