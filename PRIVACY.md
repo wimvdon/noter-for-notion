@@ -17,7 +17,7 @@ crash reporting.
   Notion's trash).
 - **Noter's sign-in helper**, only when you use **Connect to Notion** (OAuth) instead of pasting a
   token. Notion requires a secret for that sign-in that can't be kept inside an app, so a small
-  helper run by the developer on Cloudflare Workers adds it. When you allow access in Notion,
+  helper run by the developer on Cloudflare Workers (`noter-sign-in.wim-d57.workers.dev`) adds it. When you allow access in Notion,
   Notion sends you to the helper, which asks Notion for your tokens and passes them straight back
   to the app, sealed so that only your phone can read them. Later, when Notion asks for a new
   token, the app sends the helper its refresh token and gets the new tokens back. The helper
