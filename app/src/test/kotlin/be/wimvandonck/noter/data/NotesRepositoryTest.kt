@@ -89,6 +89,54 @@ class NotesRepositoryTest {
     }
 
     @Test
+    fun `a page Notion made without answering is not made again`() = runBlocking {
+        val made = FakeNotion.page("page-1", "db").replace("2026-10-16T10:00:00.000Z", java.time.Instant.now().toString())
+        var created = false
+        notion.respond = { sent ->
+            when {
+                sent.method == "POST" && sent.path == "/pages" -> {
+                    // Notion makes the page, but the answer is a server error.
+                    created = true
+                    502 to "{}"
+                }
+                sent.path.startsWith("/data_sources/db/query") ->
+                    200 to if (created && sent.body.contains("created_time")) FakeNotion.list(made) else FakeNotion.list()
+                sent.path.startsWith("/data_sources/db") -> 200 to FakeNotion.database("db")
+                else -> 200 to "{}"
+            }
+        }
+        val repo = repository()
+        val localId = checkNotNull(repo.createNote("db"))
+        repo.flush()
+        assertEquals(1, repo.pendingCount.first())
+        repo.flush()
+
+        assertEquals(1, notion.requests.count { it.method == "POST" && it.path == "/pages" })
+        assertEquals("page-1", repo.resolve(localId))
+        assertEquals(0, repo.pendingCount.first())
+    }
+
+    @Test
+    fun `a page that wasn't made after a lost answer is made on the next try`() = runBlocking {
+        var tries = 0
+        notion.respond = { sent ->
+            when {
+                sent.method == "POST" && sent.path == "/pages" -> if (++tries == 1) 502 to "{}" else 200 to FakeNotion.page("page-2", "db")
+                sent.path.startsWith("/data_sources/db/query") -> 200 to FakeNotion.list()
+                sent.path.startsWith("/data_sources/db") -> 200 to FakeNotion.database("db")
+                else -> 200 to "{}"
+            }
+        }
+        val repo = repository()
+        val localId = checkNotNull(repo.createNote("db"))
+        repo.flush()
+        repo.flush()
+
+        assertEquals(2, notion.requests.count { it.method == "POST" && it.path == "/pages" })
+        assertEquals("page-2", repo.resolve(localId))
+    }
+
+    @Test
     fun `edits to a note in the trash are not sent`() = runBlocking {
         notion.respond = { sent ->
             when {

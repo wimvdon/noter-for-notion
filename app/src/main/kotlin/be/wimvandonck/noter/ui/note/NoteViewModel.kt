@@ -18,6 +18,7 @@ import be.wimvandonck.noter.data.model.PageRef
 import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.sync.SaveTiming
+import be.wimvandonck.noter.logic.ContentMerge
 import be.wimvandonck.noter.logic.DocumentEditor
 import be.wimvandonck.noter.logic.EditResult
 import be.wimvandonck.noter.logic.NestedContent
@@ -127,6 +128,12 @@ class NoteViewModel(
             launch { repository.refreshSchemaOf(pageId) }
             when {
                 fresh != null && !editedSinceOpen -> setLoaded(fresh.blocks)
+                // Typed while the newer version was on its way: the edits go on top of it, so what
+                // changed in Notion meanwhile isn't deleted or set back when they are saved.
+                fresh != null && cached != null -> {
+                    blocks.value = ContentMerge.merge(cached.blocks, blocks.value, fresh.blocks)
+                    scheduleSave()
+                }
                 cached == null && fresh == null -> {
                     // New note or offline without a copy: start empty (new notes) or show the problem.
                     val isNew = pageId.startsWith(NoteSummary.LOCAL_PREFIX)

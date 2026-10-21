@@ -3,6 +3,7 @@ package be.wimvandonck.noter.data
 import be.wimvandonck.noter.data.api.NotionClient
 import be.wimvandonck.noter.data.api.NotionErrors
 import be.wimvandonck.noter.data.api.NotionException
+import be.wimvandonck.noter.data.api.objOrNull
 import be.wimvandonck.noter.data.api.stringOrNull
 import be.wimvandonck.noter.data.model.Block
 import be.wimvandonck.noter.data.model.BlockType
@@ -825,7 +826,10 @@ class NotesRepository(
                 retryDelayMs = RETRY_MIN_MS
                 lock.withLock {
                     val queue = _outbox.value.toMutableList()
-                    val index = queue.indexOfFirst { it == op || (op is PendingOp.CreatePage && it == op.copy(pageId = resolve(op.pageId))) }
+                    // A create is found by its note (create marks it as sent, and renames it).
+                    val index = queue.indexOfFirst {
+                        it == op || (op is PendingOp.CreatePage && it is PendingOp.CreatePage && resolve(it.pageId) == resolve(op.pageId))
+                    }
                     if (index >= 0) {
                         queue.removeAt(index)
                         // Still more to send for this note (edited while sending): send it again later.
@@ -885,9 +889,12 @@ class NotesRepository(
         val sent = note.properties
         val sentEmoji = note.icon?.emoji
         val source = if (op.databaseId == PAGES || isPageNotebook(op.databaseId)) null else resolveSource(op.databaseId)
+        // Sent before without an answer (offline, a timeout, a server error): Notion may have made
+        // it anyway. Look for it first, so the note isn't made twice.
+        var made: JsonObject? = op.sentAt?.let { findCreated(op, note, source, it) }
+        if (made == null) markSent(op)
         // Shared content goes with the page; when Notion refuses it (an image link it can't use), less of it.
-        val attempts = BlockCodec.createAttempts(op.children)
-        var made: JsonObject? = null
+        val attempts = if (made != null) emptyList() else BlockCodec.createAttempts(op.children)
         for ((i, children) in attempts.withIndex()) {
             try {
                 made = if (source == null) {
@@ -953,6 +960,38 @@ class NotesRepository(
         return true
     }
 
+    /** Keeps when [op] was first sent (see [PendingOp.CreatePage.sentAt]). */
+    private suspend fun markSent(op: PendingOp.CreatePage) = lock.withLock {
+        if (op.sentAt != null) return@withLock
+        val now = clock()
+        _outbox.value = _outbox.value.map { if (it is PendingOp.CreatePage && it.pageId == op.pageId) it.copy(sentAt = now) else it }
+        cache.saveOutbox(_outbox.value)
+    }
+
+    /**
+     * The page Notion made for [op] when an earlier try's answer was lost: a page with the note's
+     * title, made in the same place since a little before it was first sent ([since]). Null when
+     * there is none (it is then made now).
+     */
+    private suspend fun findCreated(op: PendingOp.CreatePage, note: NoteSummary, source: String?, since: Long): JsonObject? {
+        val after = Instant.ofEpochMilli(since - CREATE_CLOCK_SLACK_MS)
+        fun madeSince(json: JsonObject) = json.stringOrNull("created_time")?.let { runCatching { Instant.parse(it) }.getOrNull() }?.isAfter(after) == true
+        fun sameTitle(page: JsonObject) = PropertyCodec.parsePage(page, op.databaseId)?.title == note.title
+        return when {
+            source != null -> client.queryDataSource(
+                source,
+                mapOf("timestamp" to "created_time", "created_time" to mapOf("on_or_after" to after.toString())),
+            ).firstOrNull(::sameTitle)
+            op.parentPageId != null -> client.blockChildren(op.parentPageId)
+                .filter { it.stringOrNull("type") == "child_page" && madeSince(it) }
+                .mapNotNull { child -> child.stringOrNull("id")?.let { client.getPage(it) } }
+                .lastOrNull(::sameTitle)
+            else -> client.search(InlineMarkdown.stripped(note.title), limit = 20)
+                .filter { it.stringOrNull("object") == "page" && it.objOrNull("parent")?.stringOrNull("type") == "workspace" && madeSince(it) }
+                .firstOrNull(::sameTitle)
+        }
+    }
+
     private suspend fun sendContent(pageId: String): Boolean {
         var content = cache.content(pageId) ?: return true
         if (!content.dirty) return true
@@ -1011,8 +1050,9 @@ class NotesRepository(
                             emptyList()
                         }
                     } catch (e: NotionException) {
-                        // No answer, or a server error: Notion may have added the blocks anyway.
-                        if (e.status == null || e.status >= 500) markUncertain(pageId)
+                        // No answer, or a server error: Notion may have added the blocks anyway. More
+                        // than one request's worth: the first ones were added before this one failed.
+                        if (e.status == null || e.status >= 500 || op.blocks.size > NotionClient.MAX_CHILDREN) markUncertain(pageId)
                         throw e
                     }
                     if (ids.size == op.blocks.size) {
@@ -1383,6 +1423,9 @@ class NotesRepository(
         /** Results of one Browse search (one or two requests). */
         private const val BROWSE_LIMIT = 200
         private const val RETRY_MIN_MS = 15_000L
+
+        /** How much earlier than this phone's clock a page sent without an answer may have been made (clocks differ). */
+        private const val CREATE_CLOCK_SLACK_MS = 10 * 60_000L
         private const val OWNERS_SAVE_DELAY_MS = 2_000L
         private const val RETRY_MAX_MS = 5 * 60_000L
         private const val RETRY_OFFLINE_MAX_MS = 60_000L
