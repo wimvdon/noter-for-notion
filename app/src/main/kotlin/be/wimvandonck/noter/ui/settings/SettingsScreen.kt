@@ -4,21 +4,11 @@ import android.content.Intent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.OpenInNew
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,9 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,6 +28,7 @@ import be.wimvandonck.noter.R
 import be.wimvandonck.noter.ui.common.errorText
 import be.wimvandonck.noter.data.model.ThemeMode
 import be.wimvandonck.noter.data.notion.TokenKind
+import be.wimvandonck.noter.logic.WorkspaceWay
 import be.wimvandonck.noter.ui.theme.AppearanceSettings
 import be.wimvandonck.noter.ui.theme.SettingsBlock
 import be.wimvandonck.noter.ui.theme.SettingsSection
@@ -92,32 +80,16 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
 }
 
 /**
- * Every workspace with a token (#58): a personal access token for a workspace of one's own, or a
- * connection's token for pages someone shared. Each can be removed; a new one is tested before it
- * is kept. The first becomes the main token.
+ * Every workspace (#58), each added its own way (Add workspace, [AddWorkspaceDialog]): Connect to
+ * Notion, a personal access token or a connection's token. Each can be removed; a new token is
+ * tested before it is kept. The first becomes the main token.
  */
 @Composable
 private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewModel) {
     val context = LocalContext.current
-    var token by rememberSaveable { mutableStateOf("") }
-    var visible by rememberSaveable { mutableStateOf(false) }
-    if (state.canSignIn) {
-        // "Connect to Notion" (OAuth): the person chooses the pages in Notion, no token to copy.
-        Text(
-            stringResource(R.string.sign_in_help),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Button(
-            onClick = {
-                val url = viewModel.startSignIn()
-                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
-            },
-            enabled = state.keyStatus != KeyStatus.Testing,
-        ) { Text(stringResource(R.string.sign_in)) }
-    }
+    var adding by rememberSaveable { mutableStateOf(false) }
     Text(
-        stringResource(if (state.canSignIn) R.string.workspaces_help_tokens else R.string.workspaces_help),
+        stringResource(R.string.workspaces_help),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -144,23 +116,6 @@ private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewMod
             }
         }
     }
-    OutlinedTextField(
-        value = token,
-        onValueChange = { token = it },
-        label = { Text(stringResource(R.string.workspace_token)) },
-        singleLine = true,
-        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        trailingIcon = {
-            IconButton(onClick = { visible = !visible }) {
-                Icon(
-                    if (visible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                    contentDescription = stringResource(if (visible) R.string.hide_key else R.string.show_key),
-                )
-            }
-        },
-        modifier = Modifier.fillMaxWidth(),
-    )
     when (val status = state.keyStatus) {
         is KeyStatus.Ok -> StatusText(stringResource(R.string.workspace_added, status.info.workspace?.ifBlank { null } ?: status.info.name), error = false)
         is KeyStatus.Failed -> StatusText(stringResource(R.string.key_failed, errorText(status.message)), error = true)
@@ -171,30 +126,31 @@ private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewMod
         )
         else -> Unit
     }
-    val onAdd = {
-        viewModel.addWorkspace(token)
-        token = ""
-    }
-    val addContent: @Composable () -> Unit = {
+    Button(onClick = { adding = true }, enabled = state.keyStatus != KeyStatus.Testing) {
         if (state.keyStatus == KeyStatus.Testing) {
             CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             Spacer(Modifier.width(8.dp))
         }
         Text(stringResource(R.string.add_workspace))
     }
-    val canAdd = token.isNotBlank() && state.keyStatus != KeyStatus.Testing
-    // With "Connect to Notion" above, that is the main action and adding a token the second one.
-    if (state.canSignIn) {
-        FilledTonalButton(onClick = onAdd, enabled = canAdd) { addContent() }
-    } else {
-        Button(onClick = onAdd, enabled = canAdd) { addContent() }
-    }
-    // The two kinds of token, each with what it sees and where Notion makes one.
-    TokenKindHelp(stringResource(R.string.workspaces_help_personal), stringResource(R.string.make_personal_token)) {
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, TOKENS_URL.toUri())) }
-    }
-    TokenKindHelp(stringResource(R.string.workspaces_help_connection), stringResource(R.string.make_connection)) {
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, CONNECTIONS_URL.toUri())) }
+    if (adding) {
+        AddWorkspaceDialog(
+            canSignIn = state.canSignIn,
+            onSignIn = {
+                adding = false
+                val url = viewModel.startSignIn()
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
+            },
+            onAddToken = { token ->
+                adding = false
+                viewModel.addWorkspace(token)
+            },
+            onOpenNotion = { way ->
+                val url = if (way == WorkspaceWay.PERSONAL) TOKENS_URL else CONNECTIONS_URL
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
+            },
+            onDismiss = { adding = false },
+        )
     }
     if (state.hasKey) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -209,25 +165,6 @@ private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewMod
             )
             TextButton(onClick = viewModel::syncNow) { Text(stringResource(R.string.sync_now)) }
         }
-    }
-}
-
-/** What a kind of token sees, with the link to where Notion makes one right below it. */
-@Composable
-private fun TokenKindHelp(text: String, link: String, onOpen: () -> Unit) {
-    Column {
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        LinkButton(link, onOpen)
-    }
-}
-
-/** A link to one of Notion's pages, with the "opens elsewhere" arrow. */
-@Composable
-private fun LinkButton(text: String, onClick: () -> Unit) {
-    TextButton(onClick = onClick) {
-        Text(text)
-        Spacer(Modifier.width(8.dp))
-        Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
     }
 }
 

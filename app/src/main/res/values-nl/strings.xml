@@ -179,9 +179,7 @@
     <string name="action_select_text">Tekst selecteren</string>
     <string name="close">Sluiten</string>
     <string name="section_workspaces">Werkruimtes</string>
-    <string name="workspaces_help">Voeg een token toe voor elke werkruimte of elk Notion-account.</string>
-    <string name="workspaces_help_personal">Een persoonlijk toegangstoken is voor een eigen werkruimte: het ziet alles wat jij ziet en kan bovenaan pagina’s toevoegen.</string>
-    <string name="workspaces_help_connection">Een koppeling ziet alleen de pagina’s die ermee gedeeld zijn, bijvoorbeeld door een lid van een werkruimte waarvoor je uitgenodigd bent.</string>
+    <string name="workspaces_help">Voeg elke Notion-werkruimte toe die je in Noter wilt zien.</string>
     <string name="workspace_token">Token</string>
     <string name="workspace_personal">Persoonlijk toegangstoken</string>
     <string name="workspace_connection">Koppeling</string>
@@ -193,9 +191,14 @@
     <string name="add_workspace">Werkruimte toevoegen</string>
     <string name="remove_workspace">Verwijderen</string>
     <string name="workspace_added">%1$s toegevoegd.</string>
+    <string name="way_sign_in_text">Snelste manier. Kies in Notion welke pagina’s en databases je in Noter ziet.</string>
+    <string name="way_personal_text">Volledige toegang tot je eigen werkruimte, zonder pagina’s en databases te kiezen.</string>
+    <string name="way_connection_title">Koppelingstoken</string>
+    <string name="way_connection_text">Voor een werkruimte waarin je gast bent: een lid deelt pagina’s en databases met een koppeling en geeft je het token.</string>
+    <string name="personal_steps">Maak in Notion een persoonlijk toegangstoken voor deze werkruimte, kopieer het en plak het hier.</string>
+    <string name="connection_steps">Een lid van de werkruimte maakt een koppeling, deelt er pagina’s en databases mee en geeft je het token. Plak het hier.</string>
+    <string name="action_continue">Doorgaan</string>
     <string name="sign_in">Verbind met Notion</string>
-    <string name="sign_in_help">Kies in Notion welke pagina’s Noter mag gebruiken. Je hoeft geen token te kopiëren.</string>
-    <string name="workspaces_help_tokens">Voor alles wat je in Notion ziet, of voor een werkruimte waarvoor je bent uitgenodigd, voeg je in plaats daarvan een token toe.</string>
     <string name="workspace_signed_in">Verbonden met Notion</string>
     <string name="sign_in_cancelled">Het verbinden is in Notion geannuleerd.</string>
     <string name="sign_in_failed">Kan niet verbinden met Notion. Probeer het opnieuw.</string>

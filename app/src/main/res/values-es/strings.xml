@@ -182,9 +182,7 @@
     <string name="action_select_text">Seleccionar texto</string>
     <string name="close">Cerrar</string>
     <string name="section_workspaces">Espacios de trabajo</string>
-    <string name="workspaces_help">Añade un token por cada espacio de trabajo o cuenta de Notion.</string>
-    <string name="workspaces_help_personal">Un token de acceso personal es para un espacio de trabajo propio: ve todo lo que tú ves y puede añadir páginas arriba del todo.</string>
-    <string name="workspaces_help_connection">Una conexión solo ve las páginas compartidas con ella, por ejemplo por un miembro de un espacio de trabajo al que te invitaron.</string>
+    <string name="workspaces_help">Añade cada espacio de trabajo de Notion que quieras ver en Noter.</string>
     <string name="workspace_token">Token</string>
     <string name="workspace_personal">Token de acceso personal</string>
     <string name="workspace_connection">Conexión</string>
@@ -196,9 +194,14 @@
     <string name="add_workspace">Añadir espacio de trabajo</string>
     <string name="remove_workspace">Quitar</string>
     <string name="workspace_added">Se añadió %1$s.</string>
+    <string name="way_sign_in_text">La forma más rápida. Elige en Notion qué páginas y bases de datos ves en Noter.</string>
+    <string name="way_personal_text">Acceso completo a tu propio espacio de trabajo, sin elegir páginas ni bases de datos.</string>
+    <string name="way_connection_title">Token de conexión</string>
+    <string name="way_connection_text">Para un espacio de trabajo en el que eres invitado: un miembro comparte páginas y bases de datos con una conexión y te da su token.</string>
+    <string name="personal_steps">En Notion, crea un token de acceso personal para este espacio de trabajo, cópialo y pégalo aquí.</string>
+    <string name="connection_steps">Un miembro del espacio de trabajo crea una conexión, comparte con ella páginas y bases de datos y te da su token. Pégalo aquí.</string>
+    <string name="action_continue">Continuar</string>
     <string name="sign_in">Conéctate a Notion</string>
-    <string name="sign_in_help">Elige en Notion qué páginas puede usar Noter. No hace falta copiar ningún token.</string>
-    <string name="workspaces_help_tokens">Para todo lo que ves en Notion, o para un espacio de trabajo al que te invitaron, añade un token.</string>
     <string name="workspace_signed_in">Conectado con Notion</string>
     <string name="sign_in_cancelled">Se canceló la conexión en Notion.</string>
     <string name="sign_in_failed">No se pudo conectar con Notion. Inténtalo de nuevo.</string>

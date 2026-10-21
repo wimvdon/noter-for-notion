@@ -152,9 +152,11 @@ properties and content: the pages of databases and pages on their own.
 - **Icons of Notion's own** (`data/icons/IconCatalog.kt`, `DatabaseIcons.kt`): the Material Symbols
   set (4 229 icons) from `assets/material_symbols.txt` (name, categories and SVG path data per icon,
   from RSS Reader), drawn as vectors, for the closest match to a Notion icon (`logic/PageIcons.kt`).
-- **Settings** (`ui/settings/`): Workspaces (every token, a field to add one, then what a
-  personal access token sees with the link to make one, and the same for a connection, and sync
-  status) and Appearance; built from the shared `SettingsKit.kt`.
+- **Settings** (`ui/settings/`): Workspaces (every workspace with how it was added, Add workspace,
+  and sync status) and Appearance; built from the shared `SettingsKit.kt`. Add workspace
+  (`AddWorkspaceDialog.kt`) first asks how, each with what it is best for (`logic/WorkspaceWays.kt`):
+  Connect to Notion (when the build has it), a personal access token or a connection token; for a
+  token it then shows where Notion makes one and a field to paste it.
 - **Workspaces** (#58): a token belongs to one workspace, so there can be one per workspace or
   Notion account. The first is the main token (`ApiKeyStore.get`, with its names in
   `ApiKeyStore.main`); the others are `ApiKeyStore.extras` (encrypted like it and never backed
