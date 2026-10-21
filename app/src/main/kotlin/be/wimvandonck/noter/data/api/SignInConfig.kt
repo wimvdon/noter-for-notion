@@ -6,10 +6,10 @@ package be.wimvandonck.noter.data.api
  */
 object SignInConfig {
     /** The connection's OAuth client ID (Notion: the connection → Configuration). Not a secret. */
-    const val CLIENT_ID = ""
+    const val CLIENT_ID = "400d872b-594c-8125-8601-003741d84f49"
 
     /** The sign-in helper's address, e.g. `https://noter-sign-in.example.workers.dev`. */
-    const val HELPER_URL = ""
+    const val HELPER_URL = "https://noter-sign-in.wim-d57.workers.dev"
 
     val enabled: Boolean get() = CLIENT_ID.isNotBlank() && HELPER_URL.isNotBlank()
 }
