@@ -325,6 +325,16 @@ class NotionClient(
             adds = true,
         )
 
+    /**
+     * Creates a database ([body], see NewDatabases): inside the page its parent names, or at the top
+     * of [workspace] (the main one when null or no longer there). Notion answers with the database
+     * and its first data source.
+     */
+    suspend fun createDatabase(body: Map<String, Any?>, workspace: String? = null): JsonObject {
+        val atTop = (body["parent"] as? Map<*, *>)?.get("type") == "workspace"
+        return call("POST", "/databases", body, key = if (atTop) workspace?.let(::keyOf) else null, adds = true)
+    }
+
     /** Sets the page's icon to [emoji], or removes it when that is null. */
     suspend fun updatePageIcon(pageId: String, emoji: String?): JsonObject =
         call("PATCH", "/pages/$pageId", mapOf("icon" to emoji?.let(::emojiIcon)))

@@ -194,4 +194,16 @@
     <string name="add_workspace">Añadir espacio de trabajo</string>
     <string name="remove_workspace">Quitar</string>
     <string name="workspace_added">Se añadió %1$s.</string>
+    <string name="new_database">Nueva base de datos</string>
+    <string name="new_database_in_page">Nueva base de datos en esta página</string>
+    <string name="new_database_at_top">Nueva base de datos arriba del todo</string>
+    <string name="new_database_name">Nombre de la base de datos</string>
+    <string name="new_database_properties">Empieza con estas propiedades; puedes añadir más en Notion.</string>
+    <string name="new_database_tags">Etiquetas</string>
+    <string name="new_database_date">Fecha</string>
+    <string name="new_database_done">Hecho</string>
+    <string name="new_database_link">Enlace</string>
+    <string name="new_database_title_property">Nombre</string>
+    <string name="new_database_create">Crear</string>
+    <string name="new_database_failed">Notion no creó la base de datos: %1$s</string>
 </resources>

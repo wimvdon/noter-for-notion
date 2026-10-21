@@ -252,8 +252,9 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   "Edited …", a small primary pin at the end when pinned) in a tree of two levels: a row with
   pages inside ends in a chevron icon button (pointing right when closed, down when open) and its
   pages follow it indented by 24dp; "Show more" (a text button) below the first 30. A long press on a row opens a menu with
-  Pin or Unpin. One FAB (+): a sheet with "New page" (at the top of the workspace) and "New note
-  in" with the databases. With tokens for several workspaces, "Databases and pages" becomes one
+  Pin or Unpin. One FAB (+): a sheet with "New page" (at the top of the workspace), "New database at
+  the top" and "New note in" with the databases. New database is a dialog: a name field, then
+  checkboxes for the starter properties. With tokens for several workspaces, "Databases and pages" becomes one
   part per workspace under its name (Title Small, primary, a chevron; a tap folds it away), rows
   say "Workspace · Edited …", and the + sheet has a part per workspace (its name as the title, with
   a chevron that folds the part away,

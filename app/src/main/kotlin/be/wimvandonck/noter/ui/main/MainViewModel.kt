@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import be.wimvandonck.noter.NoterApp
 import be.wimvandonck.noter.data.DatabaseState
 import be.wimvandonck.noter.data.NotesRepository
+import be.wimvandonck.noter.ui.common.DatabaseCreation
 import be.wimvandonck.noter.data.RepoEvent
 import be.wimvandonck.noter.data.api.NotionErrors
 import be.wimvandonck.noter.data.api.NotionException
@@ -416,6 +417,12 @@ class MainViewModel(
             }
         }
     }
+
+    /** The New database dialog (#71): a database at the top of a workspace. */
+    val newDatabase = DatabaseCreation(viewModelScope, repository)
+
+    /** Opens the New database dialog for the top of [workspace] (null: the main one). */
+    fun openNewDatabase(workspace: String?) = newDatabase.open(null, workspace)
 
     /** Folds workspace [id] away on Home, or unfolds it. */
     fun toggleCollapsed(id: String) {

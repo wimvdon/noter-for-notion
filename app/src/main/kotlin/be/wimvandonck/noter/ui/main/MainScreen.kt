@@ -99,6 +99,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import be.wimvandonck.noter.R
+import be.wimvandonck.noter.ui.common.NewDatabaseDialog
 import be.wimvandonck.noter.data.RepoEvent
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.PageIcon
@@ -237,6 +238,15 @@ fun MainScreen(
         }
     }
 
+    val newDatabase by viewModel.newDatabase.state.collectAsStateWithLifecycle()
+    newDatabase?.let { dialog ->
+        NewDatabaseDialog(
+            dialog,
+            onCreate = { title, titleName, starters, names -> viewModel.newDatabase.create(title, titleName, starters, names, onOpenDatabase) },
+            onDismiss = viewModel.newDatabase::dismiss,
+        )
+    }
+
     confirmTrash?.let { note ->
         TrashNoteDialog(note, onConfirm = { viewModel.trash(note.id); confirmTrash = null }, onDismiss = { confirmTrash = null })
     }
@@ -273,6 +283,14 @@ fun MainScreen(
                             modifier = Modifier.clickable {
                                 choosingTarget = false
                                 viewModel.createPage(group.workspace?.id, onOpenNote)
+                            },
+                        )
+                        ListItem(
+                            headlineContent = { Text(stringResource(R.string.new_database_at_top)) },
+                            leadingContent = { Icon(Icons.Rounded.TableChart, contentDescription = null) },
+                            modifier = Modifier.clickable {
+                                choosingTarget = false
+                                viewModel.openNewDatabase(group.workspace?.id)
                             },
                         )
                     }
