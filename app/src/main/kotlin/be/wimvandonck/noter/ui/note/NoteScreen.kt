@@ -556,7 +556,8 @@ fun NoteScreen(
                 itemsIndexed(state.blocks, key = { _, it -> it.key }) { index, block ->
                     // Nested blocks are indented, as in Notion; columns are shown one below the other.
                     val isSelected = block.key in selected
-                    Box(Modifier.animateItem()) {
+                    // Lines slide into place, but a new line shows at once: the cursor is in it.
+                    Box(Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
                     Column(
                         Modifier
                             .then(if (selecting && isSelected) Modifier.background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f), AppShapes.Item) else Modifier)
