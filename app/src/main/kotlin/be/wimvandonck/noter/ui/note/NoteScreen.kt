@@ -223,8 +223,8 @@ fun NoteScreen(
     }
 
     // Removing the line with the cursor (Backspace, Delete) first moves the cursor to the line it
-    // goes to, at once. Otherwise nothing has focus for a moment: the keyboard starts to close and
-    // the note jumps up by its height before coming back.
+    // goes to, at once. Otherwise nothing has focus for a moment, Android starts making room for a
+    // closed keyboard and the note jumps up before coming back.
     fun handOverFocus(edit: () -> Unit) {
         val target = viewModel.focusMovedBy(edit) ?: return
         requesters[target.key]?.let { runCatching { it.requestFocus() } }
@@ -585,7 +585,7 @@ fun NoteScreen(
                             focus = focus,
                             styling = styling,
                             onText = { text, cursor -> viewModel.changeText(block.key, text, cursor) },
-                            requester = requesters.getOrPut(block.key) { FocusRequester() },
+                            requester = remember(block.key) { requesters.getOrPut(block.key) { FocusRequester() } },
                             onBackspaceAtStart = { handOverFocus { viewModel.backspaceAtStart(block.key) } },
                             onToggle = { viewModel.toggleChecked(block.key) },
                             onDelete = { handOverFocus { viewModel.delete(block.key) } },
