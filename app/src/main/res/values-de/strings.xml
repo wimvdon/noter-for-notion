@@ -193,6 +193,12 @@
     <string name="add_workspace">Workspace hinzufügen</string>
     <string name="remove_workspace">Entfernen</string>
     <string name="workspace_added">%1$s hinzugefügt.</string>
+    <string name="sign_in">Mit Notion verbinden</string>
+    <string name="sign_in_help">Wähle in Notion, welche Seiten Noter verwenden darf. Kein Token zum Kopieren nötig.</string>
+    <string name="workspaces_help_tokens">Für alles, was du in Notion siehst, oder für einen Workspace, zu dem du eingeladen wurdest, füge stattdessen ein Token hinzu.</string>
+    <string name="workspace_signed_in">Mit Notion verbunden</string>
+    <string name="sign_in_cancelled">Das Verbinden wurde in Notion abgebrochen.</string>
+    <string name="sign_in_failed">Verbindung mit Notion fehlgeschlagen. Versuche es noch einmal.</string>
     <string name="new_database">Neue Datenbank</string>
     <string name="new_database_in_page">Neue Datenbank in dieser Seite</string>
     <string name="new_database_at_top">Neue Datenbank ganz oben</string>

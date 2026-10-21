@@ -115,3 +115,41 @@ class MultiWorkspaceClientTest {
         }
     }
 }
+
+class RenewKeyClientTest {
+    private val refused = 401 to """{"object":"error","status":401,"code":"unauthorized","message":"API token is invalid."}"""
+
+    @Test
+    fun `a refused token is renewed and the request sent again with the new one`() = runBlocking {
+        FakeNotion { sent -> if (sent.auth == "Bearer new") 200 to """{"object":"page","id":"p1"}""" else refused }.use { notion ->
+            var key = "old"
+            val client = NotionClient(apiKey = { key }, baseUrl = notion.baseUrl, renewKey = { if (it == "old") "new".also { key = it } else null })
+            assertEquals("p1", client.getPage("p1").stringOrNull("id"))
+            assertEquals(listOf("Bearer old", "Bearer new"), notion.requests.map { it.auth })
+        }
+    }
+
+    @Test
+    fun `a token that can't be renewed is refused as before, after one try`() = runBlocking {
+        FakeNotion { refused }.use { notion ->
+            var asked = 0
+            val client = NotionClient(apiKey = { "old" }, baseUrl = notion.baseUrl, renewKey = { asked++; null })
+            val error = runCatching { client.getPage("p1") }.exceptionOrNull()
+            assertTrue(error is NotionException && error.status == 401)
+            assertEquals(1, asked)
+            assertEquals(1, notion.requests.size)
+        }
+    }
+
+    @Test
+    fun `a renewed token that is refused too isn't renewed again`() = runBlocking {
+        FakeNotion { refused }.use { notion ->
+            var asked = 0
+            val client = NotionClient(apiKey = { "old" }, baseUrl = notion.baseUrl, renewKey = { asked++; "new" })
+            val error = runCatching { client.getPage("p1") }.exceptionOrNull()
+            assertTrue(error is NotionException && error.status == 401)
+            assertEquals(1, asked)
+            assertEquals(listOf("Bearer old", "Bearer new"), notion.requests.map { it.auth })
+        }
+    }
+}

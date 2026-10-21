@@ -14,6 +14,7 @@ import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -100,8 +101,23 @@ private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewMod
     val context = LocalContext.current
     var token by rememberSaveable { mutableStateOf("") }
     var visible by rememberSaveable { mutableStateOf(false) }
+    if (state.canSignIn) {
+        // "Connect to Notion" (OAuth): the person chooses the pages in Notion, no token to copy.
+        Text(
+            stringResource(R.string.sign_in_help),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Button(
+            onClick = {
+                val url = viewModel.startSignIn()
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
+            },
+            enabled = state.keyStatus != KeyStatus.Testing,
+        ) { Text(stringResource(R.string.sign_in)) }
+    }
     Text(
-        stringResource(R.string.workspaces_help),
+        stringResource(if (state.canSignIn) R.string.workspaces_help_tokens else R.string.workspaces_help),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -109,10 +125,13 @@ private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewMod
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(workspace.name.ifBlank { stringResource(R.string.workspace_unnamed) }, style = MaterialTheme.typography.titleSmall)
-                val kind = when (workspace.kind) {
-                    TokenKind.PERSONAL -> stringResource(R.string.workspace_personal)
-                    TokenKind.CONNECTION -> stringResource(R.string.workspace_connection)
-                    null -> ""
+                val kind = when {
+                    workspace.signedIn -> stringResource(R.string.workspace_signed_in)
+                    else -> when (workspace.kind) {
+                        TokenKind.PERSONAL -> stringResource(R.string.workspace_personal)
+                        TokenKind.CONNECTION -> stringResource(R.string.workspace_connection)
+                        null -> ""
+                    }
                 }
                 val person = workspace.person.takeIf { it.isNotBlank() && it != workspace.name }.orEmpty()
                 val details = listOf(kind, person).filter { it.isNotBlank() }.joinToString(" · ")
@@ -145,24 +164,30 @@ private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewMod
     when (val status = state.keyStatus) {
         is KeyStatus.Ok -> StatusText(stringResource(R.string.workspace_added, status.info.workspace?.ifBlank { null } ?: status.info.name), error = false)
         is KeyStatus.Failed -> StatusText(stringResource(R.string.key_failed, errorText(status.message)), error = true)
+        KeyStatus.Cancelled -> StatusText(stringResource(R.string.sign_in_cancelled), error = false)
         is KeyStatus.Removed -> StatusText(
             if (status.last) stringResource(R.string.key_removed) else stringResource(R.string.workspace_removed, status.name),
             error = false,
         )
         else -> Unit
     }
-    Button(
-        onClick = {
-            viewModel.addWorkspace(token)
-            token = ""
-        },
-        enabled = token.isNotBlank() && state.keyStatus != KeyStatus.Testing,
-    ) {
+    val onAdd = {
+        viewModel.addWorkspace(token)
+        token = ""
+    }
+    val addContent: @Composable () -> Unit = {
         if (state.keyStatus == KeyStatus.Testing) {
             CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             Spacer(Modifier.width(8.dp))
         }
         Text(stringResource(R.string.add_workspace))
+    }
+    val canAdd = token.isNotBlank() && state.keyStatus != KeyStatus.Testing
+    // With "Connect to Notion" above, that is the main action and adding a token the second one.
+    if (state.canSignIn) {
+        FilledTonalButton(onClick = onAdd, enabled = canAdd) { addContent() }
+    } else {
+        Button(onClick = onAdd, enabled = canAdd) { addContent() }
     }
     // The two kinds of token, each with what it sees and where Notion makes one.
     TokenKindHelp(stringResource(R.string.workspaces_help_personal), stringResource(R.string.make_personal_token)) {

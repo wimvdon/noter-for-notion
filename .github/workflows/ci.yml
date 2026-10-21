@@ -45,6 +45,9 @@ jobs:
       - name: Test release scripts
         run: python3 -m unittest discover -s scripts/tests -v
 
+      - name: Test the sign-in helper
+        run: node --test worker/test/noter-sign-in.test.mjs
+
       - name: Unit tests
         run: ./gradlew testDebugUnitTest
 

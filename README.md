@@ -27,6 +27,9 @@ What the app sends and stores: [`PRIVACY.md`](PRIVACY.md). Rules for Claude Code
 ## Getting started
 
 1. Install the app (see below) and open it.
+   If **Settings › Workspaces** shows **Connect to Notion**, tap it, choose the pages Noter may use
+   in Notion and tap *Allow access*: that's all. For everything you can see, or another workspace,
+   use a token instead (steps 2 and 3). Setting up Connect to Notion: `worker/README.md`.
 2. In Notion, open <https://www.notion.so/developers/tokens> and make a **personal access token**:
    give it a name, turn on **Notion API**, choose your workspace and an expiry date, and copy it.
    It acts as you, so the app sees the pages you see; there is nothing to share with it.

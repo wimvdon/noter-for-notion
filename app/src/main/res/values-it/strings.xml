@@ -196,6 +196,12 @@
     <string name="add_workspace">Aggiungi workspace</string>
     <string name="remove_workspace">Rimuovi</string>
     <string name="workspace_added">%1$s aggiunto.</string>
+    <string name="sign_in">Collegati a Notion</string>
+    <string name="sign_in_help">Scegli in Notion quali pagine può usare Noter. Nessun token da copiare.</string>
+    <string name="workspaces_help_tokens">Per tutto ciò che vedi in Notion, o per un workspace a cui sei stato invitato, aggiungi invece un token.</string>
+    <string name="workspace_signed_in">Collegato a Notion</string>
+    <string name="sign_in_cancelled">Il collegamento è stato annullato in Notion.</string>
+    <string name="sign_in_failed">Impossibile collegarsi a Notion. Riprova.</string>
     <string name="new_database">Nuovo database</string>
     <string name="new_database_in_page">Nuovo database in questa pagina</string>
     <string name="new_database_at_top">Nuovo database in cima</string>

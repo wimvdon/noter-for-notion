@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- To talk to Notion (api.notion.com), download the images in notes and a link shared to the app
-         (PRIVACY.md). Ask before adding any other permission (see CLAUDE.md). -->
+    <!-- To talk to Notion (api.notion.com) and Noter's sign-in helper, download the images in notes
+         and a link shared to the app (PRIVACY.md). Ask before adding any other permission (see CLAUDE.md). -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
@@ -27,6 +27,21 @@
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+        <!-- The link back from "Connect to Notion" (the sign-in helper, worker/). Its scheme is the
+             app's ID, so the released app and "Noter Dev" each get their own. -->
+        <activity
+            android:name=".SignInActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="${applicationId}" android:host="oauth" />
             </intent-filter>
         </activity>
     </application>

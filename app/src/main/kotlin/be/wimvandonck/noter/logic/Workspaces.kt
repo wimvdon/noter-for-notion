@@ -9,7 +9,14 @@ import java.util.concurrent.ConcurrentHashMap
  * token itself ([Workspaces.id]), [name] is the workspace's name (or who the token acts as),
  * [kind] the token's kind (null: not known yet) and [person] who the token acts as.
  */
-data class Workspace(val id: String, val name: String, val kind: TokenKind? = null, val person: String = "") {
+data class Workspace(
+    val id: String,
+    val name: String,
+    val kind: TokenKind? = null,
+    val person: String = "",
+    /** Connected with "Connect to Notion" (OAuth) rather than a pasted token. */
+    val signedIn: Boolean = false,
+) {
     /** Pages can be added at the top of this workspace: not with a connection's token (Notion refuses it). */
     val canAddTopLevel: Boolean get() = kind != TokenKind.CONNECTION
 }
@@ -29,9 +36,23 @@ object Workspaces {
         MessageDigest.getInstance("SHA-256").digest(token.toByteArray()).take(8).joinToString("") { "%02x".format(it) }
     }
 
+    /**
+     * Uses [id] for [token] from now on: a refreshed token ([WorkspaceToken.id]) keeps its
+     * workspace's ID, so what the phone knows about where pages are stays right.
+     */
+    fun keep(token: String, id: String) {
+        if (token.isNotBlank() && id.isNotBlank()) ids[token] = id
+    }
+
+    /** [keep]s the ID of each of [tokens] that has one. */
+    fun keepAll(tokens: List<WorkspaceToken>) = tokens.forEach { keep(it.token, it.id) }
+
     /** The workspaces of [tokens] (the main one first), each once. */
     fun of(tokens: List<WorkspaceToken>): List<Workspace> =
-        tokens.filter { it.token.isNotBlank() }.map { Workspace(id(it.token), WorkspaceTokens.label(it), it.kind, it.name) }.distinctBy { it.id }
+        tokens.filter { it.token.isNotBlank() }.map {
+            keep(it.token, it.id)
+            Workspace(id(it.token), WorkspaceTokens.label(it), it.kind, it.name, it.signedIn)
+        }.distinctBy { it.id }
 
     /** The workspace of the first of [ids] that is known to be in one of [workspaces]. */
     fun ownerOf(ids: List<String?>, owners: Map<String, String>, workspaces: List<Workspace>): Workspace? {

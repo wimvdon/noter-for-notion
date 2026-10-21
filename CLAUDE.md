@@ -13,6 +13,7 @@ are the safety net. Follow them every time.
    ./gradlew testDebugUnitTest lintDebug assembleDebug
    ```
    If you touched `scripts/` or the workflows, also run `python3 -m unittest discover -s scripts/tests`.
+   If you touched `worker/`, also run `node --test worker/test/noter-sign-in.test.mjs`.
    Then push and make sure CI on the pull request is green.
 3. **Write the pull request description in plain language** (fill in `.github/pull_request_template.md`):
    what changed and why, in words a non-developer understands, and **exactly what to tap on the
@@ -27,9 +28,11 @@ are the safety net. Follow them every time.
 ## Never do these without asking first (and saying why)
 - Delete, skip, `@Ignore`, or weaken tests, lint checks, CI steps or workflows to make something
   pass. Don't add a lint baseline or disable a lint check. **Never remove the release workflow.**
-- Add Android permissions or network destinations beyond the ones in `PRIVACY.md` (only Notion's
-  API, `api.notion.com`), analytics, crash reporting, ads or tracking. Notion calls only in
-  `data/api/NotionClient.kt`, within Notion's rate limit (about three requests per second).
+- Add Android permissions or network destinations beyond the ones in `PRIVACY.md` (Notion's
+  API, `api.notion.com`, and Noter's own sign-in helper in `worker/`), analytics, crash reporting,
+  ads or tracking. Notion calls only in `data/api/NotionClient.kt`, within Notion's rate limit
+  (about three requests per second); sign-in helper calls only in `data/api/SignInClient.kt`.
+  The helper must stay stateless: it never stores or logs tokens or notes.
 - Add new dependencies (libraries or Gradle plugins). Prefer what is already in
   `gradle/libs.versions.toml`. Use **DataStore** if the app needs to store data.
 - Change the `applicationId` or the signing setup of an app that has already been released

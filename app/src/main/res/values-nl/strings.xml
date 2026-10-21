@@ -193,6 +193,12 @@
     <string name="add_workspace">Werkruimte toevoegen</string>
     <string name="remove_workspace">Verwijderen</string>
     <string name="workspace_added">%1$s toegevoegd.</string>
+    <string name="sign_in">Verbind met Notion</string>
+    <string name="sign_in_help">Kies in Notion welke pagina’s Noter mag gebruiken. Je hoeft geen token te kopiëren.</string>
+    <string name="workspaces_help_tokens">Voor alles wat je in Notion ziet, of voor een werkruimte waarvoor je bent uitgenodigd, voeg je in plaats daarvan een token toe.</string>
+    <string name="workspace_signed_in">Verbonden met Notion</string>
+    <string name="sign_in_cancelled">Het verbinden is in Notion geannuleerd.</string>
+    <string name="sign_in_failed">Kan niet verbinden met Notion. Probeer het opnieuw.</string>
     <string name="new_database">Nieuwe database</string>
     <string name="new_database_in_page">Nieuwe database in deze pagina</string>
     <string name="new_database_at_top">Nieuwe database bovenaan</string>

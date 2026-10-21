@@ -11,6 +11,9 @@ import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import be.wimvandonck.noter.data.NotesRepository
+import be.wimvandonck.noter.data.SignIn
+import be.wimvandonck.noter.data.api.SignInClient
+import be.wimvandonck.noter.logic.TokenRefresher
 import be.wimvandonck.noter.data.api.NotionClient
 import be.wimvandonck.noter.data.icons.IconCatalog
 import be.wimvandonck.noter.data.store.ApiKeyStore
@@ -32,6 +35,8 @@ class NoterApp : Application(), SingletonImageLoader.Factory {
         private set
     lateinit var repository: NotesRepository
         private set
+    lateinit var signIn: SignIn
+        private set
 
     /** What another app shared and Home hasn't saved yet (#63; MainActivity sets it). */
     val shares = MutableStateFlow<SharedContent?>(null)
@@ -45,14 +50,21 @@ class NoterApp : Application(), SingletonImageLoader.Factory {
         super.onCreate()
         apiKeyStore = ApiKeyStore(this)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        val signInClient = SignInClient()
+        val refresher = TokenRefresher(find = apiKeyStore::find, refresh = signInClient::refresh, save = apiKeyStore::replace)
         repository = NotesRepository(
-            client = NotionClient(apiKey = { apiKeyStore.get() }, extraKeys = { apiKeyStore.extraTokens() }),
+            client = NotionClient(
+                apiKey = { apiKeyStore.get() },
+                extraKeys = { apiKeyStore.extraTokens() },
+                renewKey = refresher::renew,
+            ),
             hasKey = { apiKeyStore.get().isNotBlank() },
             settings = SettingsStore(this),
             cache = CacheStore(File(noBackupFilesDir, DataFiles.CACHE_DIR)),
             scope = scope,
         )
         repository.start()
+        signIn = SignIn(apiKeyStore, repository, scheme = packageName, scope = scope)
         // Ask Notion who each token is at each start: its kind and workspace's name, and the main
         // token's owner's profile picture for Home.
         val key = apiKeyStore.get()

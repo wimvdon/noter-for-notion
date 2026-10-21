@@ -5,6 +5,7 @@
 | Check | Command | Catches |
 |---|---|---|
 | Release script tests | `python3 -m unittest discover -s scripts/tests` | Version maths, keystore-secret decoding |
+| Sign-in helper tests | `node --test worker/test/noter-sign-in.test.mjs` | The helper's code exchange, sealing, refresh and what it refuses (with a stand-in for Notion) |
 | Unit tests | `./gradlew testDebugUnitTest` | Logic bugs in plain-Kotlin classes (`app/src/test/`) |
 | Lint | `./gradlew lintDebug` | Android API misuse, missing translations, accessibility, hard-coded text, … (errors fail the build) |
 | Debug build | `./gradlew assembleDebug` | Compile errors; produces the APK to test on the phone |
@@ -17,11 +18,15 @@ Run all of it locally before pushing:
 ```sh
 ./gradlew testDebugUnitTest lintDebug assembleDebug assembleRelease
 python3 -m unittest discover -s scripts/tests
+node --test worker/test/noter-sign-in.test.mjs
 ```
 
 ### What the unit tests cover
 | Test | Covers |
 |---|---|
+| `logic/SealedBoxTest`, `logic/SignInsTest` | Connect to Notion: opening what the sign-in helper sealed (a sample sealed by the helper itself), the state and authorize link, reading Notion's token answer |
+| `logic/TokenRefresherTest`, `data/api/RenewKeyClientTest` (in `MultiWorkspaceClientTest.kt`) | Refreshing a refused Connect to Notion token once, one refresh at a time, keeping its workspace's ID; pasted tokens are never refreshed |
+| `logic/WorkspaceTokensSignInTest` (in `WorkspaceTokensTest.kt`) | Where a new Connect to Notion token goes: main, after the others, or in place of the same workspace's token |
 | `logic/DocumentEditorTest` | Enter, Backspace, Markdown shortcuts (Notion's), dividers, code blocks, numbering; nesting (indent, outdent, Enter and Backspace in nested blocks, what may move) |
 | `data/notion/BlockCodecTest` | Reading and writing every editable block type; images, files, links, tables and linked pages read-only |
 | `data/model/NotionFilesTest`, `logic/ReadOnlyBlocksTest` | Expiring links to files Notion hosts; file names and links of read-only blocks |

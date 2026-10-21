@@ -174,6 +174,21 @@ properties and content: the pages of databases and pages on their own.
   use the main token. The rest of the app doesn't know about workspaces: Notion's IDs are unique,
   so cache files and pins stay as they are. Removing a token keeps the notes on the phone; Notion
   answers "not found" for them from then on.
+- **Connect to Notion** (OAuth): Settings' first button when `data/api/SignInConfig.kt` has the
+  public connection's client ID and the sign-in helper's address (else only tokens are offered).
+  `data/SignIn.kt` makes a one-time P-256 key pair (`logic/SealedBox.kt`; the private key waits in
+  `ApiKeyStore.pendingSignIn`) and opens Notion's authorize page with `state` =
+  `<app id>~<public key>` (`logic/SignIns.kt`). Notion sends the person to the helper
+  (`worker/noter-sign-in.mjs`, a stateless Cloudflare Worker), which trades the code for tokens with
+  the client secret, seals Notion's answer for that public key (ECDH, HKDF-SHA-256, AES-256-GCM)
+  and opens `<app id>://oauth?result=…` (`SignInActivity`, so the debug and released apps each get
+  their own). The app opens it, tests the token with `GET /users/me` and keeps it like a pasted one
+  (`WorkspaceTokens.signIn`: connecting a workspace again replaces its token in place). A token
+  from Connect to Notion has a refresh token: when Notion answers 401, `NotionClient` asks
+  `logic/TokenRefresher.kt` once for a new one (through the helper's `/refresh`,
+  `data/api/SignInClient.kt`), one refresh at a time because Notion replaces the refresh token
+  each time. The workspace keeps its `Workspaces.id` (stored as `WorkspaceToken.id`), so what is
+  known about where pages are stays. Pasted tokens never go to the helper.
 - **Which data source** (`NotesRepository.resolveSource`): a key is asked about as a database first
   (its first data source), then as a data source, because Notion may answer for a database's ID
   as if it were a data source. The answers are kept in `sources_v2.json`.
@@ -285,7 +300,7 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
 | What | Where | Backed up |
 |---|---|---|
 | Each database's setup (filters, rows of chips, sort, cards), pinned databases (key, name, icon), pinned notes and pages, order, property layouts, theme | DataStore `backed_up_settings` | Yes |
-| Token and its kind | `EncryptedSharedPreferences` `notion_key_encrypted_prefs` | No |
+| Tokens, their kind, refresh tokens (Connect to Notion), a sign-in's one-time key | `EncryptedSharedPreferences` `notion_key_encrypted_prefs` | No |
 | Copies of notes, schemas, users, Home's list of databases and pages; unsent changes | JSON files in `noBackupFilesDir/notion_cache` | No |
 | Images | Coil's cache in `cacheDir/images` | No |
 
@@ -293,7 +308,7 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
 ```
 app/src/main/kotlin/be/wimvandonck/noter/
   MainActivity.kt, NoterApp.kt   Entry point; the app object creates the repository.
-  data/api/                      NotionClient: every HTTP call.
+  data/api/                      NotionClient: every Notion call; SignInClient: the sign-in helper.
   data/model/                    Notes, blocks, properties, schemas.
   data/notion/                   Notion JSON ⇄ models (blocks, properties, rich text).
   data/store/                    Settings (DataStore), API key, on-phone copies.
@@ -303,6 +318,7 @@ app/src/main/kotlin/be/wimvandonck/noter/
   ui/main/, ui/note/, ui/settings/, ui/common/, ui/theme/   Screens and the shared design kit.
 app/src/test/kotlin/             JVM unit tests (mirrors the main package structure).
 scripts/                         Release helpers (Python/Java) with their own tests.
+worker/                          The sign-in helper for Connect to Notion (Cloudflare Worker) and its tests.
 .github/workflows/               ci.yml (every PR), release.yml (signed releases).
 ```
 
@@ -317,7 +333,8 @@ scripts/                         Release helpers (Python/Java) with their own te
 - **Persistence**: Jetpack DataStore (version already in the catalog). Wrap it behind a small
   repository interface so logic tests can use a fake. Decide per value whether it is backed up
   (see "Backup" below).
-- **Network: only Notion's API**, only in `data/api/NotionClient.kt`, plus the images in notes
+- **Network: only Notion's API**, only in `data/api/NotionClient.kt`, and Noter's sign-in helper
+  (`worker/`), only in `data/api/SignInClient.kt` (and Notion's link back from it), plus the images in notes
   (Coil, `NoterApp.newImageLoader`). No analytics, crash
   reporting or ads (see `CLAUDE.md` and `PRIVACY.md`).
 - **Strings** in resources only; plurals via `<plurals>`.
