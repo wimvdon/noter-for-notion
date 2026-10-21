@@ -182,7 +182,9 @@
     <string name="action_select_text">Seleccionar texto</string>
     <string name="close">Cerrar</string>
     <string name="section_workspaces">Espacios de trabajo</string>
-    <string name="workspaces_help">Añade un token por cada espacio de trabajo o cuenta de Notion. Un token de acceso personal ve todo lo que tú ves; una conexión solo ve las páginas compartidas con ella.</string>
+    <string name="workspaces_help">Añade un token por cada espacio de trabajo o cuenta de Notion.</string>
+    <string name="workspaces_help_personal">Un token de acceso personal es para un espacio de trabajo propio: ve todo lo que tú ves y puede añadir páginas arriba del todo.</string>
+    <string name="workspaces_help_connection">Una conexión solo ve las páginas compartidas con ella, por ejemplo por un miembro de un espacio de trabajo al que te invitaron.</string>
     <string name="workspace_token">Token</string>
     <string name="workspace_personal">Token de acceso personal</string>
     <string name="workspace_connection">Conexión</string>

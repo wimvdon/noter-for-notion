@@ -179,7 +179,9 @@
     <string name="action_select_text">Text auswählen</string>
     <string name="close">Schließen</string>
     <string name="section_workspaces">Workspaces</string>
-    <string name="workspaces_help">Füge für jeden Workspace oder jedes Notion-Konto ein Token hinzu. Ein persönliches Zugriffstoken sieht alles, was du siehst; eine Verbindung sieht nur die Seiten, die mit ihr geteilt sind.</string>
+    <string name="workspaces_help">Füge für jeden Workspace oder jedes Notion-Konto ein Token hinzu.</string>
+    <string name="workspaces_help_personal">Ein persönliches Zugriffstoken ist für einen eigenen Workspace: Es sieht alles, was du siehst, und kann oben Seiten hinzufügen.</string>
+    <string name="workspaces_help_connection">Eine Verbindung sieht nur die Seiten, die mit ihr geteilt sind, zum Beispiel von einem Mitglied eines Workspace, in den du eingeladen wurdest.</string>
     <string name="workspace_token">Token</string>
     <string name="workspace_personal">Persönliches Zugriffstoken</string>
     <string name="workspace_connection">Verbindung</string>
