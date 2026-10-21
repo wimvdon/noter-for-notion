@@ -21,6 +21,7 @@ import be.wimvandonck.noter.data.store.CacheStore
 import be.wimvandonck.noter.data.store.DataFiles
 import be.wimvandonck.noter.data.store.SettingsStore
 import be.wimvandonck.noter.logic.WorkspaceTokens
+import be.wimvandonck.noter.logic.Workspaces
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -74,15 +75,22 @@ class NoterApp : Application(), SingletonImageLoader.Factory {
                     val info = repository.tokenInfo(key)
                     // Not when another token was saved while this was on its way.
                     if (apiKeyStore.get() == key) {
-                        apiKeyStore.setMainInfo(info.kind, info.name, info.workspace.orEmpty())
+                        apiKeyStore.setMainInfo(info.kind, info.name, info.workspace.orEmpty(), info.workspaceId)
                         apiKeyStore.setAvatarUrl(info.avatarUrl)
                     }
                 }
                 apiKeyStore.extras.value.forEach { extra ->
                     runCatching {
                         val info = repository.tokenInfo(extra.token)
-                        apiKeyStore.setExtras(WorkspaceTokens.update(apiKeyStore.extras.value, extra.token, info.name, info.workspace.orEmpty(), info.kind))
+                        apiKeyStore.setExtras(WorkspaceTokens.update(apiKeyStore.extras.value, extra.token, info.name, info.workspace.orEmpty(), info.kind, info.workspaceId))
                     }
+                }
+                // Now that every token's workspace is known: each workspace once, the token that
+                // sees most staying (tokens added before this was checked).
+                val gone = apiKeyStore.deduplicate()
+                gone.forEach { repository.forgetWorkspace(Workspaces.id(it.token)) }
+                if (gone.any { it.token == key }) {
+                    runCatching { apiKeyStore.setAvatarUrl(repository.tokenInfo(apiKeyStore.get()).avatarUrl) }
                 }
             }
         }

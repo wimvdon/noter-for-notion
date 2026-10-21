@@ -176,6 +176,13 @@ properties and content: the pages of databases and pages on their own.
   use the main token. The rest of the app doesn't know about workspaces: Notion's IDs are unique,
   so cache files and pins stay as they are. Removing a token keeps the notes on the phone; Notion
   answers "not found" for them from then on.
+- **Each workspace once**: `GET /users/me` gives every token's Notion workspace ID
+  (`WorkspaceToken.workspaceId`). A new token or sign-in for a workspace that is already there
+  takes the place of its token (keeping the workspace's `id`), unless the one there sees more:
+  personal access token, then Connect to Notion, then connection token (`WorkspaceTokens.access`);
+  then it isn't kept and Settings says why (`WorkspaceTokens.place`, `ApiKeyStore.keep`). Tokens
+  added before this was checked are cleaned up once their IDs are known at start
+  (`WorkspaceTokens.deduplicate`): the one that sees most stays.
 - **Connect to Notion** (OAuth): Settings' first button when `data/api/SignInConfig.kt` has the
   public connection's client ID and the sign-in helper's address (else only tokens are offered).
   `data/SignIn.kt` makes a one-time P-256 key pair (`logic/SealedBox.kt`; the private key waits in
@@ -185,7 +192,7 @@ properties and content: the pages of databases and pages on their own.
   the client secret, seals Notion's answer for that public key (ECDH, HKDF-SHA-256, AES-256-GCM)
   and opens `<app id>://oauth?result=…` (`SignInActivity`, so the debug and released apps each get
   their own). The app opens it, tests the token with `GET /users/me` and keeps it like a pasted one
-  (`WorkspaceTokens.signIn`: connecting a workspace again replaces its token in place). A token
+  (`WorkspaceTokens.place`, below). A token
   from Connect to Notion has a refresh token: when Notion answers 401, `NotionClient` asks
   `logic/TokenRefresher.kt` once for a new one (through the helper's `/refresh`,
   `data/api/SignInClient.kt`), one refresh at a time because Notion replaces the refresh token

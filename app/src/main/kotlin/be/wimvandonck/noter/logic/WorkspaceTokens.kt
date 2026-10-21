@@ -9,9 +9,10 @@ import kotlinx.serialization.json.Json
  * A token for a workspace (#58): [name] is who it acts as, [workspace] the workspace's name and
  * [kind] the kind of token, as Notion said when it was added or the app last started.
  *
- * A token from "Connect to Notion" (OAuth) also has a [refresh] token, Notion's [workspaceId], and
- * the [id] the phone knows the workspace by ([Workspaces.id] of its first token), which stays when
- * a refresh replaces the token.
+ * [workspaceId] is Notion's ID of the workspace, the same for every token of it (blank: not known
+ * yet). A token from "Connect to Notion" (OAuth) also has a [refresh] token and the [id] the phone
+ * knows the workspace by ([Workspaces.id] of its first token), which stays when a refresh replaces
+ * the token.
  */
 @Serializable
 data class WorkspaceToken(
@@ -24,7 +25,16 @@ data class WorkspaceToken(
     val id: String = "",
 ) {
     /** Made with "Connect to Notion" (OAuth) rather than pasted. */
-    val signedIn: Boolean get() = refresh.isNotBlank() || workspaceId.isNotBlank()
+    val signedIn: Boolean get() = refresh.isNotBlank()
+}
+
+/** Where a new token went ([WorkspaceTokens.place]). */
+sealed interface Placement {
+    /** Kept: the new [main] token and the [others]; [replaced] is the way it took the place of, if any. */
+    data class Added(val main: WorkspaceToken, val others: List<WorkspaceToken>, val replaced: WorkspaceToken? = null) : Placement
+
+    /** Not kept: the workspace is already added in a way that sees more ([existing]). */
+    data class Refused(val existing: WorkspaceToken) : Placement
 }
 
 /** The list of tokens for other workspaces: adding, removing and storing it. */
@@ -43,23 +53,72 @@ object WorkspaceTokens {
 
     fun remove(list: List<WorkspaceToken>, token: String): List<WorkspaceToken> = list.filter { it.token != token }
 
-    /** [list] with what Notion now says about [token] (its names and kind); the order stays. */
-    fun update(list: List<WorkspaceToken>, token: String, name: String, workspace: String, kind: TokenKind): List<WorkspaceToken> =
-        list.map { if (it.token == token) it.copy(name = name, workspace = workspace, kind = kind) else it }
+    /** [list] with what Notion now says about [token] (its names, kind and workspace); the order stays. */
+    fun update(
+        list: List<WorkspaceToken>,
+        token: String,
+        name: String,
+        workspace: String,
+        kind: TokenKind,
+        workspaceId: String = "",
+    ): List<WorkspaceToken> =
+        list.map {
+            if (it.token == token) it.copy(name = name, workspace = workspace, kind = kind, workspaceId = workspaceId.ifBlank { it.workspaceId }) else it
+        }
 
     /**
-     * Where a token from "Connect to Notion" goes: in place of the token it had for the same
-     * Notion workspace (connecting again), else as the main token when there is none, else at the
-     * end of the others. Returns the new main token and the others.
+     * How much a token sees: a personal access token everything the person sees, Connect to
+     * Notion the pages chosen in Notion, a connection the pages a member shared with it.
      */
-    fun signIn(main: WorkspaceToken, others: List<WorkspaceToken>, added: WorkspaceToken): Pair<WorkspaceToken, List<WorkspaceToken>> {
-        val same = { t: WorkspaceToken -> added.workspaceId.isNotBlank() && t.workspaceId == added.workspaceId }
-        return when {
-            main.token.isNotBlank() && same(main) -> replaced(main, added) to others
-            others.any(same) -> main to others.map { if (same(it)) replaced(it, added) else it }
-            main.token.isBlank() -> added to others
-            else -> main to add(others, main.token, added)
+    fun access(token: WorkspaceToken): Int = when {
+        token.signedIn -> 2
+        token.kind == TokenKind.PERSONAL -> 3
+        token.kind == TokenKind.CONNECTION -> 1
+        else -> 0
+    }
+
+    /** How [token] was added (null: its kind isn't known yet). */
+    fun way(token: WorkspaceToken): WorkspaceWay? = when {
+        token.signedIn -> WorkspaceWay.SIGN_IN
+        token.kind == TokenKind.PERSONAL -> WorkspaceWay.PERSONAL
+        token.kind == TokenKind.CONNECTION -> WorkspaceWay.CONNECTION
+        else -> null
+    }
+
+    /**
+     * Where [added] goes. Each Notion workspace is added once: a token for one that is already
+     * there replaces its token in place, unless the one there sees more ([access]), which is never
+     * replaced by one that sees less. A new workspace becomes the main token when there is none,
+     * else goes after the others.
+     */
+    fun place(main: WorkspaceToken, others: List<WorkspaceToken>, added: WorkspaceToken): Placement {
+        val same = { t: WorkspaceToken ->
+            t.token.isNotBlank() && (t.token == added.token || added.workspaceId.isNotBlank() && t.workspaceId == added.workspaceId)
         }
+        val existing = (listOf(main) + others).firstOrNull(same)
+            ?: return if (main.token.isBlank()) Placement.Added(added, others) else Placement.Added(main, add(others, main.token, added))
+        if (access(added) < access(existing)) return Placement.Refused(existing)
+        val fresh = if (existing.token == added.token) added.copy(id = existing.id) else replaced(existing, added)
+        val replacedWay = existing.takeIf { it.token != added.token && way(it) != way(added) }
+        return if (same(main)) {
+            Placement.Added(fresh, others, replacedWay)
+        } else {
+            Placement.Added(main, others.map { if (same(it)) fresh else it }, replacedWay)
+        }
+    }
+
+    /**
+     * [main] and [others] with each Notion workspace once (from before tokens were checked for
+     * that): the token that sees most stays, the first of equals. The main token stays the main
+     * one unless it goes, then the one that stays for its workspace takes its place.
+     */
+    fun deduplicate(main: WorkspaceToken, others: List<WorkspaceToken>): Pair<WorkspaceToken, List<WorkspaceToken>> {
+        val all = listOf(main) + others
+        fun keeper(t: WorkspaceToken): WorkspaceToken =
+            if (t.workspaceId.isBlank()) t else all.filter { it.workspaceId == t.workspaceId }.maxBy(::access)
+        val newMain = if (main.token.isBlank()) main else keeper(main)
+        val rest = others.map(::keeper).distinctBy { it.token }.filter { it.token != newMain.token }
+        return newMain to rest
     }
 
     /**

@@ -191,6 +191,8 @@
     <string name="add_workspace">Add workspace</string>
     <string name="remove_workspace">Remove</string>
     <string name="workspace_added">Added %1$s.</string>
+    <string name="workspace_replaced">%1$s is now connected with: %2$s (was: %3$s).</string>
+    <string name="workspace_refused">%1$s is already added with: %2$s, which sees more. To add it another way, remove it first.</string>
     <string name="way_sign_in_text">Quickest set-up. Choose in Notion which pages and databases you see in Noter.</string>
     <string name="way_personal_text">Full access to your own workspace, without choosing pages and databases.</string>
     <string name="way_connection_title">Connection token</string>

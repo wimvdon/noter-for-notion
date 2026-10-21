@@ -27,7 +27,8 @@ node --test worker/test/noter-sign-in.test.mjs
 | `logic/WorkspaceWaysTest` | Which ways Add workspace offers, in which order, and which need a token |
 | `logic/SealedBoxTest`, `logic/SignInsTest` | Connect to Notion: opening what the sign-in helper sealed (a sample sealed by the helper itself), the state and authorize link, reading Notion's token answer |
 | `logic/TokenRefresherTest`, `data/api/RenewKeyClientTest` (in `MultiWorkspaceClientTest.kt`) | Refreshing a refused Connect to Notion token once, one refresh at a time, keeping its workspace's ID; pasted tokens are never refreshed |
-| `logic/WorkspaceTokensSignInTest` (in `WorkspaceTokensTest.kt`) | Where a new Connect to Notion token goes: main, after the others, or in place of the same workspace's token |
+| `logic/WorkspaceTokensPlaceTest` (in `WorkspaceTokensTest.kt`) | Each Notion workspace once: where a new token goes (main, after the others, in place of the same workspace's token), that a way that sees less never replaces one that sees more, and the clean-up of duplicates from before |
+| `data/notion/TokenCodecTest`, `data/api/NotionRoutesTest` | Notion's workspace ID for every kind of token; a page found by two tokens listed once |
 | `logic/DocumentEditorTest` | Enter, Backspace, Markdown shortcuts (Notion's), dividers, code blocks, numbering; nesting (indent, outdent, Enter and Backspace in nested blocks, what may move) |
 | `data/notion/BlockCodecTest` | Reading and writing every editable block type; images, files, links, tables and linked pages read-only |
 | `data/model/NotionFilesTest`, `logic/ReadOnlyBlocksTest` | Expiring links to files Notion hosts; file names and links of read-only blocks |

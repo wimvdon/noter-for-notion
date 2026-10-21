@@ -145,6 +145,10 @@ private fun WayRow(way: WorkspaceWay, selected: Boolean, onSelect: () -> Unit) {
     }
 }
 
+/** The name of [way], as Add workspace shows it. */
+@Composable
+fun wayTitle(way: WorkspaceWay?): String = if (way == null) stringResource(R.string.workspace_token) else title(way)
+
 @Composable
 private fun title(way: WorkspaceWay): String = stringResource(
     when (way) {
