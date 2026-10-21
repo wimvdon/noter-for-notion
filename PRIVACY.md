@@ -2,7 +2,7 @@
 
 _Last updated: 2026-10-18 (sharing to the app)_
 
-Noter for Notion shows and edits notes in **your own Notion workspace**. It has no server of its
+Noter (listed on the Play Store as Noter for Notion) shows and edits notes in **your own Notion workspace**. It has no server of its
 own, no analytics, no advertising and no crash reporting.
 
 ## What the app sends, and where
