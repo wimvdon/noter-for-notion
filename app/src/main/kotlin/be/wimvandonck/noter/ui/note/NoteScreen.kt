@@ -115,6 +115,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import be.wimvandonck.noter.R
 import be.wimvandonck.noter.ui.common.NewDatabaseDialog
+import be.wimvandonck.noter.ui.common.showDatabaseCreatedToast
 import be.wimvandonck.noter.ui.common.SyncButton
 import be.wimvandonck.noter.data.model.Block
 import be.wimvandonck.noter.data.model.BlockType
@@ -181,9 +182,15 @@ fun NoteScreen(
     var confirmTrash by remember { mutableStateOf(false) }
     val newDatabase by viewModel.newDatabase.state.collectAsStateWithLifecycle()
     newDatabase?.let { dialog ->
+        val context = LocalContext.current
         NewDatabaseDialog(
             dialog,
-            onCreate = { title, titleName, starters, names -> viewModel.newDatabase.create(title, titleName, starters, names, onOpenDatabase) },
+            onCreate = { title, titleName, properties, names ->
+                viewModel.newDatabase.create(title, titleName, properties, names) { id ->
+                    showDatabaseCreatedToast(context)
+                    onOpenDatabase(id)
+                }
+            },
             onDismiss = viewModel.newDatabase::dismiss,
         )
     }
