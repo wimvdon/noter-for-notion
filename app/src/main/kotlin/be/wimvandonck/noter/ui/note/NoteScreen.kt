@@ -215,6 +215,22 @@ fun NoteScreen(
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val listState = rememberLazyListState()
+    // One focus handle per line, so the cursor can move to another line before its own line goes.
+    val requesters = remember { mutableMapOf<String, FocusRequester>() }
+    LaunchedEffect(state.blocks) {
+        val keys = state.blocks.mapTo(HashSet()) { it.key }
+        requesters.keys.retainAll(keys)
+    }
+
+    // Removing the line with the cursor (Backspace, Delete) first moves the cursor to the line it
+    // goes to, at once. Otherwise nothing has focus for a moment: the keyboard starts to close and
+    // the note jumps up by its height before coming back.
+    fun handOverFocus(edit: () -> Unit) {
+        val before = viewModel.focus.value
+        edit()
+        val after = viewModel.focus.value ?: return
+        if (after != before) requesters[after.key]?.let { runCatching { it.requestFocus() } }
+    }
     val note = state.note
     val scope = rememberCoroutineScope()
     val copiedText = stringResource(R.string.copied)
@@ -418,7 +434,7 @@ fun NoteScreen(
                             keyboard?.hide()
                             focusManager.clearFocus()
                         },
-                        onDelete = { viewModel.delete(block.key) },
+                        onDelete = { handOverFocus { viewModel.delete(block.key) } },
                         onDone = { keyboard?.hide(); focusManager.clearFocus() },
                     )
                 }
@@ -571,9 +587,10 @@ fun NoteScreen(
                             focus = focus,
                             styling = styling,
                             onText = { text, cursor -> viewModel.changeText(block.key, text, cursor) },
-                            onBackspaceAtStart = { viewModel.backspaceAtStart(block.key) },
+                            requester = requesters.getOrPut(block.key) { FocusRequester() },
+                            onBackspaceAtStart = { handOverFocus { viewModel.backspaceAtStart(block.key) } },
                             onToggle = { viewModel.toggleChecked(block.key) },
-                            onDelete = { viewModel.delete(block.key) },
+                            onDelete = { handOverFocus { viewModel.delete(block.key) } },
                             onFocusChange = { focused ->
                                 if (focused) focusedKey = block.key else if (focusedKey == block.key) focusedKey = null
                             },
@@ -838,6 +855,7 @@ private fun BlockRow(
     onlyBlock: Boolean,
     focus: FocusTarget?,
     styling: MarkdownStyling,
+    requester: FocusRequester,
     onText: (String, Int) -> Unit,
     onBackspaceAtStart: () -> Unit,
     onToggle: () -> Unit,
@@ -871,7 +889,6 @@ private fun BlockRow(
         else -> Unit
     }
     var value by remember(block.key) { mutableStateOf(TextFieldValue(block.text)) }
-    val requester = remember(block.key) { FocusRequester() }
     LaunchedEffect(block.text) {
         if (value.text != block.text) value = TextFieldValue(block.text, TextRange(block.text.length.coerceAtMost(value.selection.end)))
     }
