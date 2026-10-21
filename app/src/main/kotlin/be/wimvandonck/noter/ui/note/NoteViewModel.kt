@@ -213,6 +213,13 @@ class NoteViewModel(
         _focus.value = FocusTarget(key, cursor, ++serial)
     }
 
+    /** Runs [edit] and returns where the cursor goes because of it (null: it stays). */
+    fun focusMovedBy(edit: () -> Unit): FocusTarget? {
+        val before = _focus.value
+        edit()
+        return _focus.value?.takeIf { it != before }
+    }
+
     private fun scheduleSave(fast: Boolean = false) {
         editedSinceOpen = true
         val now = System.currentTimeMillis()
