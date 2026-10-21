@@ -226,10 +226,8 @@ fun NoteScreen(
     // goes to, at once. Otherwise nothing has focus for a moment: the keyboard starts to close and
     // the note jumps up by its height before coming back.
     fun handOverFocus(edit: () -> Unit) {
-        val before = viewModel.focus.value
-        edit()
-        val after = viewModel.focus.value ?: return
-        if (after != before) requesters[after.key]?.let { runCatching { it.requestFocus() } }
+        val target = viewModel.focusMovedBy(edit) ?: return
+        requesters[target.key]?.let { runCatching { it.requestFocus() } }
     }
     val note = state.note
     val scope = rememberCoroutineScope()
