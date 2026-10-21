@@ -179,7 +179,9 @@
     <string name="action_select_text">Select text</string>
     <string name="close">Close</string>
     <string name="section_workspaces">Workspaces</string>
-    <string name="workspaces_help">Add a token for each workspace or Notion account. A personal access token sees everything you can see; a connection only sees the pages shared with it.</string>
+    <string name="workspaces_help">Add a token for each workspace or Notion account.</string>
+    <string name="workspaces_help_personal">A personal access token is for a workspace of your own: it sees everything you can see and can add pages at the top.</string>
+    <string name="workspaces_help_connection">A connection only sees the pages shared with it, for example by a member of a workspace you were invited to.</string>
     <string name="workspace_token">Token</string>
     <string name="workspace_personal">Personal access token</string>
     <string name="workspace_connection">Connection</string>

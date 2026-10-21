@@ -164,14 +164,12 @@ private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewMod
         }
         Text(stringResource(R.string.add_workspace))
     }
-    // Where to make a token: Notion's own pages.
-    Column {
-        LinkButton(stringResource(R.string.make_personal_token)) {
-            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, TOKENS_URL.toUri())) }
-        }
-        LinkButton(stringResource(R.string.make_connection)) {
-            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, CONNECTIONS_URL.toUri())) }
-        }
+    // The two kinds of token, each with what it sees and where Notion makes one.
+    TokenKindHelp(stringResource(R.string.workspaces_help_personal), stringResource(R.string.make_personal_token)) {
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, TOKENS_URL.toUri())) }
+    }
+    TokenKindHelp(stringResource(R.string.workspaces_help_connection), stringResource(R.string.make_connection)) {
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, CONNECTIONS_URL.toUri())) }
     }
     if (state.hasKey) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -186,6 +184,15 @@ private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewMod
             )
             TextButton(onClick = viewModel::syncNow) { Text(stringResource(R.string.sync_now)) }
         }
+    }
+}
+
+/** What a kind of token sees, with the link to where Notion makes one right below it. */
+@Composable
+private fun TokenKindHelp(text: String, link: String, onOpen: () -> Unit) {
+    Column {
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        LinkButton(link, onOpen)
     }
 }
 

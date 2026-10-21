@@ -179,7 +179,9 @@
     <string name="action_select_text">Tekst selecteren</string>
     <string name="close">Sluiten</string>
     <string name="section_workspaces">Werkruimtes</string>
-    <string name="workspaces_help">Voeg een token toe voor elke werkruimte of elk Notion-account. Een persoonlijk toegangstoken ziet alles wat jij ziet; een koppeling ziet alleen de pagina’s die ermee gedeeld zijn.</string>
+    <string name="workspaces_help">Voeg een token toe voor elke werkruimte of elk Notion-account.</string>
+    <string name="workspaces_help_personal">Een persoonlijk toegangstoken is voor een eigen werkruimte: het ziet alles wat jij ziet en kan bovenaan pagina’s toevoegen.</string>
+    <string name="workspaces_help_connection">Een koppeling ziet alleen de pagina’s die ermee gedeeld zijn, bijvoorbeeld door een lid van een werkruimte waarvoor je uitgenodigd bent.</string>
     <string name="workspace_token">Token</string>
     <string name="workspace_personal">Persoonlijk toegangstoken</string>
     <string name="workspace_connection">Koppeling</string>
