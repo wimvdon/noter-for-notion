@@ -2,6 +2,9 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-22: No trash in a card's long-press menu (#91)
+A long press on a card opened Pin and Move to trash. The owner removed the trash there: a long press is also how a card is dragged, so a slip could reach it, and deleting is better done from the note itself (its ⋮ menu, which still asks first). The long-press menu keeps Pin or Unpin.
+
 ## 2026-10-22: Home finds old pages too
 The owner noticed pages missing from Home. Home asked Notion's search for the 200 most recently edited things, but the search can't leave out the notes in databases, so a busy database pushed older pages out. Notion's API has no "pages at the top" or "two levels" request: only the search, and a page's own blocks, which list every subpage and database right inside it. So Home now reads the search further (up to 2000 results per workspace, 20 requests, paced; most workspaces end sooner), which finds the top-level pages of most workspaces, and then asks the newest 50 top-level pages for what is right inside them, adding up to 50 subpages or databases the search didn't reach. It runs at start and on pull-to-refresh, in the background, while Home shows the kept list. Rejected: reading the whole search every time (thousands of requests in a big workspace) and asking every page for its subpages (one request per page, every level).
 

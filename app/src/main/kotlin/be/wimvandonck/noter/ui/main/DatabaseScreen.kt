@@ -271,7 +271,6 @@ fun DatabaseScreen(
                     onRefresh = { viewModel.refresh() },
                     onOpen = onOpenNote,
                     onTogglePin = { viewModel.togglePin(it) },
-                    onTrash = { viewModel.trash(it) },
                     onReordered = viewModel::saveOrder,
                 )
             }

@@ -358,7 +358,6 @@ class MainViewModel(
         }
     }
 
-    fun trash(id: String) = viewModelScope.launch { repository.trashNote(id) }
 
     /** Saves the order of Home's pinned databases after the user dragged them. */
     fun savePinnedDatabaseOrder(ids: List<String>) = viewModelScope.launch { repository.savePinnedDatabaseOrder(ids) }
