@@ -3,6 +3,7 @@ package be.wimvandonck.noter.ui.main
 import android.content.Intent
 import androidx.core.net.toUri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -13,16 +14,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AddReaction
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -31,6 +36,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -39,6 +45,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,8 +53,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -57,8 +67,12 @@ import be.wimvandonck.noter.R
 import be.wimvandonck.noter.ui.common.PageIconView
 import be.wimvandonck.noter.ui.common.SMALL_PAGE_ICON
 import be.wimvandonck.noter.ui.common.SyncButton
+import be.wimvandonck.noter.ui.common.errorText
+import be.wimvandonck.noter.ui.note.PageIconSheet
+import be.wimvandonck.noter.ui.theme.AppShapes
 import be.wimvandonck.noter.ui.theme.EmptyState
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.material.icons.rounded.Share
 import be.wimvandonck.noter.ui.common.shareLink
 
@@ -85,6 +99,9 @@ fun DatabaseScreen(
     var filtersOpen by remember { mutableStateOf(false) }
     var cardsOpen by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf(false) }
+    var choosingIcon by remember { mutableStateOf(false) }
+    val resources = LocalResources.current
     val context = LocalContext.current
     val actions = SetupActions(onArrangeFilters = viewModel::arrangeFilters, onSort = viewModel::setSort)
 
@@ -98,6 +115,8 @@ fun DatabaseScreen(
                     val result = snackbar.showSnackbar(sortedByHand, actionLabel = undo, duration = SnackbarDuration.Long)
                     if (result == SnackbarResult.ActionPerformed) viewModel.undoSortedByHand(event)
                 }
+                is DatabaseEvent.EditFailed ->
+                    snackbar.showSnackbar(resources.getString(R.string.database_edit_failed, errorText(resources, event.error)))
             }
         }
     }
@@ -121,9 +140,23 @@ fun DatabaseScreen(
                     Column {
                         TopAppBar(
                             title = {
+                                // As on a page: tap the icon to change it, the name to rename (also in ⋮).
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    state.icon?.let { PageIconView(it, size = SMALL_PAGE_ICON) }
-                                    Text(state.title.ifBlank { untitled }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    state.icon?.let {
+                                        PageIconView(
+                                            it,
+                                            size = SMALL_PAGE_ICON,
+                                            modifier = Modifier
+                                                .clip(AppShapes.Item)
+                                                .clickable(onClickLabel = stringResource(R.string.change_icon), role = Role.Button) { choosingIcon = true },
+                                        )
+                                    }
+                                    Text(
+                                        state.title.ifBlank { untitled },
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.clickable(onClickLabel = stringResource(R.string.action_rename)) { renaming = true },
+                                    )
                                 }
                             },
                             navigationIcon = {
@@ -149,6 +182,23 @@ fun DatabaseScreen(
                                             onClick = {
                                                 menu = false
                                                 viewModel.togglePinDatabase()
+                                            },
+                                        )
+                                        // Name and icon here, so the screen itself stays the notes.
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.action_rename)) },
+                                            leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
+                                            onClick = {
+                                                menu = false
+                                                renaming = true
+                                            },
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(if (state.icon != null) R.string.change_icon else R.string.add_icon)) },
+                                            leadingIcon = { Icon(Icons.Rounded.AddReaction, contentDescription = null) },
+                                            onClick = {
+                                                menu = false
+                                                choosingIcon = true
                                             },
                                         )
                                         DropdownMenuItem(
@@ -237,6 +287,21 @@ fun DatabaseScreen(
             onDismiss = { filtersOpen = false },
         )
     }
+    if (renaming) {
+        RenameDialog(
+            current = state.title,
+            onRename = { renaming = false; viewModel.rename(it) },
+            onDismiss = { renaming = false },
+        )
+    }
+    if (choosingIcon) {
+        PageIconSheet(
+            hasIcon = state.icon != null,
+            onPick = { emoji -> choosingIcon = false; viewModel.setIcon(emoji) },
+            onRemove = { choosingIcon = false; viewModel.setIcon(null) },
+            onDismiss = { choosingIcon = false },
+        )
+    }
     if (cardsOpen) {
         CardsSheet(
             cards = state.cards,
@@ -245,4 +310,29 @@ fun DatabaseScreen(
             onDismiss = { cardsOpen = false },
         )
     }
+}
+
+/** The database's name, to change; Rename is off while it is empty or unchanged. */
+@Composable
+private fun RenameDialog(current: String, onRename: (String) -> Unit, onDismiss: () -> Unit) {
+    var name by rememberSaveable { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.rename_database)) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text(stringResource(R.string.new_database_name)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onRename(name) }, enabled = name.isNotBlank() && name.trim() != current) {
+                Text(stringResource(R.string.action_rename))
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
 }

@@ -356,6 +356,12 @@ class NotionClient(
     suspend fun updatePageIcon(pageId: String, emoji: String?): JsonObject =
         call("PATCH", "/pages/$pageId", mapOf("icon" to emoji?.let(::emojiIcon)))
 
+    /** Changes database [databaseId]'s name or icon ([body], see DatabaseEdit). */
+    suspend fun updateDatabase(databaseId: String, body: Map<String, Any?>): JsonObject = call("PATCH", "/databases/$databaseId", body)
+
+    /** Changes data source [dataSourceId]'s name or icon ([body], see DatabaseEdit). */
+    suspend fun updateDataSource(dataSourceId: String, body: Map<String, Any?>): JsonObject = call("PATCH", "/data_sources/$dataSourceId", body)
+
     private fun emojiIcon(emoji: String) = mapOf("type" to "emoji", "emoji" to emoji)
 
     suspend fun updatePageProperties(pageId: String, properties: Map<String, Any?>): JsonObject =

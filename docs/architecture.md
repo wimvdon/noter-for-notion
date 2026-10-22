@@ -70,7 +70,7 @@ properties and content: the pages of databases and pages on their own.
   that order; dragged past the "Hidden" line, or the eye, it loses its row; the order of the hidden ones is kept too, `DatabaseSetup.filterOrder`), each with its values
   to filter by right below it (`PropertyArranger`'s `below`; also the hidden ones); Clear
   filters), **Sort** (a menu: tapping the current sort again turns it around, an arrow shows which
-  way), **Cards** (the Tune icon, as a page's properties button) and ⋮: Pin (or Unpin), Open in Notion and Share (Notion's link to the database; a data source's database comes from `DatabaseSchema.databaseId`, the last search or Notion, `NotesRepository.databaseOf`). Cards sets the header image (off by default), the start of the
+  way), **Cards** (the Tune icon, as a page's properties button) and ⋮: Pin (or Unpin), Rename, Add icon (or Change icon), Open in Notion and Share. Rename and the icon (`logic/DatabaseEdit.kt`, `NotesRepository.editDatabase`) are sent to Notion at once, as a new database is (nothing is queued; offline a snackbar says so): to the database, and to its data source when it is the only one (Notion's lists show that name); Home's list, pins and the kept database names follow. Open in Notion and Share use (Notion's link to the database; a data source's database comes from `DatabaseSchema.databaseId`, the last search or Notion, `NotesRepository.databaseOf`). Cards sets the header image (off by default), the start of the
   content (on; when off, no previews are downloaded for it) and up to three properties, else the
   card shows the first row's property). Above the notes, one row of chips per quick filter,
   each starting with the property's name and, while something in it is selected, ending in ×; a

@@ -215,6 +215,9 @@
     <string name="new_database_title_property">Nombre</string>
     <string name="new_database_create">Crear</string>
     <string name="new_database_failed">Notion no creó la base de datos: %1$s</string>
+    <string name="action_rename">Cambiar nombre</string>
+    <string name="rename_database">Cambiar nombre de la base de datos</string>
+    <string name="database_edit_failed">Notion no guardó el cambio: %1$s</string>
     <string name="property_kind_text">Texto</string>
     <string name="property_kind_number">Número</string>
     <string name="property_kind_select">Seleccionar</string>

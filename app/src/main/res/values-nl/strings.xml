@@ -212,6 +212,9 @@
     <string name="new_database_title_property">Naam</string>
     <string name="new_database_create">Maken</string>
     <string name="new_database_failed">Notion heeft de database niet gemaakt: %1$s</string>
+    <string name="action_rename">Naam wijzigen</string>
+    <string name="rename_database">Naam van de database wijzigen</string>
+    <string name="database_edit_failed">Notion heeft de wijziging niet bewaard: %1$s</string>
     <string name="property_kind_text">Tekst</string>
     <string name="property_kind_number">Getal</string>
     <string name="property_kind_select">Selecteren</string>
