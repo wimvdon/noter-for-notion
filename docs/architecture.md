@@ -33,7 +33,7 @@ properties and content: the pages of databases and pages on their own.
     pages are asked for what is right inside them (`logic/HomeLevels.kt`), and up to 50 subpages
     and databases the search didn't reach are added, so the second level is complete; paced for
     Notion's rate limit). The list is kept on this phone (`recent.json`), so Home shows it at once and offline; it
-    is asked again when the app starts (with a token) and on pull-to-refresh. A pin at the end of
+    is asked again when the app starts (with a token) and on pull-to-refresh, whose indicator stays until the list and the pinned notes' databases are back (`MainViewModel.refresh`, #93). A pin at the end of
     a row shows it is pinned.
   - **+** (`logic/NoteTargets.kt`) offers a page at the top of the workspace (not with a
     connection's token; when Notion refuses, the page is removed again and the app says to check
