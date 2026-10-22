@@ -52,6 +52,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -239,9 +240,12 @@ class MainViewModel(
     /** What Notion said about the pinned databases (their data sources, for +), by pinned ID. */
     private val infos = MutableStateFlow<Map<String, DatabaseInfo>>(emptyMap())
 
-    private data class Status(val pending: Int, val offline: Boolean, val hasKey: Boolean, val avatarUrl: String?)
+    /** Pull-to-refresh is busy, until everything it asked for is back (#93). */
+    private val pulling = MutableStateFlow(false)
 
-    private val status = combine(repository.pendingCount, repository.offline, hasKey, avatarUrl, ::Status)
+    private data class Status(val pending: Int, val offline: Boolean, val hasKey: Boolean, val avatarUrl: String?, val pulling: Boolean)
+
+    private val status = combine(repository.pendingCount, repository.offline, hasKey, avatarUrl, pulling, ::Status)
 
     /** Home's tree: the entries opened, and how many of its top level show. */
     private val expanded = MutableStateFlow<Set<String>>(emptySet())
@@ -263,7 +267,7 @@ class MainViewModel(
         combine(repository.recent, recentError, infos, ::Triple),
         status,
         workspaceInfo,
-    ) { settings, databases, (recent, error, known), (pending, offline, key, avatar), (spaces, owners, folded, opened, limit) ->
+    ) { settings, databases, (recent, error, known), (pending, offline, key, avatar, pull), (spaces, owners, folded, opened, limit) ->
         val pinned = NoteLists.pinned(databases.values.flatMap { it.notes }, settings.pinned, settings.order[AppSettings.HOME].orEmpty())
         val several = spaces.size > 1
         HomeUiState(
@@ -275,7 +279,7 @@ class MainViewModel(
                 pinnedIds = settings.pinned.toSet(),
                 sourceIcons = sourceIcons(settings.pinnedDatabases, recent, known),
                 propertyLayouts = PropertyLayouts.cardLayouts(settings.propertyLayouts, settings.setups),
-                refreshing = databases.values.any { it.refreshing },
+                refreshing = pull || databases.values.any { it.refreshing },
                 pendingCount = pending,
                 offline = offline,
             ),
@@ -329,12 +333,23 @@ class MainViewModel(
         }
     }
 
-    /** Pull-to-refresh: sends what waits, refreshes the pinned notes' databases and the list. */
+    /**
+     * Pull-to-refresh: sends what waits, refreshes the pinned notes' databases and the list. The
+     * indicator stays until all of it is done (the list can take a few seconds).
+     */
     fun refresh() {
+        if (pulling.value) return
+        pulling.value = true
         viewModelScope.launch {
-            repository.flush()
-            repository.pinnedSources().forEach { launch { repository.refresh(it, userAsked = true) } }
-            refreshRecent()
+            try {
+                coroutineScope {
+                    repository.flush()
+                    repository.pinnedSources().forEach { launch { repository.refresh(it, userAsked = true) } }
+                    refreshRecent()
+                }
+            } finally {
+                pulling.value = false
+            }
         }
     }
 
