@@ -58,4 +58,15 @@ class WorkspacesTest {
         assertFalse(club.canAddTopLevel)
         assertTrue(Workspace("w3", "Not known yet").canAddTopLevel)
     }
+
+    @Test
+    fun `the profile picture only when every workspace is the same person's`() {
+        val home = Workspace("a", "Home", person = "Wim Vandonck")
+        val work = Workspace("b", "Work", person = "wim vandonck ")
+        assertTrue(Workspaces.onePerson(emptyList()))
+        assertTrue(Workspaces.onePerson(listOf(home)))
+        assertTrue(Workspaces.onePerson(listOf(home, work)))
+        assertFalse(Workspaces.onePerson(listOf(home, Workspace("c", "Club", person = "Jonathan"))))
+        assertFalse(Workspaces.onePerson(listOf(home, Workspace("d", "Shared", person = ""))))
+    }
 }
