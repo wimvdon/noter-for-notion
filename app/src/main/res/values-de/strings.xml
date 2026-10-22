@@ -212,6 +212,9 @@
     <string name="new_database_title_property">Name</string>
     <string name="new_database_create">Erstellen</string>
     <string name="new_database_failed">Notion hat die Datenbank nicht erstellt: %1$s</string>
+    <string name="action_rename">Umbenennen</string>
+    <string name="rename_database">Datenbank umbenennen</string>
+    <string name="database_edit_failed">Notion hat die Änderung nicht gespeichert: %1$s</string>
     <string name="property_kind_text">Text</string>
     <string name="property_kind_number">Zahl</string>
     <string name="property_kind_select">Auswählen</string>

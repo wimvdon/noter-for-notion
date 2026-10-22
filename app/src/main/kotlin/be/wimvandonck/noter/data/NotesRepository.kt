@@ -23,6 +23,7 @@ import be.wimvandonck.noter.data.notion.BlockCodec
 import be.wimvandonck.noter.data.notion.InlineMarkdown
 import be.wimvandonck.noter.data.web.WebPageClient
 import be.wimvandonck.noter.logic.SharedContent
+import be.wimvandonck.noter.logic.DatabaseEdit
 import be.wimvandonck.noter.logic.SharedNotes
 import be.wimvandonck.noter.logic.SubpageTitles
 import be.wimvandonck.noter.logic.WebArticles
@@ -1363,6 +1364,47 @@ class NotesRepository(
         settings.update { s ->
             val ordered = NoteLists.reorderDatabases(s.pinnedDatabases, ids)
             if (ordered == s.pinnedDatabases) s else s.copy(pinnedDatabases = ordered)
+        }
+    }
+
+    /**
+     * Renames database [databaseId] or changes its icon ([edit]) in Notion at once (like making a
+     * database, nothing is queued), then everywhere on this phone. [sourceId] is the data source
+     * shown; when it is the database's only one ([single]) it changes too, since Notion's lists show
+     * its name. [databaseId] null: asked from Notion. Throws when Notion can't be reached or refuses.
+     */
+    suspend fun editDatabase(databaseId: String?, sourceId: String, single: Boolean, edit: DatabaseEdit) {
+        val database = databaseId ?: databaseOf(sourceId) ?: throw NotionException("Database not known")
+        val body = edit.body()
+        withContext(Dispatchers.IO) {
+            client.updateDatabase(database, body)
+            if (single && plain(sourceId) != plain(database)) client.updateDataSource(sourceId, body)
+        }
+        val ids = setOf(plain(database), plain(sourceId))
+        withContext(Dispatchers.IO) {
+            lock.withLock {
+                databaseInfos[plain(database)]?.let { info ->
+                    databaseInfos[plain(database)] = edit.applyTo(info)
+                    cache.saveDatabaseInfos(databaseInfos.toMap())
+                }
+                lastFound = edit.applyTo(lastFound, ids)
+                _recent.value?.let { items ->
+                    val changed = edit.applyTo(items, ids)
+                    _recent.value = changed
+                    cache.saveRecent(changed)
+                }
+                if (single && edit.title != null) {
+                    _databases.value[sourceId]?.let { db ->
+                        val updated = db.copy(schema = db.schema?.copy(title = edit.title))
+                        _databases.update { it + (sourceId to updated) }
+                        saveDatabaseCache(sourceId, updated)
+                    }
+                }
+            }
+        }
+        settings.update { s ->
+            val pins = edit.applyToPins(s.pinnedDatabases, ids)
+            if (pins == s.pinnedDatabases) s else s.copy(pinnedDatabases = pins)
         }
     }
 

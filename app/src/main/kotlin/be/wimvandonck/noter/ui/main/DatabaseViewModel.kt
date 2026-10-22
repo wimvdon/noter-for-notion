@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import be.wimvandonck.noter.NoterApp
 import be.wimvandonck.noter.data.NotesRepository
+import be.wimvandonck.noter.data.api.NotionErrors
 import be.wimvandonck.noter.data.api.NotionException
 import be.wimvandonck.noter.data.model.CardLayout
 import be.wimvandonck.noter.data.model.DatabaseSetup
@@ -17,6 +18,7 @@ import be.wimvandonck.noter.data.model.PageRef
 import be.wimvandonck.noter.data.model.PinnedDatabase
 import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.data.model.SortKind
+import be.wimvandonck.noter.logic.DatabaseEdit
 import be.wimvandonck.noter.logic.DatabaseSetups
 import be.wimvandonck.noter.logic.PropertyLayouts
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -53,6 +55,9 @@ data class DatabaseUiState(
 sealed interface DatabaseEvent {
     /** Dragging a note switched the data source from [previous] to the custom order (Undo restores it). */
     data class SortedByHand(val sourceId: String, val previous: NoteSort?) : DatabaseEvent
+
+    /** Notion didn't take a new name or icon ([error]: see NotionErrors). */
+    data class EditFailed(val error: String) : DatabaseEvent
 }
 
 /**
@@ -199,6 +204,26 @@ class DatabaseViewModel(
     fun togglePinDatabase() {
         val ui = state.value
         viewModelScope.launch { repository.togglePinDatabase(PinnedDatabase(pinKey(ui.sourceId, ui.sources), ui.title, ui.icon)) }
+    }
+
+    /** Renames the database in Notion (Rename in the ⋮ menu). */
+    fun rename(title: String) = edit(DatabaseEdit.rename(title))
+
+    /** Sets the database's icon to [emoji] in Notion, or removes it when null. */
+    fun setIcon(emoji: String?) = edit(DatabaseEdit.icon(emoji))
+
+    private fun edit(edit: DatabaseEdit) {
+        if (edit.title?.isBlank() == true) return
+        viewModelScope.launch {
+            try {
+                repository.editDatabase(databaseLink.value, sourceId, single = sources.value == null, edit)
+                // Shown at once, whichever name the screen had (the database's or its data source's).
+                val ui = state.value
+                label.value = edit.title(ui.title) to edit.icon(ui.icon)
+            } catch (e: NotionException) {
+                _events.tryEmit(DatabaseEvent.EditFailed(NotionErrors.of(e)))
+            }
+        }
     }
 
     fun loadPreviews(notes: List<NoteSummary>) = repository.loadPreviews(notes)
