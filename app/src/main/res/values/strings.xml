@@ -91,7 +91,6 @@
     <string name="hide_key">Hide token</string>
     <string name="key_failed">Something went wrong: %1$s</string>
     <string name="key_removed">Token removed. Notes copied to this phone were deleted.</string>
-    <string name="sync_all_saved">Everything is saved in Notion.</string>
     <string name="sync_now">Sync now</string>
     <string name="section_appearance">Appearance</string>
     <string name="theme">Theme</string>

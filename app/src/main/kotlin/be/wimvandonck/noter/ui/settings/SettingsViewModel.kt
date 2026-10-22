@@ -54,11 +54,9 @@ sealed interface KeyStatus {
 
 data class SettingsUiState(
     val settings: AppSettings = AppSettings(),
-    val hasKey: Boolean = false,
     /** Every workspace with a token, the main one first. */
     val workspaces: List<Workspace> = emptyList(),
     val keyStatus: KeyStatus = KeyStatus.None,
-    val pendingCount: Int = 0,
     /** "Connect to Notion" (OAuth) is set up in this build. */
     val canSignIn: Boolean = false,
 )
@@ -91,13 +89,12 @@ class SettingsViewModel(
         repository.settingsFlow(),
         combine(keyStore.main, keyStore.extras) { main, extras -> Workspaces.of(listOf(main) + extras) },
         keyStatus,
-        repository.pendingCount,
-    ) { settings, workspaces, status, pending ->
-        SettingsUiState(settings, workspaces.isNotEmpty(), workspaces, status, pending, signIn.available)
+    ) { settings, workspaces, status ->
+        SettingsUiState(settings, workspaces, status, signIn.available)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
-        SettingsUiState(hasKey = keyStore.get().isNotBlank(), canSignIn = signIn.available),
+        SettingsUiState(canSignIn = signIn.available),
     )
 
     /** The address of Notion's page for "Connect to Notion" (opened in the browser). */
@@ -177,8 +174,6 @@ class SettingsViewModel(
             // Home asks again at the next start.
         }
     }
-
-    fun syncNow() = repository.onForeground()
 
     fun setTheme(mode: ThemeMode) = viewModelScope.launch { repository.updateSettings { it.copy(themeMode = mode) } }
 

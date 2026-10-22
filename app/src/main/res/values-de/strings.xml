@@ -91,7 +91,6 @@
     <string name="hide_key">Token ausblenden</string>
     <string name="key_failed">Etwas ist schiefgelaufen: %1$s</string>
     <string name="key_removed">Token entfernt. Die auf dieses Handy kopierten Notizen wurden gelöscht.</string>
-    <string name="sync_all_saved">Alles ist in Notion gespeichert.</string>
     <string name="sync_now">Jetzt synchronisieren</string>
     <string name="section_appearance">Darstellung</string>
     <string name="theme">Design</string>

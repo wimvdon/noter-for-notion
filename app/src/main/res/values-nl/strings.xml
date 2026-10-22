@@ -91,7 +91,6 @@
     <string name="hide_key">Token verbergen</string>
     <string name="key_failed">Er ging iets mis: %1$s</string>
     <string name="key_removed">Token verwijderd. De notities op deze telefoon zijn gewist.</string>
-    <string name="sync_all_saved">Alles is opgeslagen in Notion.</string>
     <string name="sync_now">Nu synchroniseren</string>
     <string name="section_appearance">Weergave</string>
     <string name="theme">Thema</string>
