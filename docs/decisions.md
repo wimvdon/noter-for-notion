@@ -2,6 +2,9 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-22: The profile picture only for one person
+Home's Settings button showed the main token's person's picture. With workspaces of several people (or a connection's token, named after the connection) that picture can be someone else's. The owner suggested a cogwheel or sortable workspaces with the top one's picture, and left the choice. Now the picture shows only when every workspace is the same person's; otherwise the button is the cogwheel. Rejected: sorting workspaces to pick whose picture (an order to manage for a small icon) and always the cogwheel (loses the picture for the usual case of one person).
+
 ## 2026-10-22: Pinned items as launcher shortcuts (#76)
 The owner asked for the pinned items in the menu of a long press on the app icon. Android's dynamic shortcuts (`ShortcutManagerCompat` from androidx.core, already a dependency; no permission) show the pinned databases and then the pinned notes and pages, in Home's order, at most four (what launchers show). A shortcut's icon is the item's Notion emoji drawn on the launcher icon's white, else a page or database symbol; a picture icon from Notion isn't downloaded for it. Rejected: a widget (much more code for the same reach) and static shortcuts to New note (the owner asked for the pins).
 
