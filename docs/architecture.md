@@ -101,6 +101,11 @@ properties and content: the pages of databases and pages on their own.
   A chip's count of notes is set apart in a small pill, so an option "5" with one note doesn't
   read as "5 1". A new note made with a filter selected
   gets its value where it can (not for computed properties; a date only for Today).
+- **Launcher shortcuts** (#76, `logic/LauncherShortcuts.kt`, `Shortcuts.kt`): a long press on the
+  app icon shows the pinned databases, then the pinned notes and pages (Home's order, as many as
+  the launcher shows, at most 4), each with its Notion emoji or a page or database symbol. They
+  follow the pins a second after they change (`NoterApp`); a tap opens the screen on top of Home
+  (`MainActivity` sets `NoterApp.opens`, `AppNavigation` opens it).
 - **Pages** open in the editor; once a page's icon and title have scrolled away, they show in
   the top bar (`BarTitle` in `NoteScreen.kt`), tapping them changes the icon or goes back to
   the title. Also a page with subpages: its subpages are links in its content

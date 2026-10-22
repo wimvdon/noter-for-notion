@@ -2,6 +2,9 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-22: Pinned items as launcher shortcuts (#76)
+The owner asked for the pinned items in the menu of a long press on the app icon. Android's dynamic shortcuts (`ShortcutManagerCompat` from androidx.core, already a dependency; no permission) show the pinned databases and then the pinned notes and pages, in Home's order, at most four (what launchers show). A shortcut's icon is the item's Notion emoji drawn on the launcher icon's white, else a page or database symbol; a picture icon from Notion isn't downloaded for it. Rejected: a widget (much more code for the same reach) and static shortcuts to New note (the owner asked for the pins).
+
 ## 2026-10-22: No trash in a card's long-press menu (#91)
 A long press on a card opened Pin and Move to trash. The owner removed the trash there: a long press is also how a card is dragged, so a slip could reach it, and deleting is better done from the note itself (its ⋮ menu, which still asks first). The long-press menu keeps Pin or Unpin.
 

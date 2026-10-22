@@ -28,6 +28,8 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import be.wimvandonck.noter.NoterApp
+import be.wimvandonck.noter.logic.LauncherShortcuts
 import be.wimvandonck.noter.ui.main.DatabaseScreen
 import be.wimvandonck.noter.ui.main.MainScreen
 import be.wimvandonck.noter.ui.main.MainViewModel
@@ -38,6 +40,7 @@ import be.wimvandonck.noter.ui.settings.SettingsViewModel
 import be.wimvandonck.noter.ui.theme.Motion
 import be.wimvandonck.noter.ui.theme.rememberReducedMotion
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 /** One ViewModelStore per open screen, so a note's ViewModel is cleared (and saves) when it closes. */
@@ -101,6 +104,16 @@ fun AppNavigation() {
 
     BackHandler(enabled = stack.size > 1) { pop() }
 
+    // A launcher shortcut (#76): its note or database, on top of Home.
+    val opens = (application as? NoterApp)?.opens
+    val opening by (opens ?: MutableStateFlow(null)).collectAsStateWithLifecycle()
+    LaunchedEffect(opening) {
+        val key = opening ?: return@LaunchedEffect
+        opens?.value = null
+        while (stack.size > 1) pop()
+        push(key)
+    }
+
     // Something shared from another app (#63): back to Home, which asks where it goes.
     val sharing by mainViewModel.sharing.collectAsStateWithLifecycle()
     LaunchedEffect(sharing) {
@@ -162,5 +175,6 @@ private const val CLEAR_DELAY_MS = 1_000L
 private const val MAIN = "main"
 private const val SEARCH = "search"
 private const val SETTINGS = "settings"
-private const val NOTE = "note:"
-private const val DATABASE = "database:"
+// The same keys as launcher shortcuts use (#76).
+private const val NOTE = LauncherShortcuts.NOTE
+private const val DATABASE = LauncherShortcuts.DATABASE

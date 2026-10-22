@@ -1,5 +1,6 @@
 package be.wimvandonck.noter
 
+import be.wimvandonck.noter.logic.LauncherShortcuts
 import be.wimvandonck.noter.logic.SharedContent
 import kotlinx.coroutines.flow.MutableStateFlow
 import android.app.Application
@@ -25,6 +26,10 @@ import be.wimvandonck.noter.logic.Workspaces
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import okhttp3.OkHttpClient
 import okio.Path.Companion.toOkioPath
@@ -41,6 +46,9 @@ class NoterApp : Application(), SingletonImageLoader.Factory {
 
     /** What another app shared and Home hasn't saved yet (#63; MainActivity sets it). */
     val shares = MutableStateFlow<SharedContent?>(null)
+
+    /** The screen a launcher shortcut opens (#76: `note:<id>` or `database:<id>`; MainActivity sets it). */
+    val opens = MutableStateFlow<String?>(null)
 
     /** View icons (Material Symbols), read from the assets the first time they are needed. */
     val iconCatalog: IconCatalog by lazy {
@@ -94,6 +102,16 @@ class NoterApp : Application(), SingletonImageLoader.Factory {
                 }
             }
         }
+        // The launcher's shortcuts follow what is pinned (#76), a moment after it changes.
+        val shortcuts = Shortcuts(this)
+        scope.launch(Dispatchers.Default) {
+            combine(repository.settingsFlow(), repository.databases) { settings, databases ->
+                LauncherShortcuts.plan(settings.pinnedDatabases, settings.pinned, databases.values.flatMap { it.notes }, shortcuts.max)
+            }.distinctUntilChanged().collectLatest { targets ->
+                delay(SHORTCUTS_DELAY_MS)
+                shortcuts.publish(targets)
+            }
+        }
         // Read the icons in the background now, so the first screen doesn't wait for them.
         scope.launch(Dispatchers.Default) { iconCatalog }
     }
@@ -112,5 +130,8 @@ class NoterApp : Application(), SingletonImageLoader.Factory {
 
     private companion object {
         const val IMAGE_CACHE_BYTES = 100L * 1024 * 1024
+
+        /** The launcher's shortcuts change this long after the pins stop changing (a drag changes them often). */
+        const val SHORTCUTS_DELAY_MS = 1_000L
     }
 }
