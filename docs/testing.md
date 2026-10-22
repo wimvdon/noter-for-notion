@@ -26,6 +26,7 @@ node --test worker/test/noter-sign-in.test.mjs
 |---|---|
 | `logic/ContentMergeTest` | Typing while a newer version comes from Notion: the edits go on top of it, keeping blocks added or changed in Notion meanwhile |
 | `data/NotesRepositoryTest` (lost answers) | A page Notion made without answering isn't made again; one it didn't make is made on the next try |
+| `logic/HomeLevelsTest` | Which pages are Home's top level, and which subpages and databases inside them the search missed |
 | `logic/DatabaseEditTest` | What a database's new name or icon sends to Notion, and which rows, pins and kept names change |
 | `logic/SubpageTitlesTest` | A page's subpage and database titles follow Notion, and only those blocks change |
 | `logic/WorkspaceWaysTest` | Which tokens Advanced offers, in which order, and which is chosen first |

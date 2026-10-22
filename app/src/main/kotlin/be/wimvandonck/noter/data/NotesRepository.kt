@@ -23,7 +23,9 @@ import be.wimvandonck.noter.data.notion.BlockCodec
 import be.wimvandonck.noter.data.notion.InlineMarkdown
 import be.wimvandonck.noter.data.web.WebPageClient
 import be.wimvandonck.noter.logic.SharedContent
+import be.wimvandonck.noter.logic.ChildRef
 import be.wimvandonck.noter.logic.DatabaseEdit
+import be.wimvandonck.noter.logic.HomeLevels
 import be.wimvandonck.noter.logic.SharedNotes
 import be.wimvandonck.noter.logic.SubpageTitles
 import be.wimvandonck.noter.logic.WebArticles
@@ -1237,18 +1239,72 @@ class NotesRepository(
     }
 
     /**
-     * Asks Notion for Home's databases and pages again ([recent]): the most recently edited ones
-     * (not the notes in databases, at most one search's worth), grouped by database. Home shows them
-     * as a tree (`logic/PageTree.kt`); + and the pinned cards' icons use them in this order. Throws when Notion can't be reached; what
-     * is kept stays.
+     * Asks Notion for Home's databases and pages again ([recent]), grouped by database: what the
+     * search finds (everything newest first, at most [HOME_LIMIT] results per workspace, the notes
+     * in databases left out), plus the pages and databases right inside its top-level pages that it
+     * didn't reach ([withSubpages]). Home shows them as a tree (`logic/PageTree.kt`); + and the
+     * pinned cards' icons use them in this order. Throws when Notion can't be reached; what is kept
+     * stays.
      */
     suspend fun refreshRecent() {
-        val items = groupByDatabase(browse(""), ask = true)
+        val found = withContext(Dispatchers.IO) {
+            WorkspaceCodec.parseAll(client.search("", HOME_LIMIT, total = Int.MAX_VALUE), includeNotes = false, pagesKey = PAGES)
+        }
+        val items = groupByDatabase(withSubpages(found), ask = true)
         withContext(Dispatchers.IO) {
             lock.withLock {
                 _recent.value = items
                 cache.saveRecent(items)
             }
+        }
+    }
+
+    /**
+     * [found] with what is right inside its top-level pages ([HomeLevels]) that the search didn't
+     * reach: an old subpage or database. One request per top-level page (the newest
+     * [MAX_EXPANDED]) and one per page or database added (at most [MAX_ADDED]), paced for Notion's
+     * rate limit. Offline it stops with what it has.
+     */
+    private suspend fun withSubpages(found: List<WorkspaceItem>): List<WorkspaceItem> = withContext(Dispatchers.IO) {
+        val added = mutableListOf<WorkspaceItem>()
+        var fetched = 0
+        for (pageId in HomeLevels.levelOne(found, MAX_EXPANDED)) {
+            val children = try {
+                WorkspaceCodec.childRefs(client.blockChildren(pageId))
+            } catch (e: NotionException) {
+                if (e.isOffline) break else continue
+            }
+            delay(PAUSE_MS)
+            for (child in HomeLevels.missing(found + added, children)) {
+                if (fetched >= MAX_ADDED) break
+                fetched++
+                try {
+                    added += itemsFor(child, pageId)
+                } catch (e: NotionException) {
+                    if (e.isOffline) return@withContext found + added
+                }
+                delay(PAUSE_MS)
+            }
+        }
+        found + added
+    }
+
+    /** Home's rows for [child], found inside page [parentId]: the page, or the database's data sources. */
+    private suspend fun itemsFor(child: ChildRef, parentId: String): List<WorkspaceItem> {
+        if (!child.isDatabase) {
+            return listOfNotNull(WorkspaceCodec.parse(client.getPage(child.id), includeNotes = false, pagesKey = PAGES))
+        }
+        val info = databaseInfo(child.id) ?: return emptyList()
+        return info.sources.map { source ->
+            WorkspaceItem(
+                id = source.id,
+                isDatabase = true,
+                title = if (info.sources.size == 1) info.title else source.title,
+                icon = info.icon,
+                lastEditedTime = child.lastEditedTime,
+                databaseId = info.id,
+                parentId = info.parentId ?: parentId,
+            )
         }
     }
 
@@ -1489,6 +1545,16 @@ class NotesRepository(
 
         /** Results of one Browse search (one or two requests). */
         private const val BROWSE_LIMIT = 200
+
+        /** Home's search: up to 20 requests per workspace, enough to reach every top-level page of most. */
+        private const val HOME_LIMIT = 2000
+
+        /** Top-level pages asked for what is right inside them, and pages or databases added that way. */
+        private const val MAX_EXPANDED = 50
+        private const val MAX_ADDED = 50
+
+        /** Between those requests (Notion allows about three a second). */
+        private const val PAUSE_MS = 350L
         private const val RETRY_MIN_MS = 15_000L
 
         /** How much earlier than this phone's clock a page sent without an answer may have been made (clocks differ). */
