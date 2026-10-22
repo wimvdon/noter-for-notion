@@ -130,6 +130,8 @@ object WorkspaceCodec {
      */
     fun parse(json: JsonObject, includeNotes: Boolean, pagesKey: String): WorkspaceItem? {
         if (PropertyCodec.isTrashed(json)) return null
+        // Notion's People directory and its profiles aren't notes (#92).
+        if (PeopleDirectory.isDirectory(json) || PeopleDirectory.isProfile(json)) return null
         val id = json.stringOrNull("id") ?: return null
         val icon = IconCodec.parse(json.objOrNull("icon"))
         val edited = json.stringOrNull("last_edited_time").orEmpty()
