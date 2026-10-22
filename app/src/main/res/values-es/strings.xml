@@ -192,11 +192,11 @@
     <string name="workspace_removed">Se quitó %1$s.</string>
     <string name="new_page_at_top">Nueva página arriba del todo</string>
     <string name="add_workspace">Añadir espacio de trabajo</string>
+    <string name="advanced">Avanzado</string>
     <string name="remove_workspace">Quitar</string>
     <string name="workspace_added">Se añadió %1$s.</string>
     <string name="workspace_replaced">%1$s ahora está conectado con: %2$s (antes: %3$s).</string>
     <string name="workspace_refused">%1$s ya está añadido con: %2$s, que ve más. Para añadirlo de otra forma, quítalo primero.</string>
-    <string name="way_sign_in_text">La forma más rápida. Elige en Notion qué páginas y bases de datos ves en Noter.</string>
     <string name="way_personal_text">Acceso completo a tu propio espacio de trabajo, sin elegir páginas ni bases de datos.</string>
     <string name="way_connection_title">Token de conexión</string>
     <string name="way_connection_text">Para un espacio de trabajo en el que eres invitado: un miembro comparte páginas y bases de datos con una conexión y te da su token.</string>

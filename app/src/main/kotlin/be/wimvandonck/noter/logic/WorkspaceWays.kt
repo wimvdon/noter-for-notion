@@ -1,8 +1,8 @@
 package be.wimvandonck.noter.logic
 
-/** The ways to add a workspace (Settings › Add workspace). */
+/** The ways to add a workspace (Settings › Workspaces). */
 enum class WorkspaceWay {
-    /** Connect to Notion (OAuth): quickest; the person chooses the pages in Notion. */
+    /** Connect to Notion (OAuth): quickest; the person chooses the pages in Notion. Its own button. */
     SIGN_IN,
 
     /** A personal access token: everything the person sees in their own workspace. */
@@ -13,13 +13,9 @@ enum class WorkspaceWay {
 }
 
 object WorkspaceWays {
-    /** The ways offered, quickest first; Connect to Notion only when this build has it ([canSignIn]). */
-    fun available(canSignIn: Boolean): List<WorkspaceWay> =
-        WorkspaceWay.entries.filter { it != WorkspaceWay.SIGN_IN || canSignIn }
+    /** The ways under Advanced, each with a token to paste. */
+    val advanced: List<WorkspaceWay> = listOf(WorkspaceWay.PERSONAL, WorkspaceWay.CONNECTION)
 
-    /** The way chosen when the dialog opens: the first offered. */
-    fun default(canSignIn: Boolean): WorkspaceWay = available(canSignIn).first()
-
-    /** A token has to be pasted for [way] (the others need none). */
-    fun needsToken(way: WorkspaceWay): Boolean = way != WorkspaceWay.SIGN_IN
+    /** The way chosen when Advanced opens. */
+    val default: WorkspaceWay = WorkspaceWay.PERSONAL
 }
