@@ -2,6 +2,9 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-22: A page's icon and title in the top bar once scrolled away
+After databases got a tappable icon and name in the top bar, the owner asked for the same on pages. A page's bar stays empty while its own icon and title are on screen (two titles at once would be noise), and shows them once they have scrolled away, as Notion does; tapping the icon opens the emoji sheet, tapping the title scrolls back up and puts the cursor at the end of the title, where a page is renamed. Rejected: always showing the title in the bar (a repeat of the big title right below it) and editing the title in the bar itself (too small to type in, and the bar is for going back).
+
 ## 2026-10-22: Rename a database and change its icon
 Pages could be renamed and given an icon in the app, databases not. The owner wanted it without making the database screen busier, so both are in its ⋮ menu: Rename opens a dialog with the name, the icon uses the emoji sheet pages already have. Both go to Notion at once, like making a database (a database has no copy here to edit offline, and a failure shows in a snackbar). Notion keeps a name and icon on the database and on each data source; Noter's lists show the data source's for a database with one, so both change then; with several data sources only the database's (each tab keeps its name). As on a page, tapping the icon or the name in the app bar does the same, so both work the same way in both places; the menu items keep it findable. Rejected: an editable title in the screen itself, as on a page (the header there is the notes' header and scrolls away), and queueing the change (more code for something rarely done offline).
 

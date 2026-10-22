@@ -290,6 +290,9 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   Columns are shown one below the other with a thin `outlineVariant` line between them.
 - The block toolbar sits above the keyboard on `surfaceContainerHigh`; the selected kind uses
   `secondaryContainer`.
+- A note's top app bar starts without a title (the icon and title are in the page). Once they
+  have scrolled away, they fade into the bar: tapping the icon changes it, tapping the title
+  scrolls back up with the cursor at the end of the title (as a database's icon and name do).
 - Select text (⋮ in a note): a full-screen view with × and the note as plain text in one
   selection area, styled like the editor, nothing editable.
 - Steps in a guide have numbered circles (32dp, `primary`, the number in
