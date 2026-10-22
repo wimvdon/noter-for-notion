@@ -250,8 +250,12 @@ class NotionClient(
      * Pages and databases shared with the integration whose title matches [query] (everything when
      * blank), most recently edited first; at most [limit] results.
      */
-    suspend fun search(query: String, limit: Int): List<JsonObject> =
-        NotionRoutes.newestFirst(eachKey { key -> search(query, limit, key) }, limit)
+    /**
+     * What [query] finds, newest first: at most [limit] per workspace and [total] together (Home
+     * keeps every workspace's, Search the newest).
+     */
+    suspend fun search(query: String, limit: Int, total: Int = limit): List<JsonObject> =
+        NotionRoutes.newestFirst(eachKey { key -> search(query, limit, key) }, total)
 
     private suspend fun search(query: String, limit: Int, key: String): List<JsonObject> {
         val results = mutableListOf<JsonObject>()
@@ -269,6 +273,8 @@ class NotionClient(
             )
             data.arrayOrNull("results")?.forEach { el -> el.asObjectOrNull()?.let(results::add) }
             cursor = if (data.boolOrNull("has_more") == true) data.stringOrNull("next_cursor") else null
+            // Within Notion's rate limit (about three requests a second) when many pages are read.
+            if (cursor != null && results.size < limit) delay(PAGE_PAUSE_MS)
         } while (cursor != null && results.size < limit)
         return results.take(limit)
     }
@@ -445,6 +451,9 @@ class NotionClient(
         /** Data sources (see decisions.md, 2026-10-16), "in_trash" and "position" (2026-10-17). */
         private const val NOTION_VERSION = "2026-03-11"
         private const val MAX_ATTEMPTS = 4
+
+        /** Between the pages of one search, so a long one stays within Notion's rate limit. */
+        private const val PAGE_PAUSE_MS = 350L
 
         /** Notion accepts at most 100 blocks per request. */
         const val MAX_CHILDREN = 100

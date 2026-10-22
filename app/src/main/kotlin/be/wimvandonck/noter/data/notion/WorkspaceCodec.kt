@@ -9,6 +9,7 @@ import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.PageRef
 import be.wimvandonck.noter.data.model.WorkspaceItem
+import be.wimvandonck.noter.logic.ChildRef
 import kotlinx.serialization.json.JsonObject
 
 /** Reads Notion's search results into the Browse list. */
@@ -62,6 +63,17 @@ object WorkspaceCodec {
             lastEditedTime = block.stringOrNull("last_edited_time").orEmpty(),
             properties = listOf(NoteProperty("title", "title", PropertyValue.Text(title))),
         )
+    }
+
+    /** The pages and databases right inside a page, from its blocks (other blocks are left out). */
+    fun childRefs(blocks: List<JsonObject>): List<ChildRef> = blocks.mapNotNull { block ->
+        val id = block.stringOrNull("id") ?: return@mapNotNull null
+        val edited = block.stringOrNull("last_edited_time").orEmpty()
+        when (block.stringOrNull("type")) {
+            "child_page" -> ChildRef(id, isDatabase = false, lastEditedTime = edited)
+            "child_database" -> ChildRef(id, isDatabase = true, lastEditedTime = edited)
+            else -> null
+        }
     }
 
     /** Search results as the Browse list (see [parse]). */

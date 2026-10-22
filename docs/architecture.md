@@ -28,8 +28,11 @@ properties and content: the pages of databases and pages on their own.
     is, `DatabaseInfo.parentId`). Notion's API doesn't give the sidebar's own order, hence by time.
     With several workspaces, one part per workspace (`Workspaces.group`), each folded away with a
     tap on its name (`ApiKeyStore.collapsed`, on this phone only); pinned databases say their
-    workspace (`NotesRepository.recent`, `refreshRecent`: one search's worth, newest first, at most
-    200). The list is kept on this phone (`recent.json`), so Home shows it at once and offline; it
+    workspace (`NotesRepository.recent`, `refreshRecent`: the search, newest first, read up to
+    2000 results per workspace with the notes in databases left out; then the newest 50 top-level
+    pages are asked for what is right inside them (`logic/HomeLevels.kt`), and up to 50 subpages
+    and databases the search didn't reach are added, so the second level is complete; paced for
+    Notion's rate limit). The list is kept on this phone (`recent.json`), so Home shows it at once and offline; it
     is asked again when the app starts (with a token) and on pull-to-refresh. A pin at the end of
     a row shows it is pinned.
   - **+** (`logic/NoteTargets.kt`) offers a page at the top of the workspace (not with a

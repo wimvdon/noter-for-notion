@@ -2,6 +2,9 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-22: Home finds old pages too
+The owner noticed pages missing from Home. Home asked Notion's search for the 200 most recently edited things, but the search can't leave out the notes in databases, so a busy database pushed older pages out. Notion's API has no "pages at the top" or "two levels" request: only the search, and a page's own blocks, which list every subpage and database right inside it. So Home now reads the search further (up to 2000 results per workspace, 20 requests, paced; most workspaces end sooner), which finds the top-level pages of most workspaces, and then asks the newest 50 top-level pages for what is right inside them, adding up to 50 subpages or databases the search didn't reach. It runs at start and on pull-to-refresh, in the background, while Home shows the kept list. Rejected: reading the whole search every time (thousands of requests in a big workspace) and asking every page for its subpages (one request per page, every level).
+
 ## 2026-10-22: A page's icon and title in the top bar once scrolled away
 After databases got a tappable icon and name in the top bar, the owner asked for the same on pages. A page's bar stays empty while its own icon and title are on screen (two titles at once would be noise), and shows them once they have scrolled away, as Notion does; tapping the icon opens the emoji sheet, tapping the title scrolls back up and puts the cursor at the end of the title, where a page is renamed. Rejected: always showing the title in the bar (a repeat of the big title right below it) and editing the title in the bar itself (too small to type in, and the bar is for going back).
 
