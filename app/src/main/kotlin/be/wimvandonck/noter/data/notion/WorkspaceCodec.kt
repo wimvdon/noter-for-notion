@@ -77,8 +77,8 @@ object WorkspaceCodec {
     }
 
     /** Search results as the Browse list (see [parse]). */
-    fun parseAll(results: List<JsonObject>, includeNotes: Boolean, pagesKey: String): List<WorkspaceItem> =
-        results.mapNotNull { parse(it, includeNotes, pagesKey) }
+    fun parseAll(results: List<JsonObject>, includeNotes: Boolean, pagesKey: String, includePeople: Boolean = false): List<WorkspaceItem> =
+        results.mapNotNull { parse(it, includeNotes, pagesKey, includePeople) }
 
     /** A database's name, icon and data sources, from `GET /databases/{id}`. */
     fun databaseInfo(database: JsonObject): DatabaseInfo? {
@@ -126,10 +126,13 @@ object WorkspaceCodec {
     /**
      * One search result. Pages of a database (the notes) are left out unless [includeNotes]: the
      * list is about pages and databases, a database's notes are one tap further. [pagesKey] is the
-     * key under which pages on their own are kept.
+     * key under which pages on their own are kept. Notion's People directory and its profiles only
+     * with [includePeople] (Search).
      */
-    fun parse(json: JsonObject, includeNotes: Boolean, pagesKey: String): WorkspaceItem? {
+    fun parse(json: JsonObject, includeNotes: Boolean, pagesKey: String, includePeople: Boolean = false): WorkspaceItem? {
         if (PropertyCodec.isTrashed(json)) return null
+        // Notion's People directory and its profiles aren't notes: only Search shows them ([includePeople], #92).
+        if (!includePeople && (PeopleDirectory.isDirectory(json) || PeopleDirectory.isProfile(json))) return null
         val id = json.stringOrNull("id") ?: return null
         val icon = IconCodec.parse(json.objOrNull("icon"))
         val edited = json.stringOrNull("last_edited_time").orEmpty()
