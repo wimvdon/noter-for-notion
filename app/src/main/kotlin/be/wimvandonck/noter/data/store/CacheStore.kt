@@ -125,6 +125,13 @@ class CacheStore(private val dir: File) {
     @Synchronized
     fun saveRecent(items: List<WorkspaceItem>) = write(RECENT, ListSerializer(WorkspaceItem.serializer()), items)
 
+    /** Whether each data source checked is Notion's People directory (#92), by ID without dashes. */
+    @Synchronized
+    fun peopleChecks(): Map<String, Boolean> = read(PEOPLE, MapSerializer(String.serializer(), Boolean.serializer())).orEmpty()
+
+    @Synchronized
+    fun savePeopleChecks(checks: Map<String, Boolean>) = write(PEOPLE, MapSerializer(String.serializer(), Boolean.serializer()), checks)
+
     /** Which workspace each page, database and data source is in (see KeyRouter). */
     @Synchronized
     fun owners(): Map<String, String> = read(OWNERS, MapSerializer(String.serializer(), String.serializer())).orEmpty()
@@ -155,5 +162,6 @@ class CacheStore(private val dir: File) {
         const val SOURCES = "sources_v2.json"
         const val RECENT = "recent.json"
         const val DATABASES = "databases.json"
+        const val PEOPLE = "people_directory.json"
     }
 }
