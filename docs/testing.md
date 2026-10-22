@@ -26,6 +26,7 @@ node --test worker/test/noter-sign-in.test.mjs
 |---|---|
 | `logic/ContentMergeTest` | Typing while a newer version comes from Notion: the edits go on top of it, keeping blocks added or changed in Notion meanwhile |
 | `data/NotesRepositoryTest` (lost answers) | A page Notion made without answering isn't made again; one it didn't make is made on the next try |
+| `logic/SubpageTitlesTest` | A page's subpage and database titles follow Notion, and only those blocks change |
 | `logic/WorkspaceWaysTest` | Which tokens Advanced offers, in which order, and which is chosen first |
 | `logic/SealedBoxTest`, `logic/SignInsTest` | Connect to Notion: opening what the sign-in helper sealed (a sample sealed by the helper itself), the state and authorize link, reading Notion's token answer |
 | `logic/TokenRefresherTest`, `data/api/RenewKeyClientTest` (in `MultiWorkspaceClientTest.kt`) | Refreshing a refused Connect to Notion token once, one refresh at a time, keeping its workspace's ID; pasted tokens are never refreshed |
