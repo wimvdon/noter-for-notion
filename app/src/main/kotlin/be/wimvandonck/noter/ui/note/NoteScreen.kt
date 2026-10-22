@@ -76,6 +76,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -99,6 +100,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -110,6 +112,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import be.wimvandonck.noter.ui.common.NotionImage
 import be.wimvandonck.noter.ui.common.PageIconView
+import be.wimvandonck.noter.ui.common.SMALL_PAGE_ICON
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -231,6 +234,11 @@ fun NoteScreen(
     }
     val note = state.note
     val scope = rememberCoroutineScope()
+    // Past the page's own icon and title, they show in the top bar (tap them to change them).
+    val titleScrolledAway by remember {
+        derivedStateOf { listState.layoutInfo.visibleItemsInfo.firstOrNull()?.key.let { it != null && it !in HEADER_KEYS } }
+    }
+    var focusTitle by remember { mutableStateOf(false) }
     val copiedText = stringResource(R.string.copied)
 
     fun stopSelecting() {
@@ -334,7 +342,22 @@ fun NoteScreen(
                     onDelete = { confirmDeleteLines = true },
                 )
             } else TopAppBar(
-                title = {},
+                title = {
+                    AnimatedVisibility(visible = note != null && titleScrolledAway, enter = fadeIn(), exit = fadeOut()) {
+                        if (note != null) {
+                            BarTitle(
+                                note = note,
+                                onIcon = { choosingIcon = true },
+                                onTitle = {
+                                    scope.launch {
+                                        listState.animateScrollToItem(0)
+                                        focusTitle = true
+                                    }
+                                },
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
@@ -518,6 +541,8 @@ fun NoteScreen(
                     Box(Modifier.weight(1f)) {
                         TitleField(
                             note = note,
+                            focusNow = focusTitle,
+                            onFocused = { focusTitle = false },
                             onChange = { text -> titleProperty?.let { viewModel.setProperty(it.copy(value = PropertyValue.Text(text)), debounce = true) } },
                             onEnter = { state.blocks.firstOrNull()?.let { viewModel.focusBlock(it.key, 0) } },
                         )
@@ -756,11 +781,19 @@ private fun Modifier.fullBleed(start: Dp, end: Dp): Modifier = layout { measurab
 }
 
 @Composable
-private fun TitleField(note: NoteSummary, onChange: (String) -> Unit, onEnter: () -> Unit) {
+private fun TitleField(note: NoteSummary, focusNow: Boolean, onFocused: () -> Unit, onChange: (String) -> Unit, onEnter: () -> Unit) {
     var text by remember(note.id) { mutableStateOf(TextFieldValue(note.title)) }
     var focused by remember { mutableStateOf(false) }
     val requester = remember { FocusRequester() }
     LaunchedEffect(note.title) { if (!focused && note.title != text.text) text = TextFieldValue(note.title) }
+    LaunchedEffect(focusNow) {
+        // The title in the top bar was tapped: type in the title, at its end.
+        if (!focusNow) return@LaunchedEffect
+        withFrameNanos { }
+        text = text.copy(selection = TextRange(text.text.length))
+        runCatching { requester.requestFocus() }
+        onFocused()
+    }
     LaunchedEffect(note.id) {
         // A new, untitled note: start typing the title right away.
         if (note.isLocal && note.title.isEmpty()) {
@@ -1104,4 +1137,29 @@ private fun Modifier.navigationBarsPaddingIfNoIme(): Modifier {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val imeVisible = WindowInsets.ime.getBottom(density) > 0
     return if (imeVisible) this else this.navigationBarsPadding()
+}
+
+/** The items above the page's properties: while one of them is the first on screen, the top bar stays empty. */
+private val HEADER_KEYS = setOf("__cover", "__icon", "__title")
+
+/** The page's icon and title in the top bar, once they scrolled away: tap the icon to change it, the title to edit it. */
+@Composable
+private fun BarTitle(note: NoteSummary, onIcon: () -> Unit, onTitle: () -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        note.icon?.let {
+            PageIconView(
+                it,
+                size = SMALL_PAGE_ICON,
+                modifier = Modifier
+                    .clip(AppShapes.Item)
+                    .clickable(onClickLabel = stringResource(R.string.change_icon), role = Role.Button, onClick = onIcon),
+            )
+        }
+        Text(
+            note.title.ifBlank { stringResource(R.string.untitled) },
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.clickable(onClickLabel = stringResource(R.string.action_rename), onClick = onTitle),
+        )
+    }
 }

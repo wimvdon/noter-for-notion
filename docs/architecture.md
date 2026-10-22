@@ -98,7 +98,9 @@ properties and content: the pages of databases and pages on their own.
   A chip's count of notes is set apart in a small pill, so an option "5" with one note doesn't
   read as "5 1". A new note made with a filter selected
   gets its value where it can (not for computed properties; a date only for Today).
-- **Pages** open in the editor, also a page with subpages: its subpages are links in its content
+- **Pages** open in the editor; once a page's icon and title have scrolled away, they show in
+  the top bar (`BarTitle` in `NoteScreen.kt`), tapping them changes the icon or goes back to
+  the title. Also a page with subpages: its subpages are links in its content
   (child pages), which open in the app. A page's ⋮ menu has "New subpage" and "New database in
   this page". Renaming a subpage in Notion doesn't change its parent's edit time, so each time a
   page with subpages opens, their titles are asked again (one request, `logic/SubpageTitles.kt`).
