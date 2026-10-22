@@ -24,6 +24,7 @@ import be.wimvandonck.noter.data.notion.InlineMarkdown
 import be.wimvandonck.noter.data.web.WebPageClient
 import be.wimvandonck.noter.logic.SharedContent
 import be.wimvandonck.noter.logic.SharedNotes
+import be.wimvandonck.noter.logic.SubpageTitles
 import be.wimvandonck.noter.logic.WebArticles
 import kotlinx.serialization.json.JsonObject
 import be.wimvandonck.noter.data.notion.PropertyCodec
@@ -697,7 +698,7 @@ class NotesRepository(
             val edited = page.stringOrNull("last_edited_time")
             val cached = cache.content(id)
             val current = cached != null && cached.remoteEditedTime == edited && cached.nestedLoaded && !cached.hasExpiredFiles(clock())
-            if (cached != null && current && !cached.dirty) return@withContext cached
+            if (cached != null && current && !cached.dirty) return@withContext withSubpageTitles(id, cached)
             if (cached?.dirty == true) return@withContext null
             val fresh = downloadContent(id, cached?.blocks.orEmpty(), edited)
             lock.withLock {
@@ -710,6 +711,30 @@ class NotesRepository(
         } catch (e: NotionException) {
             if (e.isOffline) _offline.value = true
             null
+        }
+    }
+
+    /**
+     * [cached] with the titles its subpages have in Notion now ([SubpageTitles]): one request
+     * when the page has subpages. Null when an edit on this phone is waiting meanwhile.
+     */
+    private suspend fun withSubpageTitles(id: String, cached: PageContent): PageContent? {
+        if (!SubpageTitles.any(cached.blocks)) return cached
+        val titles = client.blockChildren(id).mapNotNull { json ->
+            val blockId = json.stringOrNull("id") ?: return@mapNotNull null
+            BlockCodec.parse(json, blockId)?.let { blockId to it.text }
+        }.toMap()
+        if (SubpageTitles.renamed(cached.blocks, titles) == null) return cached
+        return lock.withLock {
+            val now = cache.content(id) ?: cached
+            if (now.dirty) return@withLock null
+            // Subpages can't be edited here: what Notion has (base) changes the same way.
+            val updated = now.copy(
+                blocks = SubpageTitles.renamed(now.blocks, titles) ?: now.blocks,
+                base = SubpageTitles.renamed(now.base, titles) ?: now.base,
+            )
+            cache.saveContent(updated)
+            updated
         }
     }
 

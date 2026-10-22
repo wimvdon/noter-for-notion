@@ -100,7 +100,8 @@ properties and content: the pages of databases and pages on their own.
   gets its value where it can (not for computed properties; a date only for Today).
 - **Pages** open in the editor, also a page with subpages: its subpages are links in its content
   (child pages), which open in the app. A page's ⋮ menu has "New subpage" and "New database in
-  this page".
+  this page". Renaming a subpage in Notion doesn't change its parent's edit time, so each time a
+  page with subpages opens, their titles are asked again (one request, `logic/SubpageTitles.kt`).
 - **New database** (#71, `logic/NewDatabases.kt`, `ui/common/NewDatabase.kt`): in a page (its ⋮
   menu) or at the top of a workspace (+, where a page at the top is offered). A dialog asks for a
   name and its properties besides Name: Tags at first, as in Notion; Add property adds any kind
