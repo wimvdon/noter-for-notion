@@ -1,7 +1,11 @@
 package be.wimvandonck.noter.data.notion
 
+import be.wimvandonck.noter.data.model.DatabaseSchema
+import be.wimvandonck.noter.data.model.PropertySchema
+import be.wimvandonck.noter.data.model.SelectOption
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -35,6 +39,31 @@ class PeopleDirectoryTest {
         assertNull(WorkspaceCodec.parse(profile, includeNotes = true, pagesKey = "pages"))
         assertNotNull(WorkspaceCodec.parse(directory, includeNotes = true, pagesKey = "pages", includePeople = true))
         assertNotNull(WorkspaceCodec.parse(profile, includeNotes = true, pagesKey = "pages", includePeople = true))
+    }
+
+    @Test
+    fun `a data source the search sends without properties is asked for once`() {
+        val bare = obj("""{"object":"data_source","id":"ds-3","title":[{"plain_text":"People"}]}""")
+        val empty = obj("""{"object":"data_source","id":"ds4","properties":{}}""")
+        val page = obj("""{"object":"page","id":"p9","properties":{}}""")
+        assertEquals(listOf("ds-3", "ds4"), PeopleDirectory.toCheck(listOf(directory, bare, empty, page, bare), checked = emptySet()))
+        assertEquals(listOf("ds4"), PeopleDirectory.toCheck(listOf(bare, empty), checked = setOf("ds3")))
+    }
+
+    @Test
+    fun `an opened data source is recognised by its properties too`() {
+        val people = DatabaseSchema(
+            id = "ds1",
+            title = "People",
+            properties = listOf(
+                PropertySchema(name = "Name", type = "title"),
+                PropertySchema(name = "Email", type = "email"),
+                PropertySchema(name = "Membership Type", type = "select", options = listOf(SelectOption("Workspace owner"), SelectOption("Guest"))),
+            ),
+        )
+        assertTrue(PeopleDirectory.isDirectory(people))
+        val own = people.copy(properties = people.properties.map { if (it.name == "Membership Type") it.copy(options = listOf(SelectOption("Gold"))) else it })
+        assertFalse(PeopleDirectory.isDirectory(own))
     }
 
     @Test
