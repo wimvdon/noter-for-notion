@@ -189,11 +189,11 @@
     <string name="workspace_removed">%1$s entfernt.</string>
     <string name="new_page_at_top">Neue Seite ganz oben</string>
     <string name="add_workspace">Workspace hinzufügen</string>
+    <string name="advanced">Erweitert</string>
     <string name="remove_workspace">Entfernen</string>
     <string name="workspace_added">%1$s hinzugefügt.</string>
     <string name="workspace_replaced">%1$s ist jetzt verbunden mit: %2$s (vorher: %3$s).</string>
     <string name="workspace_refused">%1$s ist bereits hinzugefügt mit: %2$s, das mehr sieht. Entferne es zuerst, um es anders hinzuzufügen.</string>
-    <string name="way_sign_in_text">Am schnellsten eingerichtet. Wähle in Notion, welche Seiten und Datenbanken du in Noter siehst.</string>
     <string name="way_personal_text">Voller Zugriff auf deinen eigenen Workspace, ohne Seiten und Datenbanken auszuwählen.</string>
     <string name="way_connection_title">Verbindungstoken</string>
     <string name="way_connection_text">Für einen Workspace, in dem du Gast bist: Ein Mitglied teilt Seiten und Datenbanken mit einer Verbindung und gibt dir das Token.</string>

@@ -80,9 +80,9 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
 }
 
 /**
- * Every workspace (#58), each added its own way (Add workspace, [AddWorkspaceDialog]): Connect to
- * Notion, a personal access token or a connection's token. Each can be removed; a new token is
- * tested before it is kept. The first becomes the main token.
+ * Every workspace (#58), each added its own way: Connect to Notion (the button), or under Advanced
+ * ([AddWorkspaceDialog]) a personal access token or a connection's token. Each can be removed; a
+ * new token is tested before it is kept. The first becomes the main token.
  */
 @Composable
 private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewModel) {
@@ -137,21 +137,33 @@ private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewMod
         )
         else -> Unit
     }
-    Button(onClick = { adding = true }, enabled = state.keyStatus != KeyStatus.Testing) {
-        if (state.keyStatus == KeyStatus.Testing) {
-            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-            Spacer(Modifier.width(8.dp))
+    val testing = state.keyStatus == KeyStatus.Testing
+    // Without Connect to Notion in this build, the tokens are the only way: then they get the button.
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Button(
+            onClick = {
+                if (state.canSignIn) {
+                    val url = viewModel.startSignIn()
+                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
+                } else {
+                    adding = true
+                }
+            },
+            enabled = !testing,
+        ) {
+            if (testing) {
+                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(stringResource(if (state.canSignIn) R.string.sign_in else R.string.add_workspace))
         }
-        Text(stringResource(R.string.add_workspace))
+        if (state.canSignIn) {
+            Spacer(Modifier.width(8.dp))
+            TextButton(onClick = { adding = true }, enabled = !testing) { Text(stringResource(R.string.advanced)) }
+        }
     }
     if (adding) {
         AddWorkspaceDialog(
-            canSignIn = state.canSignIn,
-            onSignIn = {
-                adding = false
-                val url = viewModel.startSignIn()
-                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
-            },
             onAddToken = { token ->
                 adding = false
                 viewModel.addWorkspace(token)

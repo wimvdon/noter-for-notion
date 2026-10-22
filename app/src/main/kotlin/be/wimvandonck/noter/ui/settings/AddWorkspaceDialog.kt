@@ -42,30 +42,28 @@ import be.wimvandonck.noter.logic.WorkspaceWay
 import be.wimvandonck.noter.logic.WorkspaceWays
 
 /**
- * Add workspace: first how ([WorkspaceWay], with what each is best for), then, for a token, where
- * Notion makes one and a field to paste it. Connect to Notion goes to Notion at once ([onSignIn]).
+ * Advanced: first which token ([WorkspaceWays.advanced], with what each is best for), then where
+ * Notion makes one and a field to paste it. Connect to Notion is its own button in Settings.
  */
 @Composable
 fun AddWorkspaceDialog(
-    canSignIn: Boolean,
-    onSignIn: () -> Unit,
     onAddToken: (String) -> Unit,
     onOpenNotion: (WorkspaceWay) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var way by rememberSaveable { mutableStateOf(WorkspaceWays.default(canSignIn)) }
+    var way by rememberSaveable { mutableStateOf(WorkspaceWays.default) }
     var pasting by rememberSaveable { mutableStateOf(false) }
     var token by rememberSaveable { mutableStateOf("") }
     var visible by rememberSaveable { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (pasting) title(way) else stringResource(R.string.add_workspace)) },
+        title = { Text(if (pasting) title(way) else stringResource(R.string.advanced)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 if (!pasting) {
                     Column(Modifier.selectableGroup()) {
-                        WorkspaceWays.available(canSignIn).forEach { option ->
+                        WorkspaceWays.advanced.forEach { option ->
                             WayRow(option, selected = option == way) { way = option }
                         }
                     }
@@ -100,14 +98,12 @@ fun AddWorkspaceDialog(
             }
         },
         confirmButton = {
-            when {
-                pasting -> TextButton(onClick = { onAddToken(token) }, enabled = token.isNotBlank()) {
+            if (pasting) {
+                TextButton(onClick = { onAddToken(token) }, enabled = token.isNotBlank()) {
                     Text(stringResource(R.string.add_workspace))
                 }
-                WorkspaceWays.needsToken(way) -> TextButton(onClick = { pasting = true }) {
-                    Text(stringResource(R.string.action_continue))
-                }
-                else -> TextButton(onClick = onSignIn) { Text(stringResource(R.string.action_continue)) }
+            } else {
+                TextButton(onClick = { pasting = true }) { Text(stringResource(R.string.action_continue)) }
             }
         },
         dismissButton = {
@@ -116,7 +112,7 @@ fun AddWorkspaceDialog(
     )
 }
 
-/** One way to add a workspace: a radio button, its name and what it is best for. */
+/** One token to add a workspace with: a radio button, its name and what it is best for. */
 @Composable
 private fun WayRow(way: WorkspaceWay, selected: Boolean, onSelect: () -> Unit) {
     Row(
@@ -131,13 +127,7 @@ private fun WayRow(way: WorkspaceWay, selected: Boolean, onSelect: () -> Unit) {
         Column {
             Text(title(way), style = MaterialTheme.typography.titleSmall)
             Text(
-                stringResource(
-                    when (way) {
-                        WorkspaceWay.SIGN_IN -> R.string.way_sign_in_text
-                        WorkspaceWay.PERSONAL -> R.string.way_personal_text
-                        WorkspaceWay.CONNECTION -> R.string.way_connection_text
-                    },
-                ),
+                stringResource(if (way == WorkspaceWay.CONNECTION) R.string.way_connection_text else R.string.way_personal_text),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -145,7 +135,7 @@ private fun WayRow(way: WorkspaceWay, selected: Boolean, onSelect: () -> Unit) {
     }
 }
 
-/** The name of [way], as Add workspace shows it. */
+/** The name of [way], as Settings shows it. */
 @Composable
 fun wayTitle(way: WorkspaceWay?): String = if (way == null) stringResource(R.string.workspace_token) else title(way)
 
