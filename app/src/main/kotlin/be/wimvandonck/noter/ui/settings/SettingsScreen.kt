@@ -19,7 +19,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -174,20 +173,6 @@ private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewMod
             },
             onDismiss = { adding = false },
         )
-    }
-    if (state.hasKey) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                if (state.pendingCount == 0) {
-                    stringResource(R.string.sync_all_saved)
-                } else {
-                    pluralStringResource(R.plurals.status_pending, state.pendingCount, state.pendingCount)
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = viewModel::syncNow) { Text(stringResource(R.string.sync_now)) }
-        }
     }
 }
 

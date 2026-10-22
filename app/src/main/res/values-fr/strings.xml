@@ -91,7 +91,6 @@
     <string name="hide_key">Masquer le jeton</string>
     <string name="key_failed">Un problème est survenu : %1$s</string>
     <string name="key_removed">Jeton retiré. Les notes copiées sur ce téléphone ont été supprimées.</string>
-    <string name="sync_all_saved">Tout est enregistré dans Notion.</string>
     <string name="sync_now">Synchroniser</string>
     <string name="section_appearance">Apparence</string>
     <string name="theme">Thème</string>

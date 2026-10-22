@@ -91,7 +91,6 @@
     <string name="hide_key">Nascondi token</string>
     <string name="key_failed">Qualcosa è andato storto: %1$s</string>
     <string name="key_removed">Token rimosso. Le note copiate su questo telefono sono state eliminate.</string>
-    <string name="sync_all_saved">È tutto salvato in Notion.</string>
     <string name="sync_now">Sincronizza ora</string>
     <string name="section_appearance">Aspetto</string>
     <string name="theme">Tema</string>

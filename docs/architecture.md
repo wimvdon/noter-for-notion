@@ -154,7 +154,7 @@ properties and content: the pages of databases and pages on their own.
   set (4 229 icons) from `assets/material_symbols.txt` (name, categories and SVG path data per icon,
   from RSS Reader), drawn as vectors, for the closest match to a Notion icon (`logic/PageIcons.kt`).
 - **Settings** (`ui/settings/`): Workspaces (every workspace with how it was added, a Connect to
-  Notion button, Advanced, and sync status) and Appearance; built from the shared `SettingsKit.kt`.
+  Notion button and Advanced) and Appearance; built from the shared `SettingsKit.kt`.
   Advanced (`AddWorkspaceDialog.kt`) first asks which token, each with what it is best for
   (`logic/WorkspaceWays.kt`): a personal access token or a connection token; it then shows where
   Notion makes one and a field to paste it. A build without Connect to Notion shows an Add

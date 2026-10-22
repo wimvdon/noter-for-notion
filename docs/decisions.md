@@ -2,6 +2,9 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-22: No sync button in Settings
+Settings had a line saying whether everything was saved in Notion, with Sync now. The owner found it of little use: syncing happens where the notes are. Each screen has its own sync button, shown while changes wait or the phone is offline, changes are sent when the app comes to the front, and Sync now only refreshed the databases of the pinned notes. So the line and the button are gone. Rejected: keeping only the line (it repeats what the screens' sync button says).
+
 ## 2026-10-22: Connect to Notion as the button, tokens under Advanced
 The owner wanted the usual way in front: Workspaces now has a **Connect to Notion** button that goes straight to Notion, and a text button **Advanced** next to it that opens the dialog with the two tokens (personal access token and connection token), as before with what each is for. This saves a step for most people and keeps the tokens, which need a trip to Notion's developer pages, out of the way. A build without Connect to Notion shows Add workspace instead, opening the same dialog. Rejected: keeping the three ways side by side in one dialog (one more tap for the common case).
 
