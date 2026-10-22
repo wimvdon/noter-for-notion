@@ -235,7 +235,6 @@ class DatabaseViewModel(
 
     fun togglePin(id: String) = viewModelScope.launch { repository.togglePin(id) }
 
-    fun trash(id: String) = viewModelScope.launch { repository.trashNote(id) }
 
     /**
      * Saves the new order after the user dragged notes in [group] (the pinned ones or the others).

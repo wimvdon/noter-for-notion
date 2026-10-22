@@ -36,7 +36,6 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.CloudSync
-import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.FilterAltOff
 import androidx.compose.material.icons.rounded.Key
@@ -45,7 +44,6 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material.icons.rounded.Workspaces
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -150,7 +148,6 @@ fun MainScreen(
     val snackbar = remember { SnackbarHostState() }
     val resources = androidx.compose.ui.platform.LocalResources.current
     var choosingTarget by remember { mutableStateOf(false) }
-    var confirmTrash by remember { mutableStateOf<NoteSummary?>(null) }
     val notes = state.notes
 
     LaunchedEffect(viewModel) {
@@ -212,7 +209,6 @@ fun MainScreen(
                         previews = previews,
                         onOpen = onOpenNote,
                         onTogglePin = viewModel::togglePin,
-                        onTrash = { confirmTrash = it },
                         onReordered = viewModel::saveOrder,
                         databases = state.pinnedDatabases,
                         databaseWorkspaces = state.pinnedWorkspaces,
@@ -253,10 +249,6 @@ fun MainScreen(
             },
             onDismiss = viewModel.newDatabase::dismiss,
         )
-    }
-
-    confirmTrash?.let { note ->
-        TrashNoteDialog(note, onConfirm = { viewModel.trash(note.id); confirmTrash = null }, onDismiss = { confirmTrash = null })
     }
 
     if (choosingTarget) {
@@ -628,10 +620,8 @@ internal fun NotesPane(
     onRefresh: () -> Unit,
     onOpen: (String) -> Unit,
     onTogglePin: (String) -> Unit,
-    onTrash: (String) -> Unit,
     onReordered: (List<String>) -> Unit,
 ) {
-    var confirmTrash by remember { mutableStateOf<NoteSummary?>(null) }
     LaunchedEffect(state.chipRelationDatabases) { state.chipRelationDatabases.forEach(onLoadChipTitles) }
     LoadPreviews(state, onLoadPreviews)
     Column(Modifier.fillMaxSize()) {
@@ -659,14 +649,10 @@ internal fun NotesPane(
                     previews = previews,
                     onOpen = onOpen,
                     onTogglePin = onTogglePin,
-                    onTrash = { confirmTrash = it },
                     onReordered = onReordered,
                 )
             }
         }
-    }
-    confirmTrash?.let { note ->
-        TrashNoteDialog(note, onConfirm = { onTrash(note.id); confirmTrash = null }, onDismiss = { confirmTrash = null })
     }
 }
 
@@ -676,18 +662,6 @@ internal fun LoadPreviews(state: NotesUiState, onLoadPreviews: (List<NoteSummary
     LaunchedEffect(state.pinned, state.others, state.propertyLayouts) {
         onLoadPreviews((state.pinned + state.others).filter { PropertyLayouts.showsContent(state.propertyLayouts[it.databaseId]) })
     }
-}
-
-/** Asks before moving [note] to the trash. */
-@Composable
-internal fun TrashNoteDialog(note: NoteSummary, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.trash_title)) },
-        text = { Text(stringResource(R.string.trash_body, InlineMarkdown.stripped(note.title).ifBlank { stringResource(R.string.untitled) })) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.trash_confirm)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
-    )
 }
 
 /**
@@ -794,7 +768,6 @@ internal fun NoteGrid(
     previews: Map<String, String>,
     onOpen: (String) -> Unit,
     onTogglePin: (String) -> Unit,
-    onTrash: (NoteSummary) -> Unit,
     onReordered: (List<String>) -> Unit,
     /** Home: the pinned databases, as rows above the notes; dragged like the cards. */
     databases: List<PinnedDatabase> = emptyList(),
@@ -1068,11 +1041,6 @@ internal fun NoteGrid(
                                     text = { Text(stringResource(if (pinnedNote) R.string.action_unpin else R.string.action_pin)) },
                                     leadingIcon = { Icon(Icons.Rounded.PushPin, null) },
                                     onClick = { menuKey = null; onTogglePin(key) },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.action_trash)) },
-                                    leadingIcon = { Icon(Icons.Rounded.Delete, null) },
-                                    onClick = { menuKey = null; onTrash(item.note) },
                                 )
                             }
                         },

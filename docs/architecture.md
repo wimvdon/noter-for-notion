@@ -89,7 +89,7 @@ properties and content: the pages of databases and pages on their own.
     find this data source" with Unpin (when pinned) and Retry, instead of its notes.
   Notes are cards in a staggered grid with a preview of their content; pinned notes come first
   under "Pinned". Long-press and drag moves a note within its section; a long press without
-  moving opens its menu (pin, move to trash). While dragging, the card's place is worked out from
+  moving opens its menu (pin or unpin; a note goes to the trash from its own ⋮ menu, #91). While dragging, the card's place is worked out from
   the finger (not from where the grid put it), so it stays under the finger when cards of other
   heights change places; a card just swapped with isn't swapped back until the finger leaves it;
   near the top or bottom the grid scrolls; after the drop the new order stays on screen until
