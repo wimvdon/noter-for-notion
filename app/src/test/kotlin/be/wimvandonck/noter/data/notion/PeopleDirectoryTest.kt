@@ -30,9 +30,11 @@ class PeopleDirectoryTest {
     }
 
     @Test
-    fun `and left out of Home and Search`() {
-        assertNull(WorkspaceCodec.parse(directory, includeNotes = true, pagesKey = "pages"))
+    fun `and left out of Home, but Search finds them`() {
+        assertNull(WorkspaceCodec.parse(directory, includeNotes = false, pagesKey = "pages"))
         assertNull(WorkspaceCodec.parse(profile, includeNotes = true, pagesKey = "pages"))
+        assertNotNull(WorkspaceCodec.parse(directory, includeNotes = true, pagesKey = "pages", includePeople = true))
+        assertNotNull(WorkspaceCodec.parse(profile, includeNotes = true, pagesKey = "pages", includePeople = true))
     }
 
     @Test

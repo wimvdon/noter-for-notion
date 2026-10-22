@@ -110,7 +110,7 @@ properties and content: the pages of databases and pages on their own.
   workspace's members comes through the API as an ordinary data source without a mark. It is
   told apart by the properties Notion gives it and that can't be removed ("Membership Type" with
   Notion's membership types, and an email property; their names stay in English) and left out of
-  Home, Search and + with its profiles (`WorkspaceCodec.parse`).
+  Home and + with its profiles (`WorkspaceCodec.parse`); Search still finds them, to look someone up.
 - **Pages** open in the editor; once a page's icon and title have scrolled away, they show in
   the top bar (`BarTitle` in `NoteScreen.kt`), tapping them changes the icon or goes back to
   the title. Also a page with subpages: its subpages are links in its content

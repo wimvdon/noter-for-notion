@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonObject
  * Notion's API gives it as an ordinary data source without a mark, so it is told apart by the
  * properties Notion gives it and that can't be removed: "Membership Type" (Workspace owner,
  * Member, Guest, Deactivated, …) and an email property. Their names stay in English whatever
- * the workspace's language. It and its profiles are left out of Home, Search and +.
+ * the workspace's language. It and its profiles are left out of Home and +; Search still finds them.
  */
 object PeopleDirectory {
     private const val MEMBERSHIP = "Membership Type"
