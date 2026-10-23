@@ -190,6 +190,7 @@
     <string name="add_workspace">Workspace hinzufügen</string>
     <string name="advanced">Erweitert</string>
     <string name="remove_workspace">Entfernen</string>
+    <string name="workspace_avatar">Profilbild</string>
     <string name="workspace_added">%1$s hinzugefügt.</string>
     <string name="workspace_replaced">%1$s ist jetzt verbunden mit: %2$s (vorher: %3$s).</string>
     <string name="workspace_refused">%1$s ist bereits hinzugefügt mit: %2$s, das mehr sieht. Entferne es zuerst, um es anders hinzuzufügen.</string>

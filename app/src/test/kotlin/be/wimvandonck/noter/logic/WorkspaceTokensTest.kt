@@ -58,6 +58,32 @@ class WorkspaceTokensTest {
         assertTrue(WorkspaceTokens.decode("").isEmpty())
         assertTrue(WorkspaceTokens.decode("not json").isEmpty())
     }
+
+    @Test
+    fun `moving a workspace to the top makes it the main token`() {
+        val third = WorkspaceToken("t3", "Wim", "Home")
+        assertEquals(second to listOf(first, third), WorkspaceTokens.move(first, listOf(second, third), 1, 0))
+    }
+
+    @Test
+    fun `moving the main token down makes the next one main`() {
+        val third = WorkspaceToken("t3", "Wim", "Home")
+        assertEquals(second to listOf(third, first), WorkspaceTokens.move(first, listOf(second, third), 0, 2))
+    }
+
+    @Test
+    fun `moving among the others keeps the main token`() {
+        val third = WorkspaceToken("t3", "Wim", "Home")
+        assertEquals(first to listOf(third, second), WorkspaceTokens.move(first, listOf(second, third), 2, 1))
+    }
+
+    @Test
+    fun `a position outside the list or no main token changes nothing`() {
+        assertEquals(first to listOf(second), WorkspaceTokens.move(first, listOf(second), 0, 5))
+        assertEquals(first to listOf(second), WorkspaceTokens.move(first, listOf(second), 1, 1))
+        val none = WorkspaceToken("", "", "")
+        assertEquals(none to listOf(second), WorkspaceTokens.move(none, listOf(second), 1, 0))
+    }
 }
 
 class WorkspaceTokensPlaceTest {

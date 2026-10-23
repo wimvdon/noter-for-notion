@@ -8,7 +8,7 @@ properties and content: the pages of databases and pages on their own.
 ### Screens
 - **Home** (`ui/main/MainScreen.kt`, `MainViewModel`): no navigation bar. On top a large, rounded
   search bar ("Search Notion") with the sync button (while changes wait or the phone is offline)
-  and Settings at its end (the profile picture of the person the token acts as when Notion tells it, else a cogwheel); tapping it opens Search. Below it, one scrolling grid:
+  and Settings at its end (the profile picture of the person the top workspace in Settings acts as when Notion tells it, else a cogwheel); tapping it opens Search. Below it, one scrolling grid:
   - **Pinned**: the pinned databases as rows (`AppSettings.pinnedDatabases`: the key that opens
     each, with its name and icon as last seen, so Home shows them offline; a pinned database keeps
     Notion's name and icon each time it is opened; a long press and drag moves one among the others, a long press without moving opens its menu, Unpin; `NotesRepository.savePinnedDatabaseOrder`), then the pinned notes and pages as cards
@@ -173,8 +173,10 @@ properties and content: the pages of databases and pages on their own.
   Notion account. The first is the main token (`ApiKeyStore.get`, with its names in
   `ApiKeyStore.main`); the others are `ApiKeyStore.extras` (encrypted like it and never backed
   up; the list itself is `logic/WorkspaceTokens.kt`). Each is tested with `GET /users/me` when
-  added and asked again at each start, and shown with its workspace's name and kind. Removing the
-  main token makes the next one the main; removing the last deletes the notes on the phone.
+  added and asked again at each start, and shown with its workspace's name and kind. They are
+  sorted by dragging (`ReorderableColumn`, `WorkspaceTokens.move`): the top one is the main
+  token, and its person's profile picture shows on its row and on Home. Removing the main token
+  makes the next one the main; removing the last deletes the notes on the phone.
   `NotionClient` gets every token: a request about a page, block, database or data source goes
   with the token of the workspace that answered for that ID before (`logic/KeyRouter.kt`; IDs come
   from the path or a new page's parent and from the answers, see `data/api/NotionRoutes.kt`),

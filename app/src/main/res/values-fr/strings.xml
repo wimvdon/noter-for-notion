@@ -193,6 +193,7 @@
     <string name="add_workspace">Ajouter l’espace de travail</string>
     <string name="advanced">Avancé</string>
     <string name="remove_workspace">Retirer</string>
+    <string name="workspace_avatar">Photo de profil</string>
     <string name="workspace_added">%1$s ajouté.</string>
     <string name="workspace_replaced">%1$s est maintenant connecté avec : %2$s (avant : %3$s).</string>
     <string name="workspace_refused">%1$s est déjà ajouté avec : %2$s, qui en voit plus. Pour l’ajouter autrement, retirez-le d’abord.</string>

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -18,17 +19,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import be.wimvandonck.noter.R
+import coil3.compose.AsyncImage
 import be.wimvandonck.noter.ui.common.errorText
 import be.wimvandonck.noter.data.model.ThemeMode
 import be.wimvandonck.noter.data.notion.TokenKind
 import be.wimvandonck.noter.logic.WorkspaceWay
 import be.wimvandonck.noter.ui.theme.AppearanceSettings
+import be.wimvandonck.noter.ui.theme.DragHandle
+import be.wimvandonck.noter.ui.theme.ReorderableColumn
 import be.wimvandonck.noter.ui.theme.SettingsBlock
 import be.wimvandonck.noter.ui.theme.SettingsSection
 import be.wimvandonck.noter.ui.theme.SettingsFooter
@@ -81,7 +87,8 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
 /**
  * Every workspace (#58), each added its own way: Connect to Notion (the button), or under Advanced
  * ([AddWorkspaceDialog]) a personal access token or a connection's token. Each can be removed; a
- * new token is tested before it is kept. The first becomes the main token.
+ * new token is tested before it is kept. They are sorted by dragging; the top one is the main
+ * token, with its person's profile picture (also Home's).
  */
 @Composable
 private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewModel) {
@@ -92,8 +99,23 @@ private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewMod
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    state.workspaces.forEach { workspace ->
+    val avatar = stringResource(R.string.workspace_avatar)
+    ReorderableColumn(
+        items = state.workspaces,
+        key = { it.id },
+        onMove = viewModel::moveWorkspace,
+    ) { workspace ->
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // The top workspace's person is the one whose picture Home shows.
+            if (workspace == state.workspaces.first() && state.avatarUrl != null) {
+                AsyncImage(
+                    model = state.avatarUrl,
+                    contentDescription = avatar,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(32.dp).clip(CircleShape),
+                )
+                Spacer(Modifier.width(12.dp))
+            }
             Column(Modifier.weight(1f)) {
                 Text(workspace.name.ifBlank { stringResource(R.string.workspace_unnamed) }, style = MaterialTheme.typography.titleSmall)
                 val kind = when {
@@ -113,6 +135,7 @@ private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewMod
             TextButton(onClick = { viewModel.removeWorkspace(workspace.id) }) {
                 Text(stringResource(R.string.remove_workspace))
             }
+            if (state.workspaces.size > 1) DragHandle(handleModifier)
         }
     }
     when (val status = state.keyStatus) {

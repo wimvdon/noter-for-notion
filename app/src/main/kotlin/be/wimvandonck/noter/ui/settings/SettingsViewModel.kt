@@ -59,6 +59,8 @@ data class SettingsUiState(
     val keyStatus: KeyStatus = KeyStatus.None,
     /** "Connect to Notion" (OAuth) is set up in this build. */
     val canSignIn: Boolean = false,
+    /** The profile picture of the person of the top (main) workspace, also shown on Home. */
+    val avatarUrl: String? = null,
 )
 
 class SettingsViewModel(
@@ -89,8 +91,9 @@ class SettingsViewModel(
         repository.settingsFlow(),
         combine(keyStore.main, keyStore.extras) { main, extras -> Workspaces.of(listOf(main) + extras) },
         keyStatus,
-    ) { settings, workspaces, status ->
-        SettingsUiState(settings, workspaces, status, signIn.available)
+        keyStore.avatarUrl,
+    ) { settings, workspaces, status, avatarUrl ->
+        SettingsUiState(settings, workspaces, status, signIn.available, avatarUrl)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
@@ -162,6 +165,21 @@ class SettingsViewModel(
             }
             keyStatus.value = KeyStatus.Removed(WorkspaceTokens.label(removed), last = false)
             refreshAfterChange()
+        }
+    }
+
+    /**
+     * Moves the workspace at [from] to [to] (positions in [SettingsUiState.workspaces]). The one on
+     * top becomes the main token, and Home and Settings show its person's profile picture.
+     */
+    fun moveWorkspace(from: Int, to: Int) {
+        val main = keyStore.main.value
+        val (newMain, others) = WorkspaceTokens.move(main, keyStore.extras.value, from, to)
+        if (newMain.token != main.token) keyStore.setMain(newMain)
+        keyStore.setExtras(others)
+        if (newMain.token == main.token) return
+        viewModelScope.launch {
+            runCatching { keyStore.setAvatarUrl(repository.tokenInfo(newMain.token).avatarUrl) }
         }
     }
 
