@@ -54,14 +54,6 @@ object Workspaces {
             Workspace(id(it.token), WorkspaceTokens.label(it), it.kind, it.name, it.signedIn)
         }.distinctBy { it.id }
 
-    /**
-     * Home shows the main token's profile picture only when every workspace is the same person's
-     * (or there is one): with several people (or a connection, named after itself) the picture
-     * could be someone else's, so Settings is the gear. A name not known yet counts as different.
-     */
-    fun onePerson(workspaces: List<Workspace>): Boolean =
-        workspaces.size <= 1 || workspaces.map { it.person.trim().lowercase() }.let { names -> names.none { it.isEmpty() } && names.distinct().size == 1 }
-
     /** The workspace of the first of [ids] that is known to be in one of [workspaces]. */
     fun ownerOf(ids: List<String?>, owners: Map<String, String>, workspaces: List<Workspace>): Workspace? {
         for (id in ids) {

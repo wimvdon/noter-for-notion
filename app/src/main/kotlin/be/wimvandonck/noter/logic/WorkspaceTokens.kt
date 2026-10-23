@@ -53,6 +53,17 @@ object WorkspaceTokens {
 
     fun remove(list: List<WorkspaceToken>, token: String): List<WorkspaceToken> = list.filter { it.token != token }
 
+    /**
+     * [main] and [others] with the workspace at [from] moved to [to] (positions in main + others).
+     * The one on top becomes the main token. Positions outside the list change nothing.
+     */
+    fun move(main: WorkspaceToken, others: List<WorkspaceToken>, from: Int, to: Int): Pair<WorkspaceToken, List<WorkspaceToken>> {
+        val all = (listOf(main) + others).toMutableList()
+        if (main.token.isBlank() || from !in all.indices || to !in all.indices || from == to) return main to others
+        all.add(to, all.removeAt(from))
+        return all.first() to all.drop(1)
+    }
+
     /** [list] with what Notion now says about [token] (its names, kind and workspace); the order stays. */
     fun update(
         list: List<WorkspaceToken>,

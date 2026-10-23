@@ -30,11 +30,10 @@ node --test worker/test/noter-sign-in.test.mjs
 | `logic/HomeLevelsTest` | Which pages are Home's top level, and which subpages and databases inside them the search missed |
 | `logic/DatabaseEditTest` | What a database's new name or icon sends to Notion, and which rows, pins and kept names change |
 | `logic/SubpageTitlesTest` | A page's subpage and database titles follow Notion, and only those blocks change |
-| `logic/WorkspacesTest` (profile picture) | Home's profile picture only when every workspace is the same person's |
 | `logic/WorkspaceWaysTest` | Which tokens Advanced offers, in which order, and which is chosen first |
 | `logic/SealedBoxTest`, `logic/SignInsTest` | Connect to Notion: opening what the sign-in helper sealed (a sample sealed by the helper itself), the state and authorize link, reading Notion's token answer |
 | `logic/TokenRefresherTest`, `data/api/RenewKeyClientTest` (in `MultiWorkspaceClientTest.kt`) | Refreshing a refused Connect to Notion token once, one refresh at a time, keeping its workspace's ID; pasted tokens are never refreshed |
-| `logic/WorkspaceTokensPlaceTest` (in `WorkspaceTokensTest.kt`) | Each Notion workspace once: where a new token goes (main, after the others, in place of the same workspace's token), that a way that sees less never replaces one that sees more, and the clean-up of duplicates from before |
+| `logic/WorkspaceTokensPlaceTest` (in `WorkspaceTokensTest.kt`) | Each Notion workspace once: where a new token goes (main, after the others, in place of the same workspace's token), that a way that sees less never replaces one that sees more, the clean-up of duplicates from before, and sorting (the top one becomes the main token) |
 | `data/notion/TokenCodecTest`, `data/api/NotionRoutesTest` | Notion's workspace ID for every kind of token; a page found by two tokens listed once |
 | `logic/DocumentEditorTest` | Enter, Backspace, Markdown shortcuts (Notion's), dividers, code blocks, numbering; nesting (indent, outdent, Enter and Backspace in nested blocks, what may move) |
 | `data/notion/BlockCodecTest` | Reading and writing every editable block type; images, files, links, tables and linked pages read-only |

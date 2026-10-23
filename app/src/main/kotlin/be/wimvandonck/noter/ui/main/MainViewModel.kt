@@ -283,8 +283,7 @@ class MainViewModel(
                 pendingCount = pending,
                 offline = offline,
             ),
-            // The picture only when it is every workspace's person (else Settings' gear).
-            avatarUrl = avatar?.takeIf { Workspaces.onePerson(spaces) },
+            avatarUrl = avatar,
             pinnedDatabases = settings.pinnedDatabases,
             recent = recent,
             tree = if (several) emptyList() else PageTree.build(recent.orEmpty()),

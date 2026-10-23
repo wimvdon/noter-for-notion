@@ -2,11 +2,11 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-23: Workspaces are sorted; the top one's picture shows
+Home showed the profile picture of the first workspace added, and a later attempt showed it only when every workspace was the same person's. The owner rejected that: one person can use another picture in another workspace. Now the workspaces in Settings are sorted by dragging, like the other lists (`ReorderableColumn`). The top one is the main token, and its person's picture shows on its row in Settings and on Home (asked from Notion again when another one moves to the top). Rejected: a cogwheel always (the owner likes the picture) and guessing which person counts.
+
 ## 2026-10-23: No detection of Notion's People directory (#92 reopened)
 Two attempts to keep Notion's People directory off Home (by its built-in properties "Membership Type" and "Email", first from the search results and then by asking each data source once) didn't work on the owner's phone, so both were taken out again (#97, #98). Notion's API documentation and changelog have no mark for the People directory: the API returns it as an ordinary data source, and integrations that use it (for example Thunderbird's notion-scripts) have the user configure its ID. Notion's own MCP connector refuses it as "a Notion People page", so Notion can tell it apart internally, but the public API doesn't say how. The owner decided to leave it as it is: the People directory shows like any other database.
-
-## 2026-10-22: The profile picture only for one person
-Home's Settings button showed the main token's person's picture. With workspaces of several people (or a connection's token, named after the connection) that picture can be someone else's. The owner suggested a cogwheel or sortable workspaces with the top one's picture, and left the choice. Now the picture shows only when every workspace is the same person's; otherwise the button is the cogwheel. Rejected: sorting workspaces to pick whose picture (an order to manage for a small icon) and always the cogwheel (loses the picture for the usual case of one person).
 
 ## 2026-10-22: Pinned items as launcher shortcuts (#76)
 The owner asked for the pinned items in the menu of a long press on the app icon. Android's dynamic shortcuts (`ShortcutManagerCompat` from androidx.core, already a dependency; no permission) show the pinned databases and then the pinned notes and pages, in Home's order, at most four (what launchers show). A shortcut's icon is the item's Notion emoji drawn on the launcher icon's white, else a page or database symbol; a picture icon from Notion isn't downloaded for it. Rejected: a widget (much more code for the same reach) and static shortcuts to New note (the owner asked for the pins).
