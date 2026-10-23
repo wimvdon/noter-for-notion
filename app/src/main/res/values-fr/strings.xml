@@ -181,7 +181,6 @@
     <string name="action_select_text">Sélectionner du texte</string>
     <string name="close">Fermer</string>
     <string name="section_workspaces">Espaces de travail</string>
-    <string name="workspaces_help">Ajoutez chaque espace de travail Notion que vous voulez voir dans Noter.</string>
     <string name="workspace_token">Jeton</string>
     <string name="workspace_personal">Jeton d’accès personnel</string>
     <string name="workspace_connection">Connexion</string>

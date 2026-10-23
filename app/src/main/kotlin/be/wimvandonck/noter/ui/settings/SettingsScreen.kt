@@ -94,11 +94,6 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
 private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewModel) {
     val context = LocalContext.current
     var adding by rememberSaveable { mutableStateOf(false) }
-    Text(
-        stringResource(R.string.workspaces_help),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
     val avatar = stringResource(R.string.workspace_avatar)
     ReorderableColumn(
         items = state.workspaces,
