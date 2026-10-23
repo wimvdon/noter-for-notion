@@ -76,6 +76,6 @@ object NewDatabases {
     }
 
     /** What Notion needs to know about a new property of [kind]: nothing, but a number's format. */
-    private fun config(kind: PropertyKind): Map<String, Any?> =
+    fun config(kind: PropertyKind): Map<String, Any?> =
         if (kind == PropertyKind.NUMBER) mapOf("format" to "number") else emptyMap()
 }

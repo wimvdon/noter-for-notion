@@ -20,6 +20,9 @@ import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.data.model.SortKind
 import be.wimvandonck.noter.logic.DatabaseEdit
 import be.wimvandonck.noter.logic.DatabaseSetups
+import be.wimvandonck.noter.logic.EditedProperty
+import be.wimvandonck.noter.logic.PropertyKind
+import be.wimvandonck.noter.logic.SchemaEdits
 import be.wimvandonck.noter.logic.PropertyLayouts
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,13 +54,17 @@ data class DatabaseUiState(
     val notionUrl: String = "",
 )
 
+/**
+ * Edit database while it is open: the data source's [properties] when it opened (what the edits
+ * are compared with, so properties loading later never read as removed), whether Notion is saving
+ * it, and what went wrong ([error]: see NotionErrors).
+ */
+data class DatabaseEditState(val properties: List<PropertySchema>, val saving: Boolean = false, val error: String? = null)
+
 /** Something the database's screen tells the user once. */
 sealed interface DatabaseEvent {
     /** Dragging a note switched the data source from [previous] to the custom order (Undo restores it). */
     data class SortedByHand(val sourceId: String, val previous: NoteSort?) : DatabaseEvent
-
-    /** Notion didn't take a new name or icon ([error]: see NotionErrors). */
-    data class EditFailed(val error: String) : DatabaseEvent
 }
 
 /**
@@ -206,22 +213,43 @@ class DatabaseViewModel(
         viewModelScope.launch { repository.togglePinDatabase(PinnedDatabase(pinKey(ui.sourceId, ui.sources), ui.title, ui.icon)) }
     }
 
-    /** Renames the database in Notion (Rename in the ⋮ menu). */
-    fun rename(title: String) = edit(DatabaseEdit.rename(title))
+    private val _editing = MutableStateFlow<DatabaseEditState?>(null)
 
-    /** Sets the database's icon to [emoji] in Notion, or removes it when null. */
-    fun setIcon(emoji: String?) = edit(DatabaseEdit.icon(emoji))
+    /** Edit database while it is open (null: closed). */
+    val editing: StateFlow<DatabaseEditState?> get() = _editing
 
-    private fun edit(edit: DatabaseEdit) {
-        if (edit.title?.isBlank() == true) return
+    /** Opens Edit database (⋮, or a tap on the name or icon). */
+    fun openEdit() {
+        _editing.value = DatabaseEditState(state.value.properties)
+    }
+
+    fun dismissEdit() {
+        if (_editing.value?.saving != true) _editing.value = null
+    }
+
+    /**
+     * Saves Edit database in Notion at once: the name and icon ([emoji] when [iconChanged]) of the
+     * database, and [properties] of the data source shown ([names]: Notion's name for a new
+     * property of each kind). It closes when Notion took everything, else stays open with the error.
+     */
+    fun saveEdit(title: String, emoji: String?, iconChanged: Boolean, properties: List<EditedProperty>, names: Map<PropertyKind, String>) {
+        val open = _editing.value ?: return
+        if (open.saving || title.isBlank()) return
+        val ui = state.value
+        val edit = DatabaseEdit(title = title.trim().takeIf { it != ui.title }, emoji = emoji, setsIcon = iconChanged)
+        val change = SchemaEdits.change(open.properties, properties, names)
+        _editing.value = open.copy(saving = true, error = null)
         viewModelScope.launch {
             try {
-                repository.editDatabase(databaseLink.value, sourceId, single = sources.value == null, edit)
-                // Shown at once, whichever name the screen had (the database's or its data source's).
-                val ui = state.value
-                label.value = edit.title(ui.title) to edit.icon(ui.icon)
+                if (edit.title != null || edit.setsIcon) {
+                    repository.editDatabase(databaseLink.value, sourceId, single = sources.value == null, edit)
+                    // Shown at once, whichever name the screen had (the database's or its data source's).
+                    label.value = edit.title(ui.title) to edit.icon(ui.icon)
+                }
+                repository.editSchema(sourceId, change)
+                _editing.value = null
             } catch (e: NotionException) {
-                _events.tryEmit(DatabaseEvent.EditFailed(NotionErrors.of(e)))
+                _editing.value = open.copy(saving = false, error = NotionErrors.of(e))
             }
         }
     }

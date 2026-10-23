@@ -216,7 +216,12 @@
     <string name="new_database_create">Crear</string>
     <string name="new_database_failed">Notion no creó la base de datos: %1$s</string>
     <string name="action_rename">Cambiar nombre</string>
-    <string name="rename_database">Cambiar nombre de la base de datos</string>
+    <string name="edit_database">Editar base de datos</string>
+    <string name="action_save">Guardar</string>
+    <string name="edit_database_properties">Propiedades. Las opciones, los formatos y las vistas se ajustan en Notion.</string>
+    <string name="remove_properties_title">¿Quitar propiedades?</string>
+    <string name="remove_properties_body">%1$s y sus valores en cada página se eliminan en Notion.</string>
+    <string name="remove_and_save">Quitar y guardar</string>
     <string name="database_edit_failed">Notion no guardó el cambio: %1$s</string>
     <string name="property_kind_text">Texto</string>
     <string name="property_kind_number">Número</string>
@@ -233,7 +238,14 @@
     <string name="property_kind_created_by">Creado por</string>
     <string name="property_kind_last_edited_time">Hora de última edición</string>
     <string name="property_kind_last_edited_by">Última edición por</string>
+    <string name="property_kind_title">Título</string>
+    <string name="property_kind_status">Estado</string>
+    <string name="property_kind_formula">Fórmula</string>
+    <string name="property_kind_relation">Relación</string>
+    <string name="property_kind_rollup">Rollup</string>
+    <string name="property_kind_id">ID</string>
+    <string name="property_kind_other">Otro</string>
     <string name="new_database_add_property">Añadir propiedad</string>
     <string name="new_database_remove_property">Quitar %1$s</string>
-    <string name="new_database_created">Base de datos creada. Ábrela en Notion para editar sus propiedades y vistas.</string>
+    <string name="new_database_created">Base de datos creada. Ábrela en Notion para editar sus vistas.</string>
 </resources>

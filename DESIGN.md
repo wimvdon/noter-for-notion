@@ -264,7 +264,7 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   a chevron that folds the part away,
   "New page at the top" when its token may, then its databases).
 - A database is a child page: back arrow, Notion's icon and name, then sync, Filters, Sort, Cards
-  (Tune icon, as a page's properties button) and ⋮ (Pin or Unpin, Rename, Add or Change icon, Open in Notion, Share). Rename is a dialog with the name field; the icon uses a page's emoji sheet. As on a page, tapping the icon in the app bar changes it and tapping the name renames. A database of several data sources has a primary scrollable tab row, one
+  (Tune icon, as a page's properties button) and ⋮ (Pin or Unpin, Edit database, Open in Notion, Share). Edit database is a full-screen dialog (× and Save in its bar): the icon (a page's emoji sheet) next to the name field, then one field per property, labelled with its kind, with × to remove it (none for the title property), and Add property with the kinds of New database. Removing asks first (Remove and save). Tapping the icon or the name in the app bar opens it too. A database of several data sources has a primary scrollable tab row, one
   tab per data source. The whole header (top app bar, tab row and rows of chips, `surface`)
   scrolls away with the notes and comes back on the first scroll up (`QuickReturnHeader`); the
   status bar area stays.

@@ -93,7 +93,7 @@ class DatabaseCreation(private val scope: CoroutineScope, private val repository
 
 /** The names Notion gives a new property of each kind, in the user's language. */
 @Composable
-private fun kindNames(): Map<PropertyKind, String> = mapOf(
+internal fun kindNames(): Map<PropertyKind, String> = mapOf(
     PropertyKind.TEXT to stringResource(R.string.property_kind_text),
     PropertyKind.NUMBER to stringResource(R.string.property_kind_number),
     PropertyKind.SELECT to stringResource(R.string.property_kind_select),
