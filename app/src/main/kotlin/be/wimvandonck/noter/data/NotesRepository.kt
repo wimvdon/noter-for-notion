@@ -25,6 +25,7 @@ import be.wimvandonck.noter.data.web.WebPageClient
 import be.wimvandonck.noter.logic.SharedContent
 import be.wimvandonck.noter.logic.ChildRef
 import be.wimvandonck.noter.logic.DatabaseEdit
+import be.wimvandonck.noter.logic.SchemaChange
 import be.wimvandonck.noter.logic.HomeLevels
 import be.wimvandonck.noter.logic.SharedNotes
 import be.wimvandonck.noter.logic.SubpageTitles
@@ -1461,6 +1462,30 @@ class NotesRepository(
         settings.update { s ->
             val pins = edit.applyToPins(s.pinnedDatabases, ids)
             if (pins == s.pinnedDatabases) s else s.copy(pinnedDatabases = pins)
+        }
+    }
+
+    /**
+     * Changes data source [sourceId]'s properties ([change], from Edit database) in Notion at once,
+     * after sending what is waiting, since it may use the old names. What this phone keeps by
+     * property name (filters, sort, cards, the note's layout) follows, then the properties and notes
+     * are asked again. Throws when Notion can't be reached or refuses.
+     */
+    suspend fun editSchema(sourceId: String, change: SchemaChange) {
+        if (change.isEmpty) return
+        flush()
+        withContext(Dispatchers.IO) { client.updateDataSource(sourceId, mapOf("properties" to change.properties)) }
+        settings.update { s ->
+            s.copy(
+                setups = s.setups.mapValues { (key, setup) -> if (plain(key) == plain(sourceId)) change.applyTo(setup) else setup },
+                propertyLayouts = s.propertyLayouts.mapValues { (key, layout) -> if (plain(key) == plain(sourceId)) change.applyTo(layout) else layout },
+            )
+        }
+        try {
+            fetchSchema(sourceId)
+            refresh(sourceId, userAsked = true)
+        } catch (e: NotionException) {
+            if (e.isOffline) _offline.value = true
         }
     }
 

@@ -2,6 +2,9 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-23: Edit a database's properties, with its name and icon in one screen
+The owner asked to rename, add and remove a database's properties, folded in with the name and icon. Rename and Change icon in the database's ⋮ became one Edit database screen (full screen, since the list of properties can be long), opened from ⋮ or a tap on the name or icon. Everything is sent when Save is tapped, in one request for the name and icon and one for the properties, so a half-finished edit never reaches Notion. Removing a property deletes its values on every page in Notion, so Save asks first. New properties are the kinds New database can make. Rejected for now: changing a property's type (Notion converts or drops values in ways that are hard to explain on a phone) and editing select options and number formats (each needs its own editor); these stay in Notion. Settings kept by property name (filters, sort, cards, the note's layout) follow a rename and drop a removed property.
+
 ## 2026-10-23: Workspaces are sorted; the top one's picture shows
 Home showed the profile picture of the first workspace added, and a later attempt showed it only when every workspace was the same person's. The owner rejected that: one person can use another picture in another workspace. Now the workspaces in Settings are sorted by dragging, like the other lists (`ReorderableColumn`). The top one is the main token, and its person's picture shows on its row in Settings and on Home (asked from Notion again when another one moves to the top). Rejected: a cogwheel always (the owner likes the picture) and guessing which person counts.
 

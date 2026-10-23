@@ -29,6 +29,7 @@ node --test worker/test/noter-sign-in.test.mjs
 | `logic/LauncherShortcutsTest` | Which pinned databases and notes become launcher shortcuts, in which order, and what a shortcut may open |
 | `logic/HomeLevelsTest` | Which pages are Home's top level, and which subpages and databases inside them the search missed |
 | `logic/DatabaseEditTest` | What a database's new name or icon sends to Notion, and which rows, pins and kept names change |
+| `logic/SchemaEditsTest` | Edit database's properties: what renaming, removing and adding sends to Notion (by ID, unique names, blank names), and how the kept filters, sort, cards and note layout follow |
 | `logic/SubpageTitlesTest` | A page's subpage and database titles follow Notion, and only those blocks change |
 | `logic/WorkspaceWaysTest` | Which tokens Advanced offers, in which order, and which is chosen first |
 | `logic/SealedBoxTest`, `logic/SignInsTest` | Connect to Notion: opening what the sign-in helper sealed (a sample sealed by the helper itself), the state and authorize link, reading Notion's token answer |

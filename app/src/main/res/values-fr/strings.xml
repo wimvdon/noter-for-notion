@@ -216,7 +216,12 @@
     <string name="new_database_create">Créer</string>
     <string name="new_database_failed">Notion n’a pas créé la base de données : %1$s</string>
     <string name="action_rename">Renommer</string>
-    <string name="rename_database">Renommer la base de données</string>
+    <string name="edit_database">Modifier la base de données</string>
+    <string name="action_save">Enregistrer</string>
+    <string name="edit_database_properties">Propriétés. Les options, formats et vues se règlent dans Notion.</string>
+    <string name="remove_properties_title">Supprimer des propriétés ?</string>
+    <string name="remove_properties_body">%1$s et leurs valeurs sur chaque page sont supprimées dans Notion.</string>
+    <string name="remove_and_save">Supprimer et enregistrer</string>
     <string name="database_edit_failed">Notion n’a pas enregistré la modification : %1$s</string>
     <string name="property_kind_text">Texte</string>
     <string name="property_kind_number">Nombre</string>
@@ -233,7 +238,14 @@
     <string name="property_kind_created_by">Créé par</string>
     <string name="property_kind_last_edited_time">Dernière modification</string>
     <string name="property_kind_last_edited_by">Dernière modification par</string>
+    <string name="property_kind_title">Titre</string>
+    <string name="property_kind_status">Statut</string>
+    <string name="property_kind_formula">Formule</string>
+    <string name="property_kind_relation">Relation</string>
+    <string name="property_kind_rollup">Rollup</string>
+    <string name="property_kind_id">ID</string>
+    <string name="property_kind_other">Autre</string>
     <string name="new_database_add_property">Ajouter une propriété</string>
     <string name="new_database_remove_property">Retirer %1$s</string>
-    <string name="new_database_created">Base de données créée. Ouvrez-la dans Notion pour modifier ses propriétés et ses vues.</string>
+    <string name="new_database_created">Base de données créée. Ouvrez-la dans Notion pour modifier ses vues.</string>
 </resources>

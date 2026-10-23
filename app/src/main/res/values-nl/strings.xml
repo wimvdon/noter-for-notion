@@ -213,7 +213,12 @@
     <string name="new_database_create">Maken</string>
     <string name="new_database_failed">Notion heeft de database niet gemaakt: %1$s</string>
     <string name="action_rename">Naam wijzigen</string>
-    <string name="rename_database">Naam van de database wijzigen</string>
+    <string name="edit_database">Database bewerken</string>
+    <string name="action_save">Opslaan</string>
+    <string name="edit_database_properties">Eigenschappen. Opties, notaties en weergaven stel je in Notion in.</string>
+    <string name="remove_properties_title">Eigenschappen verwijderen?</string>
+    <string name="remove_properties_body">%1$s en hun waarden op elke pagina worden in Notion verwijderd.</string>
+    <string name="remove_and_save">Verwijderen en opslaan</string>
     <string name="database_edit_failed">Notion heeft de wijziging niet bewaard: %1$s</string>
     <string name="property_kind_text">Tekst</string>
     <string name="property_kind_number">Getal</string>
@@ -230,7 +235,14 @@
     <string name="property_kind_created_by">Gemaakt door</string>
     <string name="property_kind_last_edited_time">Laatst bewerkt</string>
     <string name="property_kind_last_edited_by">Laatst bewerkt door</string>
+    <string name="property_kind_title">Titel</string>
+    <string name="property_kind_status">Status</string>
+    <string name="property_kind_formula">Formule</string>
+    <string name="property_kind_relation">Relatie</string>
+    <string name="property_kind_rollup">Rollup</string>
+    <string name="property_kind_id">ID</string>
+    <string name="property_kind_other">Overig</string>
     <string name="new_database_add_property">Eigenschap toevoegen</string>
     <string name="new_database_remove_property">%1$s verwijderen</string>
-    <string name="new_database_created">Database gemaakt. Open hem in Notion om zijn eigenschappen en weergaven te bewerken.</string>
+    <string name="new_database_created">Database gemaakt. Open hem in Notion om zijn weergaven te bewerken.</string>
 </resources>
