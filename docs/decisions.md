@@ -4,6 +4,7 @@ Newest first. Add an entry for every notable choice: what was decided, why, and 
 
 ## 2026-10-23: Workspaces are sorted; the top one's picture shows
 Home showed the profile picture of the first workspace added, and a later attempt showed it only when every workspace was the same person's. The owner rejected that: one person can use another picture in another workspace. Now the workspaces in Settings are sorted by dragging, like the other lists (`ReorderableColumn`). The top one is the main token, and its person's picture shows on its row in Settings and on Home (asked from Notion again when another one moves to the top). Rejected: a cogwheel always (the owner likes the picture) and guessing which person counts.
+
 ## 2026-10-23: No detection of Notion's People directory (#92 reopened)
 Two attempts to keep Notion's People directory off Home (by its built-in properties "Membership Type" and "Email", first from the search results and then by asking each data source once) didn't work on the owner's phone, so both were taken out again (#97, #98). Notion's API documentation and changelog have no mark for the People directory: the API returns it as an ordinary data source, and integrations that use it (for example Thunderbird's notion-scripts) have the user configure its ID. Notion's own MCP connector refuses it as "a Notion People page", so Notion can tell it apart internally, but the public API doesn't say how. The owner decided to leave it as it is: the People directory shows like any other database.
 
