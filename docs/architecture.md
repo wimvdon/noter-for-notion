@@ -8,7 +8,7 @@ properties and content: the pages of databases and pages on their own.
 ### Screens
 - **Home** (`ui/main/MainScreen.kt`, `MainViewModel`): no navigation bar. On top a large, rounded
   search bar ("Search Notion") with the sync button (while changes wait or the phone is offline)
-  and Settings at its end (the profile picture of the person the main token acts as when Notion tells it and every workspace is that same person's, `Workspaces.onePerson`; else a cogwheel); tapping it opens Search. Below it, one scrolling grid:
+  and Settings at its end (the profile picture of the person the token acts as when Notion tells it, else a cogwheel); tapping it opens Search. Below it, one scrolling grid:
   - **Pinned**: the pinned databases as rows (`AppSettings.pinnedDatabases`: the key that opens
     each, with its name and icon as last seen, so Home shows them offline; a pinned database keeps
     Notion's name and icon each time it is opened; a long press and drag moves one among the others, a long press without moving opens its menu, Unpin; `NotesRepository.savePinnedDatabaseOrder`), then the pinned notes and pages as cards
