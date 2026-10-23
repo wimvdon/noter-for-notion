@@ -1235,8 +1235,7 @@ class NotesRepository(
      * [query] a database's own pages (the notes) are left out; with one they are found too.
      */
     suspend fun browse(query: String): List<WorkspaceItem> = withContext(Dispatchers.IO) {
-        // Search may find Notion's People directory and its profiles (#92); Home leaves them out.
-        WorkspaceCodec.parseAll(client.search(query.trim(), BROWSE_LIMIT), includeNotes = query.isNotBlank(), pagesKey = PAGES, includePeople = true)
+        WorkspaceCodec.parseAll(client.search(query.trim(), BROWSE_LIMIT), includeNotes = query.isNotBlank(), pagesKey = PAGES)
     }
 
     /**
