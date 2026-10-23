@@ -20,7 +20,6 @@ import be.wimvandonck.noter.data.model.PageRef
 import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.model.WorkspaceItem
 import be.wimvandonck.noter.data.notion.BlockCodec
-import be.wimvandonck.noter.data.notion.PeopleDirectory
 import be.wimvandonck.noter.data.notion.InlineMarkdown
 import be.wimvandonck.noter.data.web.WebPageClient
 import be.wimvandonck.noter.logic.SharedContent
@@ -330,7 +329,6 @@ class NotesRepository(
             }
             _offline.value = false
             _missingSources.update { it - plain(databaseId) }
-            _databases.value[databaseId]?.schema?.let { if (PeopleDirectory.isDirectory(it)) markPeopleDirectory(databaseId) }
         } catch (e: NotionException) {
             if (e.isOffline) _offline.value = true
             if (e.status == 401) _events.tryEmit(RepoEvent.KeyRejected)
@@ -1250,58 +1248,16 @@ class NotesRepository(
      * stays.
      */
     suspend fun refreshRecent() {
-        val (found, people) = withContext(Dispatchers.IO) {
-            val results = client.search("", HOME_LIMIT, total = Int.MAX_VALUE)
-            WorkspaceCodec.parseAll(results, includeNotes = false, pagesKey = PAGES) to peopleDirectories(results)
+        val found = withContext(Dispatchers.IO) {
+            WorkspaceCodec.parseAll(client.search("", HOME_LIMIT, total = Int.MAX_VALUE), includeNotes = false, pagesKey = PAGES)
         }
-        val items = groupByDatabase(withSubpages(found).filterNot { plain(it.id) in people }, ask = true)
+        val items = groupByDatabase(withSubpages(found), ask = true)
         withContext(Dispatchers.IO) {
             lock.withLock {
                 _recent.value = items
                 cache.saveRecent(items)
             }
         }
-    }
-
-    /** Checks once per data source whether it is Notion's People directory (#92), kept on this phone. */
-    private val peopleChecks: MutableMap<String, Boolean> by lazy { cache.peopleChecks().toMutableMap() }
-    private val peopleLock = Mutex()
-
-    /** Data source [sourceId] turned out to be the People directory (its properties, once opened): off Home. */
-    private suspend fun markPeopleDirectory(sourceId: String) {
-        peopleLock.withLock {
-            if (peopleChecks[plain(sourceId)] == true) return@withLock
-            peopleChecks[plain(sourceId)] = true
-            cache.savePeopleChecks(peopleChecks.toMap())
-        }
-        lock.withLock {
-            val now = _recent.value ?: return@withLock
-            val left = now.filterNot { plain(it.id) == plain(sourceId) }
-            if (left.size != now.size) {
-                _recent.value = left
-                cache.saveRecent(left)
-            }
-        }
-    }
-
-    /**
-     * The data sources among search [results] that are Notion's People directory (#92), by ID
-     * without dashes. When the search leaves a data source's properties out, the data source is
-     * asked for them once (paced) and the answer kept; offline it waits for the next time.
-     */
-    private suspend fun peopleDirectories(results: List<JsonObject>): Set<String> = peopleLock.withLock {
-        val unknown = PeopleDirectory.toCheck(results, peopleChecks.keys)
-        for (id in unknown) {
-            val directory = try {
-                PeopleDirectory.isDirectory(client.getDataSource(id))
-            } catch (e: NotionException) {
-                if (e.isOffline) break else continue
-            }
-            peopleChecks[plain(id)] = directory
-            delay(PAUSE_MS)
-        }
-        if (unknown.isNotEmpty()) cache.savePeopleChecks(peopleChecks.toMap())
-        peopleChecks.filterValues { it }.keys.toSet()
     }
 
     /**
