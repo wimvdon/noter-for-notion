@@ -27,7 +27,6 @@ node --test worker/test/noter-sign-in.test.mjs
 | `logic/ContentMergeTest` | Typing while a newer version comes from Notion: the edits go on top of it, keeping blocks added or changed in Notion meanwhile |
 | `data/NotesRepositoryTest` (lost answers) | A page Notion made without answering isn't made again; one it didn't make is made on the next try |
 | `logic/LauncherShortcutsTest` | Which pinned databases and notes become launcher shortcuts, in which order, and what a shortcut may open |
-| `data/notion/PeopleDirectoryTest` | Notion's People directory and its profiles are recognised (also from an opened schema, and which data sources must be asked for their properties) and left out of Home but found by Search; a database of one's own about members isn't |
 | `logic/HomeLevelsTest` | Which pages are Home's top level, and which subpages and databases inside them the search missed |
 | `logic/DatabaseEditTest` | What a database's new name or icon sends to Notion, and which rows, pins and kept names change |
 | `logic/SubpageTitlesTest` | A page's subpage and database titles follow Notion, and only those blocks change |
