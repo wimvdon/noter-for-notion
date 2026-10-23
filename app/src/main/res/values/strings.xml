@@ -178,7 +178,6 @@
     <string name="action_select_text">Select text</string>
     <string name="close">Close</string>
     <string name="section_workspaces">Workspaces</string>
-    <string name="workspaces_help">Add each Notion workspace you want to see in Noter.</string>
     <string name="workspace_token">Token</string>
     <string name="workspace_personal">Personal access token</string>
     <string name="workspace_connection">Connection</string>
