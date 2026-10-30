@@ -1,6 +1,6 @@
 # Design
 
-Noter for Notion is one of the sibling Android apps (Tracker for Simkl, Time Tracker for Notion,
+Noter for Notion is one of the sibling Android apps (Watchlist, Time Tracker for Notion,
 Snoozer, RSS Reader and Noter for Notion) that share one design language.
 
 The shared rules (every section except "This app") have their master copy in `DESIGN.md` of
@@ -17,7 +17,7 @@ unchanged to every app. Only the "This app" section belongs to this repository.
 
 | App | Shape | Gradient |
 | --- | --- | --- |
-| Tracker for Simkl | TV screen with a checkmark | `#3D7BFF` → `#7A5CFF` → `#D15CE6` |
+| Watchlist | TV screen with a checkmark | `#3D7BFF` → `#7A5CFF` → `#D15CE6` |
 | Time Tracker for Notion | Stopwatch dial with a hand | `#FF8A3D` → `#F04438` → `#C81E5A` |
 | Snoozer | Nine-lobed "cookie" (the home screen toggle) with a bell | `#22C3B4` → `#3E7BDA` → `#4E5BB0` |
 | RSS Reader | The feed symbol on its own (owner's choice, see its "This app") | `#4FC3F7` → `#0091EA` → `#0D47A1` |
