@@ -2,6 +2,9 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-10-31: The sign-in helper moves to its own address
+The owner gave the sign-in helper a custom domain on Cloudflare, `noter-signin.wim.to`, replacing `noter-sign-in.wim-d57.workers.dev`. It is the same helper on the same Cloudflare account, so it's not a new network destination; `PRIVACY.md` names the new address. The connection's redirect URI in Notion must be `https://noter-signin.wim.to/callback`, or Connect to Notion fails.
+
 ## 2026-10-23: Edit a database's properties, with its name and icon in one screen
 The owner asked to rename, add and remove a database's properties, folded in with the name and icon. Rename and Change icon in the database's ⋮ became one Edit database screen (full screen, since the list of properties can be long), opened from ⋮ or a tap on the name or icon. Everything is sent when Save is tapped, in one request for the name and icon and one for the properties, so a half-finished edit never reaches Notion. Removing a property deletes its values on every page in Notion, so Save asks first. New properties are the kinds New database can make. Rejected for now: changing a property's type (Notion converts or drops values in ways that are hard to explain on a phone) and editing select options and number formats (each needs its own editor); these stay in Notion. Settings kept by property name (filters, sort, cards, the note's layout) follow a rename and drop a removed property.
 
