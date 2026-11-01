@@ -31,6 +31,7 @@ import be.wimvandonck.noter.logic.FilterChip
 import be.wimvandonck.noter.logic.NoteLists
 import be.wimvandonck.noter.logic.NoteSearch
 import be.wimvandonck.noter.logic.NoteTargets
+import be.wimvandonck.noter.logic.HiddenOnHome
 import be.wimvandonck.noter.logic.PageTree
 import be.wimvandonck.noter.logic.PropertyLayouts
 import be.wimvandonck.noter.logic.SearchKind
@@ -270,6 +271,7 @@ class MainViewModel(
     ) { settings, databases, (recent, error, known), (pending, offline, key, avatar, pull), (spaces, owners, folded, opened, limit) ->
         val pinned = NoteLists.pinned(databases.values.flatMap { it.notes }, settings.pinned, settings.order[AppSettings.HOME].orEmpty())
         val several = spaces.size > 1
+        val hidden = HiddenOnHome.ids(settings.hiddenOnHome)
         HomeUiState(
             notes = NotesUiState(
                 ready = true,
@@ -286,14 +288,14 @@ class MainViewModel(
             avatarUrl = avatar,
             pinnedDatabases = settings.pinnedDatabases,
             recent = recent,
-            tree = if (several) emptyList() else PageTree.build(recent.orEmpty()),
+            tree = if (several) emptyList() else PageTree.build(recent.orEmpty(), hidden),
             expanded = opened,
             treeLimit = limit,
             recentError = error,
             targetGroups = NoteTargets.grouped(NoteTargets.of(settings.pinnedDatabases, recent, known), spaces, owners),
             severalWorkspaces = several,
             treeGroups = if (several) {
-                Workspaces.group(recent.orEmpty(), owners, spaces, SearchResults::idsOf).map { WorkspaceGroup(it.workspace, PageTree.build(it.items)) }
+                Workspaces.group(recent.orEmpty(), owners, spaces, SearchResults::idsOf).map { WorkspaceGroup(it.workspace, PageTree.build(it.items, hidden)) }
             } else {
                 emptyList()
             },
@@ -373,6 +375,9 @@ class MainViewModel(
         }
     }
 
+
+    /** Hides a database or page from Home's list (#108, after the user confirmed); Search still finds it. */
+    fun hideOnHome(item: WorkspaceItem) = viewModelScope.launch { repository.hideOnHome(item) }
 
     /** Saves the order of Home's pinned databases after the user dragged them. */
     fun savePinnedDatabaseOrder(ids: List<String>) = viewModelScope.launch { repository.savePinnedDatabaseOrder(ids) }

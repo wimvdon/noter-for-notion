@@ -100,6 +100,11 @@ class SettingsViewModel(
         SettingsUiState(canSignIn = signIn.available),
     )
 
+    /** Shows the database or page [id] on Home again (#108). */
+    fun showOnHome(id: String) {
+        viewModelScope.launch { repository.showOnHome(id) }
+    }
+
     /** The address of Notion's page for "Connect to Notion" (opened in the browser). */
     fun startSignIn(): String {
         keyStatus.value = KeyStatus.None

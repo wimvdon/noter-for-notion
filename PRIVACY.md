@@ -51,7 +51,7 @@ crash reporting.
 - **Images you have seen**, in the app's cache folder (up to 100 MB), so they don't have to be
   downloaded again. Android may clear this folder when space runs low; it is never backed up.
 - **Your settings**: per database, its filters, sort and what its cards show; the databases you
-  pinned (their IDs, names and icons), pinned notes and pages, your own note order, which properties are shown (and in which order) per database,
+  pinned (their IDs, names and icons), pinned notes and pages, the databases and pages you hid from Home (their IDs, names and icons), your own note order, which properties are shown (and in which order) per database,
   theme and dynamic colour. Only these settings may be included in
   Android's own backup (to your Google account, if you turned that on) and in a transfer to a new
   phone.

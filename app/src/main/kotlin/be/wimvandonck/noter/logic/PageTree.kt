@@ -18,14 +18,20 @@ object PageTree {
     /** How many entries of the top level Home shows at first, and how many more each "Show more" adds. */
     const val PAGE_SIZE = 30
 
-    /** [items] as a tree. Notion writes IDs with or without dashes; they are compared without. */
-    fun build(items: List<WorkspaceItem>): List<TreeNode> {
+    /**
+     * [items] as a tree. Notion writes IDs with or without dashes; they are compared without.
+     * What is in [hidden] (IDs without dashes, `HiddenOnHome`, #108) is left out, a hidden entry of
+     * the top level with what is inside it: those don't move up to the top level.
+     */
+    fun build(items: List<WorkspaceItem>, hidden: Set<String> = emptySet()): List<TreeNode> {
         val unique = items.distinctBy { plain(it.id) }
         val ids = unique.map { plain(it.id) }.toSet()
         fun parentIn(item: WorkspaceItem): String? = item.parentId?.let { plain(it) }?.takeIf { it in ids && it != plain(item.id) }
-        val children = unique.filter { parentIn(it) != null }.groupBy { parentIn(it)!! }
+        val children = unique
+            .filter { parentIn(it) != null && plain(it.id) !in hidden }
+            .groupBy { parentIn(it)!! }
         return unique
-            .filter { parentIn(it) == null }
+            .filter { parentIn(it) == null && plain(it.id) !in hidden }
             .map { TreeNode(it, children[plain(it.id)].orEmpty().sortedWith(NEWEST_FIRST)) }
             .sortedWith(compareByDescending<TreeNode> { node -> latest(node) }.thenBy(BY_TITLE) { it.item })
     }

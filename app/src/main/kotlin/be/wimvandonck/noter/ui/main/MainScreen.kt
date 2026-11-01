@@ -224,6 +224,7 @@ fun MainScreen(
                                 onOpenDatabase = onOpenDatabase,
                                 onOpenPage = { viewModel.openItem(it, onOpenNote) },
                                 onTogglePin = viewModel::togglePinItem,
+                                onHide = viewModel::hideOnHome,
                                 onRetry = viewModel::refresh,
                                 onToggleWorkspace = viewModel::toggleCollapsed,
                                 onToggleTree = viewModel::toggleExpanded,
@@ -480,6 +481,7 @@ private fun LazyStaggeredGridScope.recentSection(
     onOpenDatabase: (String) -> Unit,
     onOpenPage: (WorkspaceItem) -> Unit,
     onTogglePin: (WorkspaceItem) -> Unit,
+    onHide: (WorkspaceItem) -> Unit,
     onRetry: () -> Unit,
     onToggleWorkspace: (String) -> Unit,
     onToggleTree: (String) -> Unit,
@@ -487,7 +489,7 @@ private fun LazyStaggeredGridScope.recentSection(
 ) {
     val recent = state.recent
     if (state.severalWorkspaces && recent != null) {
-        workspaceSections(state, onOpenDatabase, onOpenPage, onTogglePin, onToggleWorkspace, onToggleTree, onShowMore)
+        workspaceSections(state, onOpenDatabase, onOpenPage, onTogglePin, onHide, onToggleWorkspace, onToggleTree, onShowMore)
         return
     }
     item(key = "__recent", span = StaggeredGridItemSpan.FullLine) { ListHeader(stringResource(R.string.section_recent)) }
@@ -500,7 +502,7 @@ private fun LazyStaggeredGridScope.recentSection(
             }
         }
         recent == null -> item(key = "__recent_loading", span = StaggeredGridItemSpan.FullLine) { LoadingRows(count = 4) }
-        else -> treeRows(state.tree, "", state, onOpenDatabase, onOpenPage, onTogglePin, onToggleTree, onShowMore)
+        else -> treeRows(state.tree, "", state, onOpenDatabase, onOpenPage, onTogglePin, onHide, onToggleTree, onShowMore)
     }
 }
 
@@ -513,6 +515,7 @@ private fun LazyStaggeredGridScope.workspaceSections(
     onOpenDatabase: (String) -> Unit,
     onOpenPage: (WorkspaceItem) -> Unit,
     onTogglePin: (WorkspaceItem) -> Unit,
+    onHide: (WorkspaceItem) -> Unit,
     onToggleWorkspace: (String) -> Unit,
     onToggleTree: (String) -> Unit,
     onShowMore: () -> Unit,
@@ -533,7 +536,7 @@ private fun LazyStaggeredGridScope.workspaceSections(
                 ListHeader(stringResource(R.string.section_recent), Modifier.animateItem())
             }
         }
-        if (!collapsed) treeRows(group.items, groupKey, state, onOpenDatabase, onOpenPage, onTogglePin, onToggleTree, onShowMore)
+        if (!collapsed) treeRows(group.items, groupKey, state, onOpenDatabase, onOpenPage, onTogglePin, onHide, onToggleTree, onShowMore)
     }
 }
 
@@ -549,6 +552,7 @@ private fun LazyStaggeredGridScope.treeRows(
     onOpenDatabase: (String) -> Unit,
     onOpenPage: (WorkspaceItem) -> Unit,
     onTogglePin: (WorkspaceItem) -> Unit,
+    onHide: (WorkspaceItem) -> Unit,
     onToggleTree: (String) -> Unit,
     onShowMore: () -> Unit,
 ) {
@@ -567,6 +571,7 @@ private fun LazyStaggeredGridScope.treeRows(
                 pinned = isPinned(entry),
                 onClick = { if (entry.isDatabase) onOpenDatabase(entry.id) else onOpenPage(entry) },
                 onTogglePin = { onTogglePin(entry) },
+                onHide = { onHide(entry) },
                 modifier = Modifier.animateItem(),
                 expanded = open,
                 onToggleExpanded = { onToggleTree(entry.id) }.takeIf { node.children.isNotEmpty() },
@@ -579,6 +584,7 @@ private fun LazyStaggeredGridScope.treeRows(
                     pinned = isPinned(child),
                     onClick = { if (child.isDatabase) onOpenDatabase(child.id) else onOpenPage(child) },
                     onTogglePin = { onTogglePin(child) },
+                    onHide = { onHide(child) },
                     modifier = Modifier.animateItem(),
                     nested = true,
                 )

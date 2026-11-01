@@ -2,6 +2,8 @@ package be.wimvandonck.noter.ui.settings
 
 import android.content.Intent
 import androidx.compose.foundation.layout.Column
+import be.wimvandonck.noter.data.model.HiddenItem
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -59,6 +61,13 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                 SettingsBlock { WorkspaceSettings(state, viewModel) }
             }
         }
+        if (state.settings.hiddenOnHome.isNotEmpty()) {
+            item(key = "hidden") {
+                SettingsSection(title = stringResource(R.string.section_hidden_on_home)) {
+                    SettingsBlock { HiddenSettings(state.settings.hiddenOnHome, viewModel::showOnHome) }
+                }
+            }
+        }
         item(key = "appearance") {
             val themes = listOf(ThemeMode.SYSTEM, ThemeMode.LIGHT, ThemeMode.DARK)
             val labels = listOf(stringResource(R.string.theme_system), stringResource(R.string.theme_light), stringResource(R.string.theme_dark))
@@ -85,6 +94,26 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
         }
     }
 
+}
+
+/** The databases and pages hidden from Home's list (#108), each with Show to bring it back. */
+@Composable
+private fun HiddenSettings(hidden: List<HiddenItem>, onShow: (String) -> Unit) {
+    hidden.forEach { item ->
+        Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                item.title.ifBlank { stringResource(R.string.untitled) },
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = { onShow(item.id) }) { Text(stringResource(R.string.action_show_on_home)) }
+        }
+    }
 }
 
 /**

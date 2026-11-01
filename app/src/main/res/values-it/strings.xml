@@ -248,4 +248,10 @@
     <string name="new_database_add_property">Aggiungi proprietà</string>
     <string name="new_database_remove_property">Rimuovi %1$s</string>
     <string name="new_database_created">Database creato. Aprilo in Notion per modificarne le viste.</string>
+    <string name="action_hide_on_home">Nascondi</string>
+    <string name="hide_on_home_title">Nascondere “%1$s”?</string>
+    <string name="hide_on_home_body">Non comparirà più in Database e pagine. La ricerca lo trova ancora, e puoi mostrarlo di nuovo nelle impostazioni.</string>
+    <string name="hide_on_home_confirm">Nascondi</string>
+    <string name="section_hidden_on_home">Nascosti in Database e pagine</string>
+    <string name="action_show_on_home">Mostra</string>
 </resources>

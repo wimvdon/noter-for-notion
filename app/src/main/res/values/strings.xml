@@ -245,4 +245,10 @@
     <string name="new_database_add_property">Add property</string>
     <string name="new_database_remove_property">Remove %1$s</string>
     <string name="new_database_created">Database created. Open it in Notion to edit its views.</string>
+    <string name="action_hide_on_home">Hide</string>
+    <string name="hide_on_home_title">Hide “%1$s”?</string>
+    <string name="hide_on_home_body">It no longer shows under Databases and pages. Search still finds it, and you can show it again in Settings.</string>
+    <string name="hide_on_home_confirm">Hide</string>
+    <string name="section_hidden_on_home">Hidden from Databases and pages</string>
+    <string name="action_show_on_home">Show</string>
 </resources>

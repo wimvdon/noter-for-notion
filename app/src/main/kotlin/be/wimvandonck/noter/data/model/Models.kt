@@ -41,6 +41,18 @@ data class PinnedDatabase(
 )
 
 /**
+ * A database or page hidden from Home's "Databases and pages" (#108), with its name and icon as
+ * last seen, so Settings can list it for showing it again. Search still finds it.
+ */
+@Serializable
+data class HiddenItem(
+    val id: String,
+    val title: String,
+    val icon: PageIcon? = null,
+    val isDatabase: Boolean = false,
+)
+
+/**
  * A notebook from before the redesign: a database (or a page's subpages) set up as a tab, with its
  * own filters and sort. Only read once, to turn it into a [DatabaseSetup] and a pin (see
  * LegacyNotebooks). Notebooks saved before notebooks existed have the database's ID as [id] and no
