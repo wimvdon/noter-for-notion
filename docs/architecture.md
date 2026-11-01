@@ -64,7 +64,9 @@ properties and content: the pages of databases and pages on their own.
   says (`DatabaseSetup` in `AppSettings.setups`, per data source; `logic/DatabaseSetups.kt`): the
   values selected per property (a note shows when it has one of the selected values of every
   filtering property), the properties with a row of chips above the notes, the sort (the custom
-  order (dragged), last edited, created, title or a date property) and what the cards show.
+  order (dragged), last edited, created, title or any property that has a value to order by:
+  dates, formulas, rollups, numbers, options in the database's order, text, people, timestamps;
+  not relations, files or buttons, `DatabaseSetups.sortChoices`; notes without a value last) and what the cards show.
   Every change is kept at once; there is nothing to save. A database opened for the first time
   shows all notes in the custom order, with its status (else select) property as its first row
   of chips (`DatabaseSetups.initial`). The top app bar has the sync button, **Filters** (a dot on

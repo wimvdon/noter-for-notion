@@ -15,6 +15,7 @@ import be.wimvandonck.noter.data.api.NotionException
 import be.wimvandonck.noter.data.model.DatabaseInfo
 import be.wimvandonck.noter.data.model.DatabaseSetup
 import be.wimvandonck.noter.data.model.NoteProperty
+import be.wimvandonck.noter.data.model.NoteSort
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.NotionUser
 import be.wimvandonck.noter.data.model.PageIcon
@@ -89,6 +90,8 @@ data class NotesUiState(
     val filterCount: Int = 0,
     /** Every property the database can filter by, with its values, for the Filters panel. */
     val filterOptions: List<ChipGroup> = emptyList(),
+    /** What the Sort menu offers (`DatabaseSetups.sortChoices`). */
+    val sortChoices: List<NoteSort> = emptyList(),
     /** Notion can't find the data source (deleted, in the trash, or no access). */
     val sourceMissing: Boolean = false,
 ) {
@@ -177,6 +180,7 @@ internal fun setupContent(base: NotesUiState, setup: DatabaseSetup, db: Database
         filterOptions = db?.schema?.properties.orEmpty().filter { it.isChipCandidate }.map { property ->
             ChipGroup(property, ChipFilter.chips(property, notes), selected[property.name].orEmpty())
         },
+        sortChoices = DatabaseSetups.sortChoices(db?.schema),
     )
 }
 

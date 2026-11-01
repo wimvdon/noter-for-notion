@@ -130,4 +130,74 @@ class DatabaseSetupsTest {
         val tagged = withoutTags + note("3", tag = "Home")
         assertEquals(listOf("Status", "Tag"), DatabaseSetups.content(tagged, schema, setup, emptyList(), emptyList()).groups.map { it.property.name })
     }
+
+    private fun noteWith(id: String, vararg properties: NoteProperty) = NoteSummary(id, "db", id, properties = properties.toList())
+
+    @Test
+    fun `the sort menu offers every property that can be sorted, not only dates (#104)`() {
+        val schema = DatabaseSchema(
+            "db", "Household",
+            listOf(
+                PropertySchema("t", "Name", "title"),
+                PropertySchema("d", "Due", "date"),
+                PropertySchema("f", "Deadline", "formula"),
+                PropertySchema("r", "Next", "rollup"),
+                PropertySchema("n", "Cost", "number"),
+                PropertySchema("s", "Status", "status"),
+                PropertySchema("c", "Done", "checkbox"),
+                PropertySchema("e", "Edited", "last_edited_time"),
+                PropertySchema("l", "Linked", "relation"),
+                PropertySchema("a", "Files", "files"),
+                PropertySchema("b", "Do it", "button"),
+            ),
+        )
+        val choices = DatabaseSetups.sortChoices(schema)
+        assertEquals(
+            listOf(SortKind.CUSTOM, SortKind.LAST_EDITED, SortKind.CREATED, SortKind.TITLE),
+            choices.take(4).map { it.kind },
+        )
+        assertEquals(listOf("Due", "Deadline", "Next", "Cost", "Status", "Done", "Edited"), choices.drop(4).map { it.property })
+        assertEquals(setOf(SortKind.PROPERTY), choices.drop(4).map { it.kind }.toSet())
+        assertEquals(4, DatabaseSetups.sortChoices(null).size)
+    }
+
+    @Test
+    fun `a date sort from before reads as a property sort`() {
+        val sort = DatabaseSetup(sort = NoteSort(SortKind.DATE, "Due", descending = true)).currentSort
+        assertEquals(NoteSort(SortKind.PROPERTY, "Due", descending = true), sort)
+    }
+
+    @Test
+    fun `sorts by a formula date, notes without a value last in both directions`() {
+        fun deadline(id: String, value: String) = noteWith(id, NoteProperty("Deadline", "formula", PropertyValue.ReadOnly(value)))
+        val notes = listOf(deadline("1", "2026-11-03"), deadline("2", ""), deadline("3", "2026-11-01T09:00:00.000+01:00"), deadline("4", "2026-12-24"))
+        val up = NoteSort(SortKind.PROPERTY, "Deadline", descending = false)
+        assertEquals(listOf("3", "1", "4", "2"), DatabaseSetups.sorted(notes, up, emptyList()).map { it.id })
+        assertEquals(listOf("4", "1", "3", "2"), DatabaseSetups.sorted(notes, up.copy(descending = true), emptyList()).map { it.id })
+        // A sort kept from before still works.
+        assertEquals(listOf("3", "1", "4", "2"), DatabaseSetups.sorted(notes, up.copy(kind = SortKind.DATE), emptyList()).map { it.id })
+    }
+
+    @Test
+    fun `sorts numbers by value, also from a formula`() {
+        val notes = listOf(
+            noteWith("1", NoteProperty("Cost", "number", PropertyValue.Number(10.0))),
+            noteWith("2", NoteProperty("Cost", "number", PropertyValue.Number(9.5))),
+            noteWith("3", NoteProperty("Cost", "number", PropertyValue.Number(null))),
+            noteWith("4", NoteProperty("Cost", "number", PropertyValue.Number(-1.0))),
+        )
+        assertEquals(listOf("4", "2", "1", "3"), DatabaseSetups.sorted(notes, NoteSort(SortKind.PROPERTY, "Cost", descending = false), emptyList()).map { it.id })
+        val formulas = listOf("10", "9", "100").mapIndexed { i, v -> noteWith("$i", NoteProperty("Days", "formula", PropertyValue.ReadOnly(v))) }
+        assertEquals(listOf("1", "0", "2"), DatabaseSetups.sorted(formulas, NoteSort(SortKind.PROPERTY, "Days", descending = false), emptyList()).map { it.id })
+    }
+
+    @Test
+    fun `sorts options in the database's order, checkboxes unchecked first, text by name`() {
+        val notes = listOf(note("1", "Done"), note("2", "Todo"), note("3", null))
+        assertEquals(listOf("2", "1", "3"), DatabaseSetups.sorted(notes, NoteSort(SortKind.PROPERTY, "Status", descending = false), emptyList(), schema).map { it.id })
+        val boxes = listOf(true, false).mapIndexed { i, v -> noteWith("$i", NoteProperty("Done", "checkbox", PropertyValue.Checkbox(v))) }
+        assertEquals(listOf("1", "0"), DatabaseSetups.sorted(boxes, NoteSort(SortKind.PROPERTY, "Done", descending = false), emptyList()).map { it.id })
+        val texts = listOf("banana", "Apple", "").mapIndexed { i, v -> noteWith("$i", NoteProperty("Note", "rich_text", PropertyValue.Text(v))) }
+        assertEquals(listOf("1", "0", "2"), DatabaseSetups.sorted(texts, NoteSort(SortKind.PROPERTY, "Note", descending = false), emptyList()).map { it.id })
+    }
 }

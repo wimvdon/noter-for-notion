@@ -85,15 +85,7 @@ internal fun SetupBarActions(state: NotesUiState, actions: SetupActions, onOpenF
             Icon(Icons.Rounded.SwapVert, contentDescription = stringResource(R.string.sort_by, sortLabel(sort)))
         }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            val choices = buildList {
-                add(NoteSort(SortKind.CUSTOM))
-                add(NoteSort(SortKind.LAST_EDITED))
-                add(NoteSort(SortKind.CREATED))
-                add(NoteSort(SortKind.TITLE))
-                state.filterOptions.map { it.property }.filter { it.type == "date" }.forEach {
-                    add(NoteSort(SortKind.DATE, it.name, descending = false))
-                }
-            }
+            val choices = state.sortChoices.ifEmpty { listOf(NoteSort(SortKind.CUSTOM)) }
             choices.forEach { choice ->
                 val current = choice.kind == sort.kind && choice.property == sort.property
                 val directional = choice.kind != SortKind.CUSTOM
@@ -133,7 +125,7 @@ private fun sortLabel(sort: NoteSort): String = when (sort.kind) {
     SortKind.LAST_EDITED -> stringResource(R.string.sort_last_edited)
     SortKind.CREATED -> stringResource(R.string.sort_created)
     SortKind.TITLE -> stringResource(R.string.sort_title)
-    SortKind.DATE -> sort.property.orEmpty()
+    SortKind.DATE, SortKind.PROPERTY -> sort.property.orEmpty()
 }
 
 /**
