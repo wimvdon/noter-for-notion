@@ -4,6 +4,9 @@ import android.content.Intent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -100,7 +103,12 @@ private fun WorkspaceSettings(state: SettingsUiState, viewModel: SettingsViewMod
         key = { it.id },
         onMove = viewModel::moveWorkspace,
     ) { workspace ->
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // Room above and below each row (#106), as a ListItem has, so rows with a profile
+        // picture don't touch; the lifted row while dragging keeps the same padding.
+        Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             // The top workspace's person is the one whose picture Home shows.
             if (workspace == state.workspaces.first() && state.avatarUrl != null) {
                 AsyncImage(
