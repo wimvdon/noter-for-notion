@@ -24,9 +24,19 @@ data class DatabaseSetup(
     /** What the cards show (null: what the database's cards showed before, see PropertyLayouts.cards). */
     val cards: CardLayout? = null,
 ) {
-    /** The order the notes are in now ([SortKind.NOTION] from before reads as the custom order). */
+    /**
+     * The order the notes are in now ([SortKind.NOTION] from before reads as the custom order,
+     * [SortKind.DATE] from before as [SortKind.PROPERTY]).
+     */
     val currentSort: NoteSort
-        get() = sort?.takeIf { it.kind != SortKind.NOTION } ?: NoteSort(SortKind.CUSTOM)
+        get() {
+            val sort = sort ?: return NoteSort(SortKind.CUSTOM)
+            return when (sort.kind) {
+                SortKind.NOTION -> NoteSort(SortKind.CUSTOM)
+                SortKind.DATE -> sort.copy(kind = SortKind.PROPERTY)
+                else -> sort
+            }
+        }
 }
 
 /**
@@ -101,8 +111,14 @@ enum class SortKind {
     CREATED,
     TITLE,
 
-    /** By a date property ([NoteSort.property]); notes without a date last. */
+    /** From before: by a date property (read as [PROPERTY] now). */
     DATE,
+
+    /**
+     * By a property ([NoteSort.property]) of any type that can be sorted
+     * ([PropertySchema.isSortable]); notes without a value last.
+     */
+    PROPERTY,
 }
 
 @Serializable
@@ -229,7 +245,17 @@ data class PropertySchema(
 ) {
     val isChipCandidate: Boolean get() = type in CHIP_TYPES
 
+    /** The notes can be sorted by it (the title has its own sort). */
+    val isSortable: Boolean get() = type in SORTABLE_TYPES
+
     companion object {
+        /** Everything with a value to order by: not the title, relations, files or buttons. */
+        val SORTABLE_TYPES = setOf(
+            "rich_text", "number", "select", "status", "multi_select", "date", "people", "checkbox",
+            "url", "email", "phone_number", "formula", "rollup", "created_time", "last_edited_time",
+            "created_by", "last_edited_by", "unique_id", "verification",
+        )
+
         val CHIP_TYPES = setOf(
             "select", "status", "multi_select", "people", "checkbox",
             "relation", "created_by", "last_edited_by", "date", "formula",

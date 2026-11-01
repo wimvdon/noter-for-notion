@@ -58,7 +58,7 @@ node --test worker/test/noter-sign-in.test.mjs
 | `data/api/NotionErrorsTest` | Which errors the screens say in the user's language |
 | `logic/NewOptionsTest` | When the picker of a select or multi-select offers to add what was typed (not for an existing name in any case, nor with a comma) |
 | `logic/SchemaOptionsTest` | An option a note has (added on the phone or in Notion) joins its property's options once, so every picker shows it |
-| `logic/DatabaseSetupsTest` | A database's notes as its setup shows them: filters per property, sorts, the first chip row of a database opened for the first time, the setup found with or without dashes, the order of the chip rows, a page's order from before read as the custom order |
+| `logic/DatabaseSetupsTest` | A database's notes as its setup shows them: filters per property, sorts (also by any property that can be sorted: formulas, rollups, numbers, options in the database's order, empty values last; what the Sort menu offers), the first chip row of a database opened for the first time, the setup found with or without dashes, the order of the chip rows, a page's order from before read as the custom order |
 | `logic/LegacyNotebooksTest` | Notebooks from before the redesign: each database keeps its notebook's setup and is pinned in the order of the tabs (also a notebook of several data sources), a page's notebook becomes a pinned page, the first notebook of a database wins, a setup made since then stays, old filter properties |
 | `logic/ColumnsTest` | Columns: how far their blocks are indented, and that blocks stay in their column |
 | `ui/main/PresetForTest` | The value a new note gets from the selected filter |
