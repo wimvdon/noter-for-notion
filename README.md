@@ -216,7 +216,7 @@ JSON
 Requirements: JDK 21 and the Android SDK (or Android Studio). Common commands:
 
 ```sh
-./gradlew testDebugUnitTest lintDebug assembleDebug   # what every change must pass
+./gradlew testDebugUnitTest lintDebug                 # what every change must pass (CI builds the APKs)
 ./gradlew assembleRelease                              # minified release build (unsigned without keystore.properties)
 python3 -m unittest discover -s scripts/tests          # tests for the release scripts
 ./gradlew installDebug                                 # install on a connected phone/emulator

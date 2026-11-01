@@ -10,8 +10,9 @@ are the safety net. Follow them every time.
    or merged branch for a new change.
 2. **Before finishing, run and fix everything:**
    ```
-   ./gradlew testDebugUnitTest lintDebug assembleDebug
+   ./gradlew testDebugUnitTest lintDebug
    ```
+   CI builds the debug and release APKs on every push, so don't build them here unless a step below asks for it.
    If you touched `scripts/` or the workflows, also run `python3 -m unittest discover -s scripts/tests`.
    If you touched `worker/`, also run `node --test worker/test/noter-sign-in.test.mjs`.
    Then push and make sure CI on the pull request is green.
