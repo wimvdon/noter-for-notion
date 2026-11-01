@@ -245,4 +245,10 @@
     <string name="new_database_add_property">Eigenschaft hinzufügen</string>
     <string name="new_database_remove_property">%1$s entfernen</string>
     <string name="new_database_created">Datenbank erstellt. Öffne sie in Notion, um ihre Ansichten zu bearbeiten.</string>
+    <string name="action_hide_on_home">Ausblenden</string>
+    <string name="hide_on_home_title">„%1$s“ ausblenden?</string>
+    <string name="hide_on_home_body">Es erscheint dann nicht mehr unter Datenbanken und Seiten. Die Suche findet es weiterhin, und in den Einstellungen kannst du es wieder einblenden.</string>
+    <string name="hide_on_home_confirm">Ausblenden</string>
+    <string name="section_hidden_on_home">Ausgeblendet unter Datenbanken und Seiten</string>
+    <string name="action_show_on_home">Einblenden</string>
 </resources>

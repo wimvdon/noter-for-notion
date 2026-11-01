@@ -72,4 +72,27 @@ class PageTreeTest {
     fun `nothing gives an empty tree`() {
         assertTrue(PageTree.build(emptyList()).isEmpty())
     }
+
+    @Test
+    fun `hidden entries are left out, a hidden top entry with what is inside it`() {
+        val items = listOf(
+            page("home", "Home"),
+            page("recipes", "Recipes", parent = "home"),
+            database("books", "Books", parent = "home"),
+            page("work", "Work"),
+            page("meetings", "Meetings", parent = "work"),
+            page("loose", "Loose"),
+        )
+        val tree = PageTree.build(items, hidden = setOf("recipes", "work"))
+        assertEquals(listOf("home", "loose"), tree.map { it.item.id }.sorted())
+        assertEquals(listOf("books"), tree.first { it.item.id == "home" }.children.map { it.id })
+        // What was inside the hidden page doesn't move up to the top level.
+        assertTrue(tree.none { it.item.id == "meetings" })
+    }
+
+    @Test
+    fun `nothing hidden builds the same tree`() {
+        val items = listOf(page("a", "A"), page("b", "B", parent = "a"))
+        assertEquals(PageTree.build(items), PageTree.build(items, hidden = emptySet()))
+    }
 }

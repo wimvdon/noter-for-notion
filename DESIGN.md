@@ -255,7 +255,9 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   "Edited …", a small primary pin at the end when pinned) in a tree of two levels: a row with
   pages inside ends in a chevron icon button (pointing right when closed, down when open) and its
   pages follow it indented by 24dp; "Show more" (a text button) below the first 30. A long press on a row opens a menu with
-  Pin or Unpin. One FAB (+): a sheet with "New page" (at the top of the workspace), "New database at
+  Pin or Unpin and Hide; Hide asks first (a dialog: "Hide “name”?", Cancel and Hide) and the row
+  leaves the list (Search still finds it). Settings then has a section listing what is hidden, each
+  with a Show text button. One FAB (+): a sheet with "New page" (at the top of the workspace), "New database at
   the top" and "New note in" with the databases. New database is a dialog: a name field, then a
   name field per property (its kind as the label, × to remove) and Add property with a menu of
   kinds; a toast after it opens. With tokens for several workspaces, "Databases and pages" becomes one

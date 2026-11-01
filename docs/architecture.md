@@ -32,7 +32,11 @@ properties and content: the pages of databases and pages on their own.
     2000 results per workspace with the notes in databases left out; then the newest 50 top-level
     pages are asked for what is right inside them (`logic/HomeLevels.kt`), and up to 50 subpages
     and databases the search didn't reach are added, so the second level is complete; paced for
-    Notion's rate limit). The list is kept on this phone (`recent.json`), so Home shows it at once and offline; it
+    Notion's rate limit). A long press on a row there offers Hide (#108): after a confirmation
+    the database or page (and, at the top level, what is inside it) no longer shows in this list
+    (`AppSettings.hiddenOnHome`, `logic/HiddenOnHome.kt`, `PageTree.build(items, hidden)`); Search,
+    pins and + still show it, and Settings › "Hidden from Databases and pages" shows it again.
+    The list is kept on this phone (`recent.json`), so Home shows it at once and offline; it
     is asked again when the app starts (with a token) and on pull-to-refresh, whose indicator stays until the list and the pinned notes' databases are back (`MainViewModel.refresh`, #93). A pin at the end of
     a row shows it is pinned.
   - **+** (`logic/NoteTargets.kt`) offers a page at the top of the workspace (not with a
@@ -166,7 +170,8 @@ properties and content: the pages of databases and pages on their own.
   set (4 229 icons) from `assets/material_symbols.txt` (name, categories and SVG path data per icon,
   from RSS Reader), drawn as vectors, for the closest match to a Notion icon (`logic/PageIcons.kt`).
 - **Settings** (`ui/settings/`): Workspaces (every workspace with how it was added, a Connect to
-  Notion button and Advanced) and Appearance; built from the shared `SettingsKit.kt`.
+  Notion button and Advanced), the databases and pages hidden from Home's list with Show (only
+  when there are any, #108) and Appearance; built from the shared `SettingsKit.kt`.
   Advanced (`AddWorkspaceDialog.kt`) first asks which token, each with what it is best for
   (`logic/WorkspaceWays.kt`): a personal access token or a connection token; it then shows where
   Notion makes one and a field to paste it. A build without Connect to Notion shows an Add
@@ -318,13 +323,13 @@ ViewModels (ui/*/…ViewModel) ── StateFlow<UiState> ── Composables
 - **Previews** (`logic/NotePreviews.kt`): the cards show the start of each note's content from
   the on-phone copy. Copies that are missing or older than the note's last edit in Notion are
   downloaded one note at a time (at most 24 per round).
-- **Order and pins** are only on this phone (`AppSettings.order`, `AppSettings.pinned`,
-  `AppSettings.pinnedDatabases`); Notion is not changed.
+- **Order, pins and hidden entries** are only on this phone (`AppSettings.order`, `AppSettings.pinned`,
+  `AppSettings.pinnedDatabases`, `AppSettings.hiddenOnHome`); Notion is not changed.
 
 ### Where data lives
 | What | Where | Backed up |
 |---|---|---|
-| Each database's setup (filters, rows of chips, sort, cards), pinned databases (key, name, icon), pinned notes and pages, order, property layouts, theme | DataStore `backed_up_settings` | Yes |
+| Each database's setup (filters, rows of chips, sort, cards), pinned databases (key, name, icon), pinned notes and pages, databases and pages hidden from Home (ID, name, icon), order, property layouts, theme | DataStore `backed_up_settings` | Yes |
 | Tokens, their kind, refresh tokens (Connect to Notion), a sign-in's one-time key | `EncryptedSharedPreferences` `notion_key_encrypted_prefs` | No |
 | Copies of notes, schemas, users, Home's list of databases and pages; unsent changes | JSON files in `noBackupFilesDir/notion_cache` | No |
 | Images | Coil's cache in `cacheDir/images` | No |

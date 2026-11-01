@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import be.wimvandonck.noter.data.model.DatabaseConfig
 import be.wimvandonck.noter.data.model.DatabaseSetup
+import be.wimvandonck.noter.data.model.HiddenItem
 import be.wimvandonck.noter.data.model.PinnedDatabase
 import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.data.model.ThemeMode
@@ -28,6 +29,8 @@ data class AppSettings(
     val setups: Map<String, DatabaseSetup> = emptyMap(),
     /** Databases pinned on Home, newest first. */
     val pinnedDatabases: List<PinnedDatabase> = emptyList(),
+    /** Databases and pages hidden from Home's list (#108), newest first; Search still finds them. */
+    val hiddenOnHome: List<HiddenItem> = emptyList(),
     /** Pinned note and page IDs: shown on Home and on top of their database. */
     val pinned: List<String> = emptyList(),
     /** Custom note order per database ID, and for Home under [HOME]. */

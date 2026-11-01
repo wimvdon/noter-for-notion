@@ -26,6 +26,7 @@ import be.wimvandonck.noter.logic.SharedContent
 import be.wimvandonck.noter.logic.ChildRef
 import be.wimvandonck.noter.logic.DatabaseEdit
 import be.wimvandonck.noter.logic.SchemaChange
+import be.wimvandonck.noter.logic.HiddenOnHome
 import be.wimvandonck.noter.logic.HomeLevels
 import be.wimvandonck.noter.logic.SharedNotes
 import be.wimvandonck.noter.logic.SubpageTitles
@@ -1414,6 +1415,16 @@ class NotesRepository(
             val pinned = s.pinnedDatabases.any { plain(it.id) == plain(pin.id) }
             s.copy(pinnedDatabases = if (pinned) s.pinnedDatabases.filterNot { plain(it.id) == plain(pin.id) } else listOf(pin) + s.pinnedDatabases)
         }
+    }
+
+    /** Hides [item] from Home's databases and pages (#108); Search still finds it. */
+    suspend fun hideOnHome(item: WorkspaceItem) {
+        settings.update { s -> s.copy(hiddenOnHome = HiddenOnHome.hide(s.hiddenOnHome, item)) }
+    }
+
+    /** Shows the database or page [id] on Home again (Settings). */
+    suspend fun showOnHome(id: String) {
+        settings.update { s -> s.copy(hiddenOnHome = HiddenOnHome.show(s.hiddenOnHome, id)) }
     }
 
     /** Keeps the order the user dragged Home's pinned databases to ([ids], first on top). */

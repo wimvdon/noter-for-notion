@@ -16,6 +16,8 @@ import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.TableChart
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -23,6 +25,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -54,8 +57,9 @@ import be.wimvandonck.noter.ui.theme.SkeletonLine
 /**
  * A database or page in a list (Home, Search): its icon, name, the workspace it is in ([workspace],
  * with several) and when it was last edited. Tap opens it; a long press opens its menu (pin or
- * unpin). A pin at the end shows it is pinned. In Home's tree, an entry with databases and pages
- * inside it ends in a chevron that shows or hides them ([onToggleExpanded]); those are [nested].
+ * unpin, and on Home Hide ([onHide], #108), which asks first). A pin at the end shows it is
+ * pinned. In Home's tree, an entry with databases and pages inside it ends in a chevron that
+ * shows or hides them ([onToggleExpanded]); those are [nested].
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -72,11 +76,15 @@ internal fun WorkspaceRow(
     expanded: Boolean = false,
     onToggleExpanded: (() -> Unit)? = null,
     nested: Boolean = false,
+    onHide: (() -> Unit)? = null,
 ) {
     var menu by remember { mutableStateOf(false) }
+    var confirmHide by remember { mutableStateOf(false) }
+    val hasMenu = onTogglePin != null || onHide != null
     val haptics = LocalHapticFeedback.current
     val locale = LocalConfiguration.current.locales[0]
     val pinLabel = stringResource(if (pinned) R.string.action_unpin else R.string.action_pin)
+    val hideLabel = stringResource(R.string.action_hide_on_home)
     Box(modifier) {
         ListItem(
             headlineContent = {
@@ -135,30 +143,71 @@ internal fun WorkspaceRow(
                 .fillMaxWidth()
                 .combinedClickable(
                     onClick = onClick,
-                    onLongClick = onTogglePin?.let {
+                    onLongClick = if (hasMenu) {
                         {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             menu = true
                         }
+                    } else {
+                        null
                     },
                 )
                 .semantics {
-                    if (onTogglePin != null) customActions = listOf(CustomAccessibilityAction(pinLabel) { onTogglePin(); true })
+                    if (hasMenu) {
+                        customActions = listOfNotNull(
+                            onTogglePin?.let { CustomAccessibilityAction(pinLabel) { it(); true } },
+                            onHide?.let { CustomAccessibilityAction(hideLabel) { confirmHide = true; true } },
+                        )
+                    }
                 },
         )
-        if (onTogglePin != null) {
+        if (hasMenu) {
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                DropdownMenuItem(
-                    text = { Text(pinLabel) },
-                    leadingIcon = { Icon(Icons.Rounded.PushPin, contentDescription = null) },
-                    onClick = {
-                        menu = false
-                        onTogglePin()
-                    },
-                )
+                if (onTogglePin != null) {
+                    DropdownMenuItem(
+                        text = { Text(pinLabel) },
+                        leadingIcon = { Icon(Icons.Rounded.PushPin, contentDescription = null) },
+                        onClick = {
+                            menu = false
+                            onTogglePin()
+                        },
+                    )
+                }
+                if (onHide != null) {
+                    DropdownMenuItem(
+                        text = { Text(hideLabel) },
+                        leadingIcon = { Icon(Icons.Rounded.VisibilityOff, contentDescription = null) },
+                        onClick = {
+                            menu = false
+                            confirmHide = true
+                        },
+                    )
+                }
             }
         }
+        if (confirmHide && onHide != null) {
+            HideDialog(
+                title = title.ifBlank { stringResource(R.string.untitled) },
+                onConfirm = {
+                    confirmHide = false
+                    onHide()
+                },
+                onDismiss = { confirmHide = false },
+            )
+        }
     }
+}
+
+/** Asks before a database or page is hidden from Home (#108): Search still finds it, Settings shows it again. */
+@Composable
+private fun HideDialog(title: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.hide_on_home_title, title)) },
+        text = { Text(stringResource(R.string.hide_on_home_body)) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.hide_on_home_confirm)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
 }
 
 /** A row of [WorkspaceRow] for [item] from Notion's search. */
@@ -173,6 +222,7 @@ internal fun WorkspaceRow(
     expanded: Boolean = false,
     onToggleExpanded: (() -> Unit)? = null,
     nested: Boolean = false,
+    onHide: (() -> Unit)? = null,
 ) = WorkspaceRow(
     item.title,
     item.icon,
@@ -186,6 +236,7 @@ internal fun WorkspaceRow(
     expanded = expanded,
     onToggleExpanded = onToggleExpanded,
     nested = nested,
+    onHide = onHide,
 )
 
 /**

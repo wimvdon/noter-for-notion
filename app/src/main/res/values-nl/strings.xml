@@ -245,4 +245,10 @@
     <string name="new_database_add_property">Eigenschap toevoegen</string>
     <string name="new_database_remove_property">%1$s verwijderen</string>
     <string name="new_database_created">Database gemaakt. Open hem in Notion om zijn weergaven te bewerken.</string>
+    <string name="action_hide_on_home">Verbergen</string>
+    <string name="hide_on_home_title">“%1$s” verbergen?</string>
+    <string name="hide_on_home_body">Het staat dan niet meer bij Databases en pagina’s. Zoeken vindt het nog, en in Instellingen kun je het weer tonen.</string>
+    <string name="hide_on_home_confirm">Verbergen</string>
+    <string name="section_hidden_on_home">Verborgen bij Databases en pagina’s</string>
+    <string name="action_show_on_home">Tonen</string>
 </resources>
