@@ -82,6 +82,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.time.Instant
+import kotlin.coroutines.cancellation.CancellationException
 import java.util.UUID
 import be.wimvandonck.noter.logic.NoteLists
 
@@ -331,6 +332,11 @@ class NotesRepository(
             }
             _offline.value = false
             _missingSources.update { it - plain(databaseId) }
+        } catch (e: CancellationException) {
+            // Stopped halfway (the screen that asked closed): without this the database would count
+            // as refreshing until the app restarts, and never refresh again.
+            _databases.update { map -> map[databaseId]?.let { map + (databaseId to it.copy(refreshing = false)) } ?: map }
+            throw e
         } catch (e: NotionException) {
             if (e.isOffline) _offline.value = true
             if (e.status == 401) _events.tryEmit(RepoEvent.KeyRejected)

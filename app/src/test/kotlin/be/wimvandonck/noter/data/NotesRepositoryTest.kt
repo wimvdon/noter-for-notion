@@ -32,6 +32,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.util.Collections
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class NotesRepositoryTest {
     @get:Rule
@@ -553,5 +555,33 @@ class NotesRepositoryTest {
         assertEquals("db-1", repo.databaseOf("ds-1"))
         // Notion can't tell: no link to a database, the screen falls back to the data source.
         assertEquals(null, repo.databaseOf("ds-2"))
+    }
+
+    @Test
+    fun `a refresh stopped halfway doesn't block the next one`() = runBlocking {
+        val started = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        notion.respond = { sent ->
+            when {
+                sent.path.startsWith("/data_sources/db/query") -> {
+                    started.countDown()
+                    release.await(5, TimeUnit.SECONDS)
+                    200 to FakeNotion.list(FakeNotion.page("page-1", "db", "Hello"))
+                }
+                sent.path.startsWith("/data_sources/db") -> 200 to FakeNotion.database("db")
+                else -> 200 to "{}"
+            }
+        }
+        val repo = repository()
+        // The screen that asked for the refresh closes while Notion is still answering.
+        val job = scope.launch { repo.refresh("db", userAsked = true) }
+        assertTrue(started.await(5, TimeUnit.SECONDS))
+        job.cancel()
+        job.join()
+        release.countDown()
+        assertFalse(repo.databases.value["db"]?.refreshing == true)
+
+        repo.refresh("db", userAsked = true)
+        assertEquals(listOf("page-1"), repo.databases.value["db"]?.notes?.map { it.id })
     }
 }

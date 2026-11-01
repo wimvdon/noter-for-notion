@@ -186,12 +186,13 @@ class NotionClient(
             var renewed = false
             var lastError = NotionException("Notion API error")
             repeat(MAX_ATTEMPTS) { attempt ->
-                val response = try {
-                    httpClient.newCall(request).await()
+                // Reading the answer can fail too (the connection drops halfway): that is offline as
+                // well, never an exception the callers don't expect.
+                val (response, text) = try {
+                    httpClient.newCall(request).await().let { it to it.use { r -> r.body.string() } }
                 } catch (e: IOException) {
                     throw NotionException(e.message ?: "Network error")
                 }
-                val text = response.use { it.body.string() }
                 val data = runCatching { Json.parseToJsonElement(text).jsonObject }.getOrDefault(JsonObject(emptyMap()))
                 if (response.isSuccessful) return@withContext data
 
