@@ -2,6 +2,15 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-11-01: Claude Code sessions don't build the APK before pushing
+
+Sessions ran `./gradlew testDebugUnitTest lintDebug assembleDebug` before every push, and CI then
+runs the same and more. The APK built in the session was never used: the owner installs the one
+from CI. Sessions now run only the unit tests and lint, which catch nearly every problem and
+compile the app's code and resources. CI still builds the debug and release APKs, so a packaging
+problem still turns the pull request red. Rejected: no local checks at all (every test or lint
+failure would then cost a CI round trip).
+
 ## 2026-10-31: The sign-in helper moves to its own address
 The owner gave the sign-in helper a custom domain on Cloudflare, `noter-signin.wim.to`, replacing `noter-sign-in.wim-d57.workers.dev`. It is the same helper on the same Cloudflare account, so it's not a new network destination; `PRIVACY.md` names the new address. The connection's redirect URI in Notion must be `https://noter-signin.wim.to/callback`, or Connect to Notion fails.
 

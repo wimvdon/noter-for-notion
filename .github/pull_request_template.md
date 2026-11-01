@@ -12,7 +12,7 @@
 <!-- What could go wrong or behave differently? Anything not covered by automatic tests? "None" is fine if true. -->
 
 ## Checklist
-- [ ] `./gradlew testDebugUnitTest lintDebug assembleDebug` passes locally, and CI is green
+- [ ] `./gradlew testDebugUnitTest lintDebug` passes locally, and CI is green
 - [ ] Unit tests added or updated for every logic change
 - [ ] No tests, lint checks, CI steps or workflows removed or weakened
 - [ ] All new text is in `strings.xml`, with translations for every language
