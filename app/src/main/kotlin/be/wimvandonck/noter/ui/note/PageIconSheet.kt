@@ -1,5 +1,6 @@
 package be.wimvandonck.noter.ui.note
 
+import be.wimvandonck.noter.ui.common.NoterSheet
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,11 +17,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,7 +44,7 @@ import be.wimvandonck.noter.ui.theme.AppShapes
 @Composable
 fun PageIconSheet(hasIcon: Boolean, onPick: (String) -> Unit, onRemove: () -> Unit, onDismiss: () -> Unit) {
     var typed by remember { mutableStateOf("") }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    NoterSheet(onDismiss = onDismiss) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
             Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.page_icon), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))

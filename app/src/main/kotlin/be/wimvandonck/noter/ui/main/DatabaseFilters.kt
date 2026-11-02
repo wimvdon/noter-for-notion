@@ -1,5 +1,6 @@
 package be.wimvandonck.noter.ui.main
 
+import be.wimvandonck.noter.ui.common.NoterSheet
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,10 +28,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -145,7 +144,7 @@ internal fun FiltersSheet(
     val setup = state.setup ?: return
     val candidates = state.filterOptions.map { it.property.name }
     val (rows, others) = DatabaseSetups.chipRows(candidates, setup.quickFilters, setup.filterOrder)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    NoterSheet(onDismiss = onDismiss) {
         Column(
             Modifier
                 .navigationBarsPadding()
@@ -229,7 +228,7 @@ internal fun CardsSheet(
     onCards: ((CardLayout) -> CardLayout) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    NoterSheet(onDismiss = onDismiss) {
         Column(
             Modifier
                 .navigationBarsPadding()

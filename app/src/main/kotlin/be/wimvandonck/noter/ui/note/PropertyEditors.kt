@@ -34,7 +34,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -72,6 +71,7 @@ import be.wimvandonck.noter.data.notion.PropertyCodec
 import be.wimvandonck.noter.logic.ChoiceOrder
 import be.wimvandonck.noter.logic.NewOptions
 import be.wimvandonck.noter.logic.NotionDates
+import be.wimvandonck.noter.ui.common.NoterSheet
 import be.wimvandonck.noter.ui.common.OptionChip
 import java.time.LocalTime
 import java.util.Locale
@@ -403,7 +403,7 @@ private fun <T> ChoiceSheet(
     SideEffect { order = arranged }
     val byKey = items.associateBy(key)
     val ordered = arranged.mapNotNull { byKey[it] }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    NoterSheet(onDismiss = onDismiss) {
         Column(Modifier.navigationBarsPadding()) {
             Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
             if (items.size > 8 || onAdd != null) {

@@ -56,7 +56,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -98,6 +97,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import be.wimvandonck.noter.R
+import be.wimvandonck.noter.ui.common.NoterSheet
 import be.wimvandonck.noter.ui.common.NewDatabaseDialog
 import be.wimvandonck.noter.ui.common.showDatabaseCreatedToast
 import be.wimvandonck.noter.data.RepoEvent
@@ -255,7 +255,7 @@ fun MainScreen(
     if (choosingTarget) {
         // The workspaces folded away in the sheet (#64), while it is open.
         var foldedTargets by remember { mutableStateOf(emptySet<String>()) }
-        ModalBottomSheet(onDismissRequest = { choosingTarget = false }) {
+        NoterSheet(onDismiss = { choosingTarget = false }) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 // With several workspaces, each has its own part: a page at its top and its databases.
                 // A tap on a workspace's name folds its part away, or shows it again.
@@ -351,7 +351,7 @@ private fun ShareSheet(
     onSave: (databaseId: String?, workspace: String?) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    NoterSheet(onDismiss = onDismiss) {
         Column(Modifier.verticalScroll(rememberScrollState())) {
             SheetHeader(stringResource(R.string.share_save_to))
             Text(
