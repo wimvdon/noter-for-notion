@@ -24,6 +24,7 @@ node --test worker/test/noter-sign-in.test.mjs
 ### What the unit tests cover
 | Test | Covers |
 |---|---|
+| `ui/common/SheetGuardsTest` | A scroll or fling in a sheet's list never pulls the sheet down; a swipe from the top does; with the keyboard open or the sheet still moving a close only closes the keyboard |
 | `logic/ContentMergeTest` | Typing while a newer version comes from Notion: the edits go on top of it, keeping blocks added or changed in Notion meanwhile |
 | `data/NotesRepositoryTest` (lost answers) | A page Notion made without answering isn't made again; one it didn't make is made on the next try |
 | `data/NotesRepositoryTest` (stopped refresh), `data/api/NotionClientTest` | A refresh stopped halfway (the screen closed) doesn't block the next one; an answer cut off halfway counts as offline instead of crashing |

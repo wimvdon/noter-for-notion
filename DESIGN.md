@@ -282,6 +282,9 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
 - Search, a child page: a back arrow and the query field in the app bar, a row of filter chips
   (Pages, Databases and, with several workspaces, one per workspace; a tap again shows
   everything), then one list of rows, best matches first, without headers.
+- Bottom sheets all open through `NoterSheet` (`ui/common/`): fully open at once, never under the status
+  bar, closed by a swipe down that starts at the top of its list (or on the handle), a tap beside it or Back,
+  never by a scroll in its list; with the keyboard open those close the keyboard first.
 - Cards panel (the Cards button in a database's top app bar): a bottom sheet with switches for the header image and
   the start of the content, and filter chips for up to three properties.
 - The note editor follows Notion's look: headings in SemiBold, quotes with a bar, callouts and

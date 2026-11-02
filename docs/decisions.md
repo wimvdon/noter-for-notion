@@ -2,6 +2,20 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-11-02: Every bottom sheet is one `NoterSheet`, which only closes on purpose
+
+The sheets jumped while opening and when they grew up to the status bar, and a scroll in a sheet's
+list could close it: scrolling back up to the top and flinging past it pulled the sheet down and
+away. Every sheet now opens through `ui/common/NoterSheet.kt`, the way the owner's Content app does
+it: always fully open (no half-open stop that jumps up on the first scroll), stopping just below the
+status bar (no jump around the status bar's padding), and with two plain-Kotlin guards
+(`SheetGuards.kt`, unit tested). `SheetScrollGuard` keeps what is left of a scroll or a fling in
+the sheet's list from moving the sheet, so only a swipe that starts with the list already at its top
+(or on the handle) closes it. `SheetDismissGuard` (as in Content) closes the keyboard first when a
+swipe, a tap beside the sheet or Back comes while it is open or the sheet is still moving. Rejected:
+closing only with a button (Material sheets close with a swipe, a tap beside them and Back), and
+making the swipe threshold larger (it would still close on a fling from the list).
+
 ## 2026-11-01: Claude Code sessions don't build the APK before pushing
 
 Sessions ran `./gradlew testDebugUnitTest lintDebug assembleDebug` before every push, and CI then
