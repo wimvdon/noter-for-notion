@@ -25,6 +25,13 @@ compile the app's code and resources. CI still builds the debug and release APKs
 problem still turns the pull request red. Rejected: no local checks at all (every test or lint
 failure would then cost a CI round trip).
 
+## 2026-11-06: The sign-in helper's address is `noter.wim.to`
+The owner moved the sign-in helper to the shorter custom domain `noter.wim.to`, replacing
+`noter-signin.wim.to`. It is the same helper on the same Cloudflare account, so it's not a new
+network destination; `PRIVACY.md` names the new address. The helper builds its redirect URI from
+its own address, so only the app changes; the connection's redirect URI in Notion must be
+`https://noter.wim.to/callback`, or Connect to Notion fails.
+
 ## 2026-10-31: The sign-in helper moves to its own address
 The owner gave the sign-in helper a custom domain on Cloudflare, `noter-signin.wim.to`, replacing `noter-sign-in.wim-d57.workers.dev`. It is the same helper on the same Cloudflare account, so it's not a new network destination; `PRIVACY.md` names the new address. The connection's redirect URI in Notion must be `https://noter-signin.wim.to/callback`, or Connect to Notion fails.
 
