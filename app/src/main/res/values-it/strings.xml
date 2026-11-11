@@ -254,4 +254,14 @@
     <string name="hide_on_home_confirm">Nascondi</string>
     <string name="section_hidden_on_home">Nascosti in Database e pagine</string>
     <string name="action_show_on_home">Mostra</string>
+    <!-- Quick actions (#119) -->
+    <string name="quick_actions">Azioni rapide</string>
+    <string name="quick_actions_hint">Come un pulsante di Notion: una nuova nota con questi valori con un tocco. Tocca + per usarne una.</string>
+    <string name="quick_action_new">Nuova azione rapida</string>
+    <string name="quick_action_edit">Modifica azione rapida</string>
+    <string name="quick_action_name">Nome</string>
+    <string name="quick_action_no_values">Questo database non ha ancora valori da compilare.</string>
+    <string name="quick_action_delete">Elimina %1$s</string>
+    <string name="quick_action_deleted">Azione rapida eliminata</string>
+    <string name="quick_action_empty_note">Nota vuota</string>
 </resources>

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PushPin
@@ -58,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import be.wimvandonck.noter.R
+import be.wimvandonck.noter.data.model.QuickAction
 import be.wimvandonck.noter.ui.common.PageIconView
 import be.wimvandonck.noter.ui.common.SMALL_PAGE_ICON
 import be.wimvandonck.noter.ui.common.SyncButton
@@ -70,7 +72,7 @@ import be.wimvandonck.noter.ui.common.shareLink
 /**
  * A database, opened from Home, Search or a link in a note: its notes with rows of filter chips.
  * The top app bar has Filters, Sort, Cards (what the cards show) and a ⋮ menu (pin on Home, open
- * in Notion, share). Everything changed here is kept for the database at once; there is nothing
+ * in Notion, share, Quick actions). Everything changed here is kept for the database at once; there is nothing
  * to save. A database of several data sources has a tab per data source, each with its own
  * filters, sort and cards.
  */
@@ -90,11 +92,17 @@ fun DatabaseScreen(
     var filtersOpen by remember { mutableStateOf(false) }
     var cardsOpen by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
+    // Quick actions (#119): the list (⋮), the one being made or changed, and what + offers.
+    var quickActionsOpen by remember { mutableStateOf(false) }
+    var editingAction by remember { mutableStateOf<QuickAction?>(null) }
+    var editorOpen by remember { mutableStateOf(false) }
+    var newNoteOpen by remember { mutableStateOf(false) }
     val editing by viewModel.editing.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val actions = SetupActions(onArrangeFilters = viewModel::arrangeFilters, onSort = viewModel::setSort)
 
     val sortedByHand = stringResource(R.string.sorted_by_hand)
+    val quickActionDeleted = stringResource(R.string.quick_action_deleted)
     val undo = stringResource(R.string.undo)
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -103,6 +111,10 @@ fun DatabaseScreen(
                     // Dragging changed the order; the old one is a tap away.
                     val result = snackbar.showSnackbar(sortedByHand, actionLabel = undo, duration = SnackbarDuration.Long)
                     if (result == SnackbarResult.ActionPerformed) viewModel.undoSortedByHand(event)
+                }
+                is DatabaseEvent.QuickActionDeleted -> {
+                    val result = snackbar.showSnackbar(quickActionDeleted, actionLabel = undo, duration = SnackbarDuration.Long)
+                    if (result == SnackbarResult.ActionPerformed) viewModel.undoDeleteQuickAction(event)
                 }
             }
         }
@@ -180,6 +192,16 @@ fun DatabaseScreen(
                                                 viewModel.openEdit()
                                             },
                                         )
+                                        if (content.hasKey && !content.sourceMissing) {
+                                            DropdownMenuItem(
+                                                text = { Text(stringResource(R.string.quick_actions)) },
+                                                leadingIcon = { Icon(Icons.Rounded.Bolt, contentDescription = null) },
+                                                onClick = {
+                                                    menu = false
+                                                    quickActionsOpen = true
+                                                },
+                                            )
+                                        }
                                         DropdownMenuItem(
                                             text = { Text(stringResource(R.string.action_open_in_notion)) },
                                             leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null) },
@@ -222,7 +244,9 @@ fun DatabaseScreen(
         },
         floatingActionButton = {
             if (content.hasKey && !content.sourceMissing) {
-                FloatingActionButton(onClick = { viewModel.createNote(onOpenNote) }) {
+                // With quick actions, + offers them next to an empty note; without, it makes one at once.
+                val quickActions = content.setup?.quickActions.orEmpty()
+                FloatingActionButton(onClick = { if (quickActions.isEmpty()) viewModel.createNote(onOpenNote) else newNoteOpen = true }) {
                     Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.action_new_note))
                 }
             }
@@ -272,6 +296,48 @@ fun DatabaseScreen(
             icon = state.icon,
             onSave = viewModel::saveEdit,
             onDismiss = viewModel::dismissEdit,
+        )
+    }
+    if (newNoteOpen) {
+        NewNoteSheet(
+            actions = content.setup?.quickActions.orEmpty(),
+            state = content,
+            onEmptyNote = {
+                newNoteOpen = false
+                viewModel.createNote(onOpenNote)
+            },
+            onQuickAction = { action ->
+                newNoteOpen = false
+                viewModel.runQuickAction(action, onOpenNote)
+            },
+            onDismiss = { newNoteOpen = false },
+        )
+    }
+    if (quickActionsOpen) {
+        QuickActionsSheet(
+            state = content,
+            onEdit = { action ->
+                editingAction = action
+                editorOpen = true
+                quickActionsOpen = false
+            },
+            onDelete = viewModel::deleteQuickAction,
+            onDismiss = { quickActionsOpen = false },
+        )
+    }
+    if (editorOpen) {
+        val close = {
+            editorOpen = false
+            quickActionsOpen = true
+        }
+        QuickActionEditor(
+            action = editingAction,
+            state = content,
+            onSave = { action ->
+                viewModel.saveQuickAction(action)
+                close()
+            },
+            onDismiss = close,
         )
     }
     if (cardsOpen) {

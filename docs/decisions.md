@@ -2,6 +2,18 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-11-11: Quick actions in place of Notion's buttons (#119)
+
+Notion's API can't read or press a database's buttons, so the owner asked for Noter's own: per
+database, a name and the values a new note gets, made in ⋮ › Quick actions in a bottom sheet. The
+issue suggested showing them as extra FABs, but the design rules allow one FAB per screen, and
+the Compose version in use has no FAB menu yet. So + keeps its place and, once a database has
+quick actions, opens a sheet with Empty note and each quick action, as + does on Home. Without
+quick actions + still makes a note at once. The values reuse the filter chips (option names,
+people, linked pages, checked, today), so there is one way of picking values; they are kept with
+the database's setup in the backed-up settings. Only "add a note with these values" is offered:
+Notion's other button steps (edit other pages, send mail) have no place in a phone note app yet.
+
 ## 2026-11-02: Every bottom sheet is one `NoterSheet`, which only closes on purpose
 
 The sheets jumped while opening and when they grew up to the status bar, and a scroll in a sheet's

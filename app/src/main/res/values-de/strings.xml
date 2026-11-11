@@ -251,4 +251,14 @@
     <string name="hide_on_home_confirm">Ausblenden</string>
     <string name="section_hidden_on_home">Ausgeblendet unter Datenbanken und Seiten</string>
     <string name="action_show_on_home">Einblenden</string>
+    <!-- Quick actions (#119) -->
+    <string name="quick_actions">Schnellaktionen</string>
+    <string name="quick_actions_hint">Wie eine Notion-Schaltfläche: eine neue Notiz mit diesen Werten mit einem Tipp. Tippe auf +, um eine zu verwenden.</string>
+    <string name="quick_action_new">Neue Schnellaktion</string>
+    <string name="quick_action_edit">Schnellaktion bearbeiten</string>
+    <string name="quick_action_name">Name</string>
+    <string name="quick_action_no_values">Diese Datenbank hat noch keine Werte zum Ausfüllen.</string>
+    <string name="quick_action_delete">%1$s löschen</string>
+    <string name="quick_action_deleted">Schnellaktion gelöscht</string>
+    <string name="quick_action_empty_note">Leere Notiz</string>
 </resources>

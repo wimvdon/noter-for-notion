@@ -23,6 +23,8 @@ data class DatabaseSetup(
     val sort: NoteSort? = null,
     /** What the cards show (null: what the database's cards showed before, see PropertyLayouts.cards). */
     val cards: CardLayout? = null,
+    /** Quick actions (#119): named sets of values for a new note, offered by the + button. */
+    val quickActions: List<QuickAction> = emptyList(),
 ) {
     /**
      * The order the notes are in now ([SortKind.NOTION] from before reads as the custom order,
@@ -43,6 +45,18 @@ data class DatabaseSetup(
  * A database pinned on Home: [id] is what opens it (a data source, or a database of several data
  * sources), with its name and icon as last seen, for Home to show without asking Notion.
  */
+/**
+ * A quick action (#119), like a Notion button that adds a page: a name, and the values a new
+ * note gets, by property name. The values are filter chip keys (ChipFilter): option names,
+ * people and linked page IDs, checked or not, or today for a date. See logic/QuickActions.kt.
+ */
+@Serializable
+data class QuickAction(
+    val id: String,
+    val name: String,
+    val values: Map<String, List<String>> = emptyMap(),
+)
+
 @Serializable
 data class PinnedDatabase(
     val id: String,
