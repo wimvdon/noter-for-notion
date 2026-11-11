@@ -254,4 +254,14 @@
     <string name="hide_on_home_confirm">Ocultar</string>
     <string name="section_hidden_on_home">Ocultos en Bases de datos y páginas</string>
     <string name="action_show_on_home">Mostrar</string>
+    <!-- Quick actions (#119) -->
+    <string name="quick_actions">Acciones rápidas</string>
+    <string name="quick_actions_hint">Como un botón de Notion: una nota nueva con estos valores con un toque. Toca + para usar una.</string>
+    <string name="quick_action_new">Nueva acción rápida</string>
+    <string name="quick_action_edit">Editar acción rápida</string>
+    <string name="quick_action_name">Nombre</string>
+    <string name="quick_action_no_values">Esta base de datos aún no tiene valores para rellenar.</string>
+    <string name="quick_action_delete">Eliminar %1$s</string>
+    <string name="quick_action_deleted">Acción rápida eliminada</string>
+    <string name="quick_action_empty_note">Nota vacía</string>
 </resources>

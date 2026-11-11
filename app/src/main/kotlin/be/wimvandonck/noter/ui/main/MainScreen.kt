@@ -601,7 +601,7 @@ private fun LazyStaggeredGridScope.treeRows(
 }
 
 @Composable
-private fun SheetHeader(text: String) {
+internal fun SheetHeader(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.titleMedium,

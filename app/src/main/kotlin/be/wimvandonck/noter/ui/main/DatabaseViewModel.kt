@@ -17,6 +17,7 @@ import be.wimvandonck.noter.data.model.PageIcon
 import be.wimvandonck.noter.data.model.PageRef
 import be.wimvandonck.noter.data.model.PinnedDatabase
 import be.wimvandonck.noter.data.model.PropertySchema
+import be.wimvandonck.noter.data.model.QuickAction
 import be.wimvandonck.noter.data.model.SortKind
 import be.wimvandonck.noter.logic.DatabaseEdit
 import be.wimvandonck.noter.logic.DatabaseSetups
@@ -24,6 +25,7 @@ import be.wimvandonck.noter.logic.EditedProperty
 import be.wimvandonck.noter.logic.PropertyKind
 import be.wimvandonck.noter.logic.SchemaEdits
 import be.wimvandonck.noter.logic.PropertyLayouts
+import be.wimvandonck.noter.logic.QuickActions
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -65,6 +67,9 @@ data class DatabaseEditState(val properties: List<PropertySchema>, val saving: B
 sealed interface DatabaseEvent {
     /** Dragging a note switched the data source from [previous] to the custom order (Undo restores it). */
     data class SortedByHand(val sourceId: String, val previous: NoteSort?) : DatabaseEvent
+
+    /** Quick action [action] was deleted from place [index] (Undo puts it back). */
+    data class QuickActionDeleted(val action: QuickAction, val index: Int) : DatabaseEvent
 }
 
 /**
@@ -297,6 +302,28 @@ class DatabaseViewModel(
             onCreated(note)
         }
     }
+
+    /** A new note with [action]'s values (#119), opened like one made with +. */
+    fun runQuickAction(action: QuickAction, onCreated: (String) -> Unit) {
+        val ui = state.value.content
+        val id = ui.databaseId ?: return
+        viewModelScope.launch {
+            val note = repository.createNote(id, QuickActions.presets(action, ui.filterOptions)) ?: return@launch
+            onCreated(note)
+        }
+    }
+
+    fun saveQuickAction(action: QuickAction) = updateSetup { it.copy(quickActions = QuickActions.save(it.quickActions, action)) }
+
+    fun deleteQuickAction(action: QuickAction) {
+        val index = state.value.content.setup?.quickActions.orEmpty().indexOfFirst { it.id == action.id }
+        if (index < 0) return
+        updateSetup { it.copy(quickActions = QuickActions.remove(it.quickActions, action.id)) }
+        _events.tryEmit(DatabaseEvent.QuickActionDeleted(action, index))
+    }
+
+    fun undoDeleteQuickAction(event: DatabaseEvent.QuickActionDeleted) =
+        updateSetup { it.copy(quickActions = QuickActions.restore(it.quickActions, event.action, event.index)) }
 
     companion object {
         fun factory(databaseId: String) = viewModelFactory {

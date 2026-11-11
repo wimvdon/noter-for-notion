@@ -251,4 +251,14 @@
     <string name="hide_on_home_confirm">Verbergen</string>
     <string name="section_hidden_on_home">Verborgen bij Databases en pagina’s</string>
     <string name="action_show_on_home">Tonen</string>
+    <!-- Quick actions (#119) -->
+    <string name="quick_actions">Snelle acties</string>
+    <string name="quick_actions_hint">Zoals een knop in Notion: een nieuwe notitie met deze waarden in één tik. Tik op + om er een te gebruiken.</string>
+    <string name="quick_action_new">Nieuwe snelle actie</string>
+    <string name="quick_action_edit">Snelle actie bewerken</string>
+    <string name="quick_action_name">Naam</string>
+    <string name="quick_action_no_values">Deze database heeft nog geen waarden om in te vullen.</string>
+    <string name="quick_action_delete">%1$s verwijderen</string>
+    <string name="quick_action_deleted">Snelle actie verwijderd</string>
+    <string name="quick_action_empty_note">Lege notitie</string>
 </resources>
