@@ -25,18 +25,9 @@ data class SchemaChange(
 ) {
     val isEmpty: Boolean get() = properties.isEmpty()
 
-    /** A database's filters, sort and cards with the renamed properties' new names, without the removed ones. */
+    /** A database's cards (and its first chip row from before) with the renamed properties' new names, without the removed ones. */
     fun applyTo(setup: DatabaseSetup): DatabaseSetup = setup.copy(
         quickFilters = names(setup.quickFilters),
-        filterOrder = names(setup.filterOrder),
-        selected = setup.selected.filterKeys { it !in removed }.mapKeys { rename(it.key) },
-        sort = setup.sort?.let { sort ->
-            when (val property = sort.property) {
-                null -> sort
-                in removed -> null
-                else -> sort.copy(property = rename(property))
-            }
-        },
         cards = setup.cards?.let { it.copy(properties = names(it.properties)) },
     )
 

@@ -30,7 +30,7 @@ class LegacyNotebooksTest {
 
         assertEquals(emptyList<DatabaseConfig>(), migrated.databases)
         assertEquals(
-            DatabaseSetup(quickFilters = listOf("Status"), selected = mapOf("Status" to listOf("Todo")), sort = NoteSort(SortKind.TITLE), cards = CardLayout(content = false)),
+            DatabaseSetup(quickFilters = listOf("Status"), cards = CardLayout(content = false)),
             migrated.setups["ds-tasks"],
         )
         // A notebook of several data sources: each data source keeps its sub-notebook's setup, the database is pinned.
@@ -60,7 +60,6 @@ class LegacyNotebooksTest {
         assertEquals(newer, migrated.setups["ds-skin"])
         // Both notebooks of the database: pinned once.
         assertEquals(listOf("ds-tasks", "db-health"), migrated.pinnedDatabases.map { it.id })
-        assertNull(LegacyNotebooks.migrate(AppSettings(databases = listOf(DatabaseConfig("x", "X", databaseId = "ds-x", sort = NoteSort(SortKind.NOTION))))).setups["ds-x"]?.sort)
     }
 
     @Test
@@ -68,7 +67,6 @@ class LegacyNotebooksTest {
         val old = DatabaseConfig("n", "N", databaseId = "db", chipProperty = "Status", filters = listOf("Todo"))
         val setup = LegacyNotebooks.migrate(AppSettings(databases = listOf(old))).setups.getValue("db")
         assertEquals(listOf("Status"), setup.quickFilters)
-        assertEquals(mapOf("Status" to listOf("Todo")), setup.selected)
     }
 
     @Test

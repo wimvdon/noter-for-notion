@@ -610,9 +610,8 @@ internal fun SheetHeader(text: String) {
 }
 
 /**
- * A database's notes as cards (its rows of filter chips are in the screen's header, see
- * [ChipRows]), with pull-to-refresh, loading placeholders and empty states. Moving a note to the
- * trash asks first.
+ * A database's notes as cards, in its Notion view's order, with pull-to-refresh, loading
+ * placeholders and empty states.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -620,15 +619,10 @@ internal fun NotesPane(
     state: NotesUiState,
     previews: Map<String, String>,
     onLoadPreviews: (List<NoteSummary>) -> Unit,
-    onToggleChip: (property: String, key: String) -> Unit,
-    onClearChips: () -> Unit,
-    onLoadChipTitles: (String) -> Unit,
     onRefresh: () -> Unit,
     onOpen: (String) -> Unit,
     onTogglePin: (String) -> Unit,
-    onReordered: (List<String>) -> Unit,
 ) {
-    LaunchedEffect(state.chipRelationDatabases) { state.chipRelationDatabases.forEach(onLoadChipTitles) }
     LoadPreviews(state, onLoadPreviews)
     Column(Modifier.fillMaxSize()) {
         PullToRefreshBox(
@@ -639,10 +633,6 @@ internal fun NotesPane(
             when {
                 state.loading && state.pinned.isEmpty() && state.others.isEmpty() -> LoadingGrid()
                 state.pinned.isEmpty() && state.others.isEmpty() -> when {
-                    state.filterCount > 0 || state.chipGroups.any { it.selected.isNotEmpty() } ->
-                        EmptyState(Icons.Rounded.FilterAltOff, stringResource(R.string.empty_filtered)) {
-                        Button(onClick = onClearChips) { Text(stringResource(R.string.empty_clear_filters)) }
-                    }
                     state.error != null -> LoadFailed(state.error, onRefresh)
                     else -> EmptyState(
                         Icons.AutoMirrored.Rounded.StickyNote2,
@@ -655,7 +645,7 @@ internal fun NotesPane(
                     previews = previews,
                     onOpen = onOpen,
                     onTogglePin = onTogglePin,
-                    onReordered = onReordered,
+                    onReordered = null,
                 )
             }
         }
@@ -668,83 +658,6 @@ internal fun LoadPreviews(state: NotesUiState, onLoadPreviews: (List<NoteSummary
     LaunchedEffect(state.pinned, state.others, state.propertyLayouts) {
         onLoadPreviews((state.pinned + state.others).filter { PropertyLayouts.showsContent(state.propertyLayouts[it.databaseId]) })
     }
-}
-
-/**
- * The chips above the notes: one row per quick filter, named after its property, ending in × while
- * something in it is selected ("Clear filters" is in the Filters panel).
- */
-@Composable
-internal fun ChipRows(
-    state: NotesUiState,
-    onToggle: (property: String, key: String) -> Unit,
-    onClearRow: (property: String) -> Unit,
-) {
-    Column(Modifier.padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        state.chipGroups.forEach { group ->
-            val property = group.property
-            val clearable = group.selected.isNotEmpty()
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                LazyRow(
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(start = 16.dp, end = if (clearable) 4.dp else 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    item(key = "__name") {
-                        Text(
-                            property.name,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.widthIn(max = 120.dp),
-                        )
-                    }
-                    items(group.chips, key = { it.key }) { chip ->
-                        FilterChip(
-                            selected = chip.key in group.selected,
-                            onClick = { onToggle(property.name, chip.key) },
-                            label = { ChipText(chipLabel(chip, property.name, state), chip.count) },
-                            leadingIcon = if (chip.isCheckbox || chip.isDate || chip.label.isEmpty()) null else {
-                                { OptionDot(chip.color) }
-                            },
-                        )
-                    }
-                }
-                if (clearable) {
-                    IconButton(onClick = { onClearRow(property.name) }, modifier = Modifier.padding(end = 4.dp)) {
-                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.clear_row, property.name))
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * A chip's words: fixed ones for checkbox and date filters (named after [property]), a linked
- * page's title, else its own label.
- */
-@Composable
-internal fun chipLabel(chip: Chip, property: String, state: NotesUiState): String {
-    val name = property
-    return when (chip.key) {
-        ChipFilter.CHECKED -> stringResource(R.string.chip_checked, name)
-        ChipFilter.UNCHECKED -> stringResource(R.string.chip_unchecked, name)
-        ChipFilter.OVERDUE -> stringResource(R.string.chip_overdue)
-        ChipFilter.TODAY -> stringResource(R.string.chip_today)
-        ChipFilter.NEXT_7_DAYS -> stringResource(R.string.chip_next_7_days)
-        ChipFilter.LATER -> stringResource(R.string.chip_later)
-        ChipFilter.NO_DATE -> stringResource(R.string.chip_no_date)
-        else -> chip.label.ifEmpty { state.chipTitles[chip.key]?.ifBlank { null } ?: stringResource(R.string.untitled) }
-    }
-}
-
-@Composable
-private fun OptionDot(color: String) {
-    val colors = be.wimvandonck.noter.ui.common.optionColors(color)
-    androidx.compose.foundation.Canvas(Modifier.size(10.dp)) { drawCircle(colors.container) }
 }
 
 /** A grid item: a section header or a note. */
@@ -762,7 +675,8 @@ private sealed interface GridItem {
  * The notes as cards in a staggered grid (two columns on a phone, more on wider screens), with
  * full-width items of the screen's own before ([header]) and after them ([footer]).
  * Long-press and drag moves a note within its section; a long press without moving opens the
- * note's menu. The order is kept on this phone.
+ * note's menu. The order is kept on this phone. Without [onReordered] (a database, in its Notion
+ * view's order) a long press only opens the menu.
  *
  * While dragging, the card follows the finger exactly: its place on screen is worked out from
  * where the finger is, not from where the grid put it, so it doesn't jump when cards of
@@ -774,7 +688,7 @@ internal fun NoteGrid(
     previews: Map<String, String>,
     onOpen: (String) -> Unit,
     onTogglePin: (String) -> Unit,
-    onReordered: (List<String>) -> Unit,
+    onReordered: ((List<String>) -> Unit)?,
     /** Home: the pinned databases, as rows above the notes; dragged like the cards. */
     databases: List<PinnedDatabase> = emptyList(),
     /** The workspace's name of each pinned database, by its ID (with several workspaces). */
@@ -861,11 +775,13 @@ internal fun NoteGrid(
 
     fun save(key: String) {
         val group = groupOf(key) ?: return
+        val reordered = onReordered ?: return
         dropped.ids = pinned.map { it.id } + others.map { it.id }
-        onReordered(group.map { it.id })
+        reordered(group.map { it.id })
     }
 
     fun move(key: String, by: Int) {
+        if (onReordered == null) return
         val group = groupOf(key) ?: return
         val from = group.indexOfFirst { it.id == key }
         val to = from + by
@@ -938,7 +854,7 @@ internal fun NoteGrid(
                 },
                 onDragEnd = {
                     if (draggingKey == key) {
-                        if (dragDistance < touchSlop) {
+                        if (dragDistance < touchSlop || (onReordered == null && !key.startsWith(DATABASE_KEY))) {
                             // A long press without moving: the item's menu.
                             menuKey = key
                         } else if (changed()) {
@@ -950,6 +866,8 @@ internal fun NoteGrid(
                 onDragCancel = { draggingKey = null },
                 onDrag = { change, amount ->
                     if (draggingKey != key) return@detectDragGesturesAfterLongPress
+                    // Notes that can't be moved: the long press opens the menu when the finger lifts.
+                    if (onReordered == null && !key.startsWith(DATABASE_KEY)) return@detectDragGesturesAfterLongPress
                     change.consume()
                     dragDistance += amount.getDistance()
                     finger += amount
@@ -1029,7 +947,7 @@ internal fun NoteGrid(
                 )
                 is GridItem.Note -> {
                     val key = item.key
-                    val isDragging = draggingKey == key
+                    val isDragging = draggingKey == key && onReordered != null
                     val pinnedNote = key in state.pinnedIds
                     NoteCard(
                         note = item.note,
@@ -1068,10 +986,12 @@ internal fun NoteGrid(
                                 }
                             }
                             .semantics {
-                                customActions = listOf(
-                                    CustomAccessibilityAction(moveUp) { move(key, -1); true },
-                                    CustomAccessibilityAction(moveDown) { move(key, 1); true },
-                                )
+                                if (onReordered != null) {
+                                    customActions = listOf(
+                                        CustomAccessibilityAction(moveUp) { move(key, -1); true },
+                                        CustomAccessibilityAction(moveDown) { move(key, 1); true },
+                                    )
+                                }
                             },
                     )
                 }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AddReaction
 import androidx.compose.material.icons.rounded.Close
@@ -74,7 +75,8 @@ private val EditedSaver = listSaver<List<EditedProperty>, String>(
  * Edit database (⋮, or a tap on the database's name or icon): its icon, its name and the data
  * source's properties in one screen. A property is renamed in its field, removed with ×, added
  * with Add property (the kinds a new database can have). Save sends everything to Notion at once,
- * after asking when properties are removed, since their values go with them.
+ * after asking when properties are removed, since their values go with them. More options in
+ * Notion opens the database there for everything else.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,6 +85,7 @@ fun EditDatabaseScreen(
     title: String,
     icon: PageIcon?,
     onSave: (title: String, emoji: String?, iconChanged: Boolean, properties: List<EditedProperty>, names: Map<PropertyKind, String>) -> Unit,
+    onOpenInNotion: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val names = kindNames()
@@ -197,6 +200,12 @@ fun EditDatabaseScreen(
                                 )
                             }
                         }
+                    }
+                    // Options, formats, kinds and views: in Notion.
+                    TextButton(onClick = onOpenInNotion) {
+                        Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.more_in_notion))
                     }
                     state.error?.let {
                         Text(

@@ -114,7 +114,7 @@ class NoteViewModel(
             schema = note?.let { databases[it.databaseId]?.schema },
             pinned = note != null && repository.resolve(pageId) in settings.pinned,
             layout = note?.let { settings.propertyLayouts[it.databaseId] },
-            quickActions = note?.let { DatabaseSetups.of(settings.setups, it.databaseId, null).quickActions }.orEmpty(),
+            quickActions = note?.let { DatabaseSetups.of(settings.setups, it.databaseId).quickActions }.orEmpty(),
             blocks = blocks,
             loadingContent = loading,
         )

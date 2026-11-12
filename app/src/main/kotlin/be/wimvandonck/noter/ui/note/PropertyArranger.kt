@@ -48,9 +48,9 @@ import be.wimvandonck.noter.ui.theme.DragHandle
 /**
  * Arranging a database's properties in place, where they are shown in the note: drag a property
  * by its handle to change the order, and past the "Hidden" line to hide it (or back to show it);
- * the eye does the same with one tap. Applies to every note of the database. A database's Filters
- * panel arranges its rows of chips the same way ([shownTitle], no [onDone]), with each property's
- * values to filter by [below] its row (they move along with it).
+ * the eye does the same with one tap. Applies to every note of the database. A database's view
+ * settings arrange its Notion views' tabs the same way ([shownTitle], no [onDone], [names] the
+ * views' IDs and [label] their names). [below] adds something under a row (it moves along with it).
  */
 @Composable
 fun PropertyArranger(
@@ -60,6 +60,8 @@ fun PropertyArranger(
     onDone: (() -> Unit)?,
     shownTitle: String = stringResource(R.string.properties_shown),
     below: (@Composable (name: String) -> Unit)? = null,
+    /** What a row says for each entry of [names] (they are its keys; the name itself by default). */
+    label: (String) -> String = { it },
 ) {
     val sections = remember(names, layout) { PropertyLayouts.sections(names, layout) }
     // A working copy (shown, the "Hidden" line, hidden), so a dragged row moves at once; it
@@ -143,7 +145,7 @@ fun PropertyArranger(
                     ) {
                         Row(Modifier.fillMaxWidth().height(ROW_HEIGHT), verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                name,
+                                label(name),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = if (isShown) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
@@ -160,7 +162,7 @@ fun PropertyArranger(
                             ) {
                                 Icon(
                                     if (isShown) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
-                                    contentDescription = stringResource(R.string.property_shown, name),
+                                    contentDescription = stringResource(R.string.property_shown, label(name)),
                                     tint = if (isShown) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }

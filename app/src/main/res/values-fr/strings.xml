@@ -36,7 +36,6 @@
     <string name="empty_no_key">Ajoutez un jeton d’accès personnel dans les paramètres pour voir vos notes.</string>
     <string name="empty_no_key_action">Ouvrir les paramètres</string>
     <string name="empty_database">Touchez + pour en ajouter une.</string>
-    <string name="empty_filtered">Aucune note ne correspond aux filtres</string>
     <string name="status_offline">Hors connexion. Les modifications sont enregistrées sur ce téléphone et envoyées plus tard.</string>
     <string name="status_not_synced">Pas encore dans Notion</string>
     <string name="sync_failed">Impossible d’enregistrer « %1$s » dans Notion : %2$s</string>
@@ -121,8 +120,6 @@
     <string name="card_content">Début du contenu</string>
     <string name="action_indent">Augmenter le retrait (dans le bloc au-dessus)</string>
     <string name="action_outdent">Diminuer le retrait (sortir du bloc)</string>
-    <string name="chip_checked">%1$s</string>
-    <string name="chip_unchecked">Pas %1$s</string>
     <string name="cards_properties">Propriétés sur la carte (jusqu’à %1$d)</string>
     <string name="new_page">Nouvelle page</string>
     <string name="new_page_top_level">En haut de votre espace de travail</string>
@@ -132,32 +129,13 @@
     <string name="browse_empty_title">Rien ici pour l’instant</string>
     <string name="empty_no_key_title">Connexion à Notion</string>
     <string name="empty_database_title">Pas encore de notes</string>
-    <string name="empty_clear_filters">Effacer les filtres</string>
-    <string name="filters">Filtres</string>
-    <string name="filters_count">Filtres · %1$d</string>
-    <string name="sort_custom">Ordre personnalisé</string>
-    <string name="sort_last_edited">Dernière modification</string>
-    <string name="sort_created">Création</string>
-    <string name="sort_title">Titre</string>
-    <string name="sorted_by_hand">Maintenant dans votre propre ordre</string>
     <string name="undo">Annuler</string>
     <string name="empty_error_title">Impossible de charger les notes</string>
-    <string name="chip_overdue">En retard</string>
-    <string name="chip_today">Aujourd’hui</string>
-    <string name="chip_next_7_days">7 prochains jours</string>
-    <string name="chip_later">Plus tard</string>
-    <string name="chip_no_date">Sans date</string>
-    <string name="sort_by">Tri : %1$s</string>
-    <string name="sort_ascending">Croissant</string>
-    <string name="sort_descending">Décroissant</string>
     <string name="error_offline">Pas de connexion à Notion. Vérifiez votre connexion Internet et réessayez.</string>
     <string name="error_not_found">Notion ne trouve pas cet élément. Il a peut-être été supprimé ou n’est pas partagé avec votre connexion.</string>
     <string name="error_busy">Notion est occupé. Réessayez dans un instant.</string>
     <string name="error_no_data_source">Cette base de données n’a pas de source de données que l’app peut ouvrir.</string>
-    <string name="clear_row">Ne plus filtrer par %1$s</string>
-    <string name="chip_rows_shown">Affichées</string>
     <string name="new_subpage">Nouvelle sous-page</string>
-    <string name="filter_no_values">Pas encore de valeurs</string>
     <string name="search_or_add">Rechercher ou ajouter</string>
     <string name="add_option">Ajouter « %1$s »</string>
     <string name="source_missing_title">Notion ne trouve pas cette source de données</string>
@@ -298,9 +276,8 @@
         <item quantity="many">%d jours</item>
         <item quantity="other">%d jours</item>
     </plurals>
-    <string name="view_noter">Noter</string>
-    <string name="views">Vues</string>
-    <string name="switched_to_noter">Vous êtes dans votre vue Noter. La vue de Notion ne change pas.</string>
-    <string name="base_view">Notes de %1$s</string>
-    <string name="show_all_notes">Afficher toutes les notes</string>
+    <string name="view_settings">Réglages des vues</string>
+    <string name="views_shown">Vues</string>
+    <string name="edit_views_in_notion">Modifier les vues dans Notion</string>
+    <string name="more_in_notion">Plus d’options dans Notion</string>
 </resources>

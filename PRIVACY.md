@@ -50,7 +50,7 @@ crash reporting.
   never included in a backup; Notion is the real copy.
 - **Images you have seen**, in the app's cache folder (up to 100 MB), so they don't have to be
   downloaded again. Android may clear this folder when space runs low; it is never backed up.
-- **Your settings**: per database, the view it shows, its filters, sort, what its cards show and your quick actions (a name and the changes it makes to a note's properties); the databases you
+- **Your settings**: per database, the Notion view it shows, the order of its view tabs and the ones you hid, what its cards show and your quick actions (a name and the changes it makes to a note's properties); the databases you
   pinned (their IDs, names and icons), pinned notes and pages, the databases and pages you hid from Home (their IDs, names and icons), your own note order, which properties are shown (and in which order) per database,
   theme and dynamic colour. Only these settings may be included in
   Android's own backup (to your Google account, if you turned that on) and in a transfer to a new

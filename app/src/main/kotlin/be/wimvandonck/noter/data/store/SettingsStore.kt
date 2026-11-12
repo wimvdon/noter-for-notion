@@ -27,11 +27,12 @@ private val Context.settingsDataStore: DataStore<Preferences> by preferencesData
 data class AppSettings(
     /** How each database's notes are shown (filters, rows of chips, sort, cards), by data source ID. */
     val setups: Map<String, DatabaseSetup> = emptyMap(),
-    /**
-     * The view each data source shows, by data source ID: a Notion view's ID, or NotionViews.NOTER
-     * for the Noter view (none yet: see NotionViews.chosen).
-     */
+    /** The Notion view each data source shows, by data source ID (none yet: see NotionViews.chosen). */
     val views: Map<String, String> = emptyMap(),
+    /** The order of each data source's Notion views in its tabs, by data source ID (empty: Notion's list). */
+    val viewOrder: Map<String, List<String>> = emptyMap(),
+    /** Notion views hidden from each data source's tabs, by data source ID. */
+    val hiddenViews: Map<String, List<String>> = emptyMap(),
     /** Databases pinned on Home, newest first. */
     val pinnedDatabases: List<PinnedDatabase> = emptyList(),
     /** Databases and pages hidden from Home's list (#108), newest first; Search still finds them. */

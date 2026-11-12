@@ -3,7 +3,6 @@ package be.wimvandonck.noter.logic
 import be.wimvandonck.noter.data.model.DatabaseConfig
 import be.wimvandonck.noter.data.model.DatabaseSetup
 import be.wimvandonck.noter.data.model.PinnedDatabase
-import be.wimvandonck.noter.data.model.SortKind
 import be.wimvandonck.noter.data.store.AppSettings
 
 /**
@@ -32,12 +31,7 @@ object LegacyNotebooks {
         )
     }
 
-    private fun setupOf(notebook: DatabaseConfig) = DatabaseSetup(
-        quickFilters = notebook.quickFilters,
-        selected = notebook.selected,
-        sort = notebook.sort?.takeIf { it.kind != SortKind.NOTION },
-        cards = notebook.cards,
-    )
+    private fun setupOf(notebook: DatabaseConfig) = DatabaseSetup(quickFilters = notebook.quickFilters, cards = notebook.cards)
 
     private fun plain(id: String) = id.replace("-", "")
 }

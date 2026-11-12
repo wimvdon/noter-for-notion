@@ -36,7 +36,6 @@
     <string name="empty_no_key">Aggiungi un token di accesso personale nelle Impostazioni per vedere le tue note.</string>
     <string name="empty_no_key_action">Apri impostazioni</string>
     <string name="empty_database">Tocca + per aggiungerne una.</string>
-    <string name="empty_filtered">Nessuna nota corrisponde ai filtri</string>
     <string name="status_offline">Offline. Le modifiche vengono salvate su questo telefono e inviate più tardi.</string>
     <string name="status_not_synced">Non ancora in Notion</string>
     <string name="sync_failed">Impossibile salvare “%1$s” in Notion: %2$s</string>
@@ -121,8 +120,6 @@
     <string name="card_content">Inizio del contenuto</string>
     <string name="action_indent">Aumenta rientro (nel blocco sopra)</string>
     <string name="action_outdent">Riduci rientro (fuori dal blocco)</string>
-    <string name="chip_checked">%1$s</string>
-    <string name="chip_unchecked">Non %1$s</string>
     <string name="cards_properties">Proprietà sulla scheda (fino a %1$d)</string>
     <string name="new_page">Nuova pagina</string>
     <string name="new_page_top_level">In cima al tuo workspace</string>
@@ -132,32 +129,13 @@
     <string name="browse_empty_title">Ancora niente qui</string>
     <string name="empty_no_key_title">Collegati a Notion</string>
     <string name="empty_database_title">Ancora nessuna nota</string>
-    <string name="empty_clear_filters">Cancella filtri</string>
-    <string name="filters">Filtri</string>
-    <string name="filters_count">Filtri · %1$d</string>
-    <string name="sort_custom">Ordine personalizzato</string>
-    <string name="sort_last_edited">Ultima modifica</string>
-    <string name="sort_created">Creazione</string>
-    <string name="sort_title">Titolo</string>
-    <string name="sorted_by_hand">Ora nel tuo ordine</string>
     <string name="undo">Annulla</string>
     <string name="empty_error_title">Impossibile caricare le note</string>
-    <string name="chip_overdue">Scadute</string>
-    <string name="chip_today">Oggi</string>
-    <string name="chip_next_7_days">Prossimi 7 giorni</string>
-    <string name="chip_later">Più avanti</string>
-    <string name="chip_no_date">Senza data</string>
-    <string name="sort_by">Ordine: %1$s</string>
-    <string name="sort_ascending">Crescente</string>
-    <string name="sort_descending">Decrescente</string>
     <string name="error_offline">Nessuna connessione con Notion. Controlla internet e riprova.</string>
     <string name="error_not_found">Notion non lo trova. Forse è stato eliminato o non è condiviso con la tua connessione.</string>
     <string name="error_busy">Notion è occupato. Riprova tra un momento.</string>
     <string name="error_no_data_source">Questo database non ha una fonte dati che l’app possa aprire.</string>
-    <string name="clear_row">Smetti di filtrare per %1$s</string>
-    <string name="chip_rows_shown">Mostrate</string>
     <string name="new_subpage">Nuova sottopagina</string>
-    <string name="filter_no_values">Ancora nessun valore</string>
     <string name="search_or_add">Cerca o aggiungi</string>
     <string name="add_option">Aggiungi “%1$s”</string>
     <string name="source_missing_title">Notion non trova questa fonte dati</string>
@@ -298,9 +276,8 @@
         <item quantity="many">%d giorni</item>
         <item quantity="other">%d giorni</item>
     </plurals>
-    <string name="view_noter">Noter</string>
-    <string name="views">Viste</string>
-    <string name="switched_to_noter">Ora nella tua vista Noter. La vista di Notion non cambia.</string>
-    <string name="base_view">Note di %1$s</string>
-    <string name="show_all_notes">Mostra tutte le note</string>
+    <string name="view_settings">Impostazioni viste</string>
+    <string name="views_shown">Viste</string>
+    <string name="edit_views_in_notion">Modifica le viste in Notion</string>
+    <string name="more_in_notion">Altre opzioni in Notion</string>
 </resources>

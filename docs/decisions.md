@@ -2,6 +2,26 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-11-12: A database is its Notion views; Noter's own filters, sort and order go
+
+Listed by database, Notion's views still didn't come in the order of the tabs: the API has no
+field for it. The owner chose to let Notion's views decide which notes show and in what order,
+and to drop what Noter did itself: the Noter view, the filters and rows of chips, the sort, and
+dragging notes into an order of their own in a database (Home's pinned notes keep theirs). What
+stays on the phone per data source: the tabs' order and the hidden views (set in a new view
+settings sheet, the Tune icon at the start of the tabs, arranged like a note's properties), the
+view shown last, what the cards show (for every view) and the quick actions. Views are edited in
+Notion (a link in the sheet; Edit database got "More options in Notion" too, and keeps removing
+properties, which asks first). A new note no longer gets values from selected filters; quick
+actions can be made from a note's ⋮ as well, to fill that gap where it's needed.
+Offline works as for a database's notes: what the phone has shows at once; with nothing yet, the
+loading placeholders, then the same error with Retry. When a change reaches Notion while the
+database shows (or it comes back on screen after one did), the view's notes are asked again, so
+an edited note moves in or out of the view as it would in Notion. Old setups keep their cards and
+quick actions; their filters and sort are no longer read (a database set up before opens on
+Notion's first view). Rejected: a fallback list of all notes when views can't load (it would be a
+second way of showing notes to maintain).
+
 ## 2026-11-12: Notion's views are listed by database, for their order
 
 Notion's API has no field for the order of a database's view tabs: the list of views gives only

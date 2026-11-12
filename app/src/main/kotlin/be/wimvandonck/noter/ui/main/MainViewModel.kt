@@ -14,21 +14,13 @@ import be.wimvandonck.noter.data.api.NotionErrors
 import be.wimvandonck.noter.data.api.NotionException
 import be.wimvandonck.noter.data.model.DatabaseInfo
 import be.wimvandonck.noter.data.model.DatabaseSetup
-import be.wimvandonck.noter.data.model.NoteProperty
-import be.wimvandonck.noter.data.model.NoteSort
 import be.wimvandonck.noter.data.model.NoteSummary
-import be.wimvandonck.noter.data.model.NotionUser
 import be.wimvandonck.noter.data.model.PageIcon
 import be.wimvandonck.noter.data.model.PinnedDatabase
 import be.wimvandonck.noter.data.model.PropertyLayout
-import be.wimvandonck.noter.data.model.PropertySchema
-import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.model.WorkspaceItem
 import be.wimvandonck.noter.data.store.AppSettings
-import be.wimvandonck.noter.logic.ChipFilter
-import be.wimvandonck.noter.logic.ChipGroup
 import be.wimvandonck.noter.logic.DatabaseSetups
-import be.wimvandonck.noter.logic.FilterChip
 import be.wimvandonck.noter.logic.NoteLists
 import be.wimvandonck.noter.logic.NoteSearch
 import be.wimvandonck.noter.logic.NoteTargets
@@ -56,7 +48,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 
 /** What a list of notes shows: Home's pinned notes, or a database's notes with its filters. */
 data class NotesUiState(
@@ -64,8 +55,6 @@ data class NotesUiState(
     val hasKey: Boolean = false,
     /** True on Home: its cards show which database a note is in ([sourceIcons]). */
     val isHome: Boolean = false,
-    /** The filter chips above the notes, one row per property. */
-    val chipGroups: List<ChipGroup> = emptyList(),
     val pinned: List<NoteSummary> = emptyList(),
     val others: List<NoteSummary> = emptyList(),
     val pinnedIds: Set<String> = emptySet(),
@@ -87,18 +76,9 @@ data class NotesUiState(
     val chipTitles: Map<String, String> = emptyMap(),
     /** How the database shows its notes (null on Home). */
     val setup: DatabaseSetup? = null,
-    /** How many properties filter the notes now. */
-    val filterCount: Int = 0,
-    /** Every property the database can filter by, with its values, for the Filters panel. */
-    val filterOptions: List<ChipGroup> = emptyList(),
-    /** What the Sort menu offers (`DatabaseSetups.sortChoices`). */
-    val sortChoices: List<NoteSort> = emptyList(),
     /** Notion can't find the data source (deleted, in the trash, or no access). */
     val sourceMissing: Boolean = false,
 ) {
-    /** Related databases whose pages name relation chips. */
-    val chipRelationDatabases: Set<String>
-        get() = (chipGroups + filterOptions).mapNotNull { it.property.takeIf { p -> p.type == "relation" }?.relationDatabaseId }.toSet()
 }
 
 /** Home: a search bar, then what is pinned (databases, notes and pages), then Notion's databases and pages. */
@@ -160,8 +140,9 @@ data class SearchUiState(
 )
 
 /**
- * The notes of data source [sourceId] ([db]) as [setup] shows them: filtered, sorted, its quick
- * filters on top (see DatabaseViewModel). [within] and [inOrder]: a Notion view's notes (DatabaseSetups.content).
+ * The notes of data source [sourceId] ([db]) as its Notion view shows them: [members], the view's
+ * notes in its order (null: not known yet), pinned ones first (see DatabaseViewModel). [viewLoading]
+ * and [viewError]: Notion is being asked for the views or the view's notes, or that failed.
  */
 internal fun setupContent(
     base: NotesUiState,
@@ -169,52 +150,22 @@ internal fun setupContent(
     db: DatabaseState?,
     settings: AppSettings,
     sourceId: String,
-    within: List<String>? = null,
-    inOrder: Boolean = false,
+    members: List<String>?,
+    viewLoading: Boolean = false,
+    viewError: String? = null,
 ): NotesUiState {
-    val notes = db?.notes.orEmpty()
-    val content = DatabaseSetups.content(notes, db?.schema, setup, settings.pinned, settings.order[sourceId].orEmpty(), within = within, inOrder = inOrder)
-    val selected = DatabaseSetups.selection(setup, db?.schema)
+    val content = members?.let { DatabaseSetups.content(db?.notes.orEmpty(), it, settings.pinned) }
     return base.copy(
-        chipGroups = content.groups,
-        pinned = content.pinned,
-        others = content.others,
-        cardProperty = setup.quickFilters.firstOrNull(),
-        loading = db?.loaded != true,
-        refreshing = db?.refreshing == true,
-        error = db?.error,
+        pinned = content?.pinned.orEmpty(),
+        others = content?.others.orEmpty(),
+        cardProperty = DatabaseSetups.cardProperty(setup, db?.schema),
+        // Nothing to show until the notes and the view's list of them are known (or that failed).
+        loading = db?.loaded != true || (members == null && viewError == null),
+        refreshing = db?.refreshing == true || viewLoading,
+        error = db?.error ?: viewError.takeIf { members == null },
         databaseId = sourceId,
         setup = setup,
-        filterCount = content.filterCount,
-        filterOptions = db?.schema?.properties.orEmpty().filter { it.isChipCandidate }.map { property ->
-            ChipGroup(property, ChipFilter.chips(property, notes), selected[property.name].orEmpty())
-        },
-        sortChoices = DatabaseSetups.sortChoices(db?.schema),
     )
-}
-
-/** The values selected in [groups] that a new note gets (the first of each property, where it can). */
-internal fun presets(groups: List<ChipGroup>, selected: Map<String, Set<String>>): List<NoteProperty> =
-    groups.mapNotNull { group ->
-        val key = selected[group.property.name]?.firstOrNull() ?: return@mapNotNull null
-        val chip = group.chips.firstOrNull { it.key == key } ?: return@mapNotNull null
-        presetFor(group.property, chip)
-    }
-
-/** A filter property's value for a new note made while filter [key] is selected. */
-internal fun presetFor(schema: PropertySchema, chip: FilterChip, today: LocalDate = LocalDate.now()): NoteProperty? {
-    val value = when (schema.type) {
-        "select", "status" -> PropertyValue.Select(schema.options.firstOrNull { it.name == chip.key })
-        "multi_select" -> PropertyValue.MultiSelect(listOfNotNull(schema.options.firstOrNull { it.name == chip.key }))
-        "people" -> PropertyValue.People(listOf(NotionUser(chip.key, chip.label)))
-        "checkbox" -> PropertyValue.Checkbox(chip.key == ChipFilter.CHECKED)
-        "relation" -> PropertyValue.Relation(listOf(chip.key))
-        // A note made while "Today" is selected is for today; other date ranges have no one date.
-        "date" -> if (chip.key == ChipFilter.TODAY) PropertyValue.Date(today.toString()) else return null
-        // Computed by Notion (created by, formulas): nothing to fill in.
-        else -> return null
-    }
-    return NoteProperty(schema.name, schema.type, value)
 }
 
 /**
