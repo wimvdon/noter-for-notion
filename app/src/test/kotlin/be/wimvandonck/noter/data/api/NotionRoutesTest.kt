@@ -25,6 +25,7 @@ class NotionRoutesTest {
         assertEquals("v1", NotionRoutes.subjectId("/views/v1", null))
         assertEquals("d1", NotionRoutes.subjectId("/views?data_source_id=d1&page_size=100", null))
         assertEquals("d1", NotionRoutes.subjectId("/views?page_size=100&data_source_id=d1", null))
+        assertEquals("db1", NotionRoutes.subjectId("/views?database_id=db1&page_size=100", null))
         assertNull(NotionRoutes.subjectId("/views?page_size=100", null))
     }
 

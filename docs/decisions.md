@@ -2,6 +2,16 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-11-12: Notion's views are listed by database, for their order
+
+Notion's API has no field for the order of a database's view tabs: the list of views gives only
+IDs, and a view has no position. Listed by data source (`GET /views?data_source_id=…`), the tabs
+didn't come in Notion's order. Now they are listed by database (`database_id`, the views of all
+its data sources; each view still says which one it shows), to see whether that list follows the
+tabs. If it doesn't, the next step is letting the user drag the tabs into order in Noter (kept per
+database, backed up). Rejected for now: a debug screen comparing both lists (the owner sees the
+answer on the phone straight away).
+
 ## 2026-11-12: Notion's views in a database, plus one Noter view
 
 A database now shows its Notion views as tabs (Notion's order), with one more tab for the Noter

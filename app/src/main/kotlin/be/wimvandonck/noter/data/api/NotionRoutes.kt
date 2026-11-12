@@ -7,8 +7,8 @@ import kotlinx.serialization.json.JsonObject
 object NotionRoutes {
     private val subject = Regex("^/(pages|blocks|data_sources|databases|views)/([^/?]+)")
 
-    /** The views of a data source (`GET /views?data_source_id=…`) are about that data source. */
-    private val viewsOf = Regex("^/views\\?(?:.*&)?data_source_id=([^&]+)")
+    /** The views of a data source or database (`GET /views?data_source_id=…`) are about it. */
+    private val viewsOf = Regex("^/views\\?(?:.*&)?(?:data_source_id|database_id)=([^&]+)")
 
     /**
      * The object a request is about: the ID in the path, or for a new page the parent's ID.

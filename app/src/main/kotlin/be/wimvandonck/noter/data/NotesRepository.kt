@@ -1276,7 +1276,8 @@ class NotesRepository(
 
     /**
      * Data source [sourceId]'s Notion views: the copy on this phone at once, then Notion's when
-     * that is older than ten minutes (or [force]). One request lists them and one more reads each.
+     * that is older than ten minutes (or [force]). One request lists the database's views and one
+     * more reads each (those of its other data sources too: only the view says which it shows).
      * Offline, or when Notion refuses, the copy stays.
      */
     suspend fun openViews(sourceId: String, force: Boolean = false) = withContext(Dispatchers.IO) {
@@ -1288,7 +1289,8 @@ class NotesRepository(
         if (!force && current != null && clock() - current.fetchedMs < VIEWS_TTL_MS) return@withContext
         if (!synchronized(viewsAsking) { viewsAsking.add(sourceId) }) return@withContext
         try {
-            val ids = client.listViews(sourceId).mapNotNull { it.stringOrNull("id") }
+            // Asked by database: by data source the list wasn't in the order of Notion's tabs.
+            val ids = client.listViews(sourceId, databaseOf(sourceId)).mapNotNull { it.stringOrNull("id") }
             val views = ids.mapNotNull { id ->
                 try {
                     ViewCodec.parse(client.getView(id))
