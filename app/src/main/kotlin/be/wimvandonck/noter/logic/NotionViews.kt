@@ -2,7 +2,6 @@ package be.wimvandonck.noter.logic
 
 import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.NotionView
-import be.wimvandonck.noter.data.model.PropertyLayout
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -11,7 +10,7 @@ import kotlinx.serialization.json.contentOrNull
 
 /**
  * A database shows its notes through its Notion views, one tab each: read from Notion and never
- * changed here. On this phone the tabs can be put in another order and hidden (AppSettings).
+ * changed here. The tabs follow Notion's order.
  */
 object NotionViews {
     /** View types that list a data source's pages; forms, charts and dashboards don't. */
@@ -20,19 +19,6 @@ object NotionViews {
     /** The views of [views] that list the notes of data source [sourceId], in Notion's order. */
     fun listed(views: List<NotionView>, sourceId: String): List<NotionView> =
         views.filter { it.type in LISTED_TYPES && it.dataSourceId != null && plain(it.dataSourceId) == plain(sourceId) }
-
-    /**
-     * [views] as the view settings arrange them: the shown ones in the user's [order] (views not in
-     * it follow in Notion's order), then the [hidden] ones (never all of them). The same rules as a
-     * note's properties.
-     */
-    fun arranged(views: List<NotionView>, order: List<String>, hidden: List<String>): Pair<List<NotionView>, List<NotionView>> {
-        val byId = views.associateBy { it.id }
-        val (shown, rest) = PropertyLayouts.sections(views.map { it.id }, PropertyLayout(order = order, hidden = hidden))
-        // Every view hidden (the shown ones deleted in Notion since): they all show again.
-        if (shown.isEmpty()) return rest.mapNotNull(byId::get) to emptyList()
-        return shown.mapNotNull(byId::get) to rest.mapNotNull(byId::get)
-    }
 
     /**
      * The view a data source shows, of its [shown] views: the one chosen last ([choice]) while it is

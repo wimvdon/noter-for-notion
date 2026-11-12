@@ -41,22 +41,6 @@ class NotionViewsTest {
     }
 
     @Test
-    fun `tabs follow the user's order, new views after it, hidden ones apart`() {
-        val views = listOf(view("1"), view("2"), view("3"), view("4"))
-        val (shown, hidden) = NotionViews.arranged(views, order = listOf("3", "1", "2"), hidden = listOf("2"))
-        assertEquals(listOf("3", "1", "4"), shown.map { it.id })
-        assertEquals(listOf("2"), hidden.map { it.id })
-    }
-
-    @Test
-    fun `when every view is hidden they all show`() {
-        val views = listOf(view("1"), view("2"))
-        val (shown, hidden) = NotionViews.arranged(views, order = emptyList(), hidden = listOf("1", "2"))
-        assertEquals(listOf("1", "2"), shown.map { it.id })
-        assertEquals(emptyList<NotionView>(), hidden)
-    }
-
-    @Test
     fun `a view's filter and sorts are sent as they are, sorts by property name`() {
         val v = view("1", filter = """{"property":"Done","checkbox":{"equals":false}}""", sorts = """[{"property":"a%3Bb","direction":"ascending"},{"timestamp":"created_time","direction":"descending"}]""")
         val (filter, sorts) = NotionViews.query(v, schema)

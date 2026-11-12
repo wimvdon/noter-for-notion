@@ -273,7 +273,6 @@
         <item quantity="other">%d dagen</item>
     </plurals>
     <string name="view_settings">Weergave-instellingen</string>
-    <string name="views_shown">Weergaven</string>
     <string name="edit_views_in_notion">Weergaven bewerken in Notion</string>
     <string name="more_in_notion">Meer opties in Notion</string>
 </resources>

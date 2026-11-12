@@ -265,8 +265,8 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   say "Workspace · Edited …", and the + sheet has a part per workspace (its name as the title, with
   a chevron that folds the part away,
   "New page at the top" when its token may, then its databases).
-- A database is a child page: back arrow, Notion's icon and name, then sync and ⋮ (Pin or Unpin, Edit database, Quick actions, Open in Notion, Share). Edit database is a full-screen dialog (× and Save in its bar): the icon (a page's emoji sheet) next to the name field, then one field per property, labelled with its kind, with × to remove it (none for the title property), Add property with the kinds of New database, and "More options in Notion" (a text button with the external-link icon). Removing asks first (Remove and save). Tapping the icon or the name in the app bar opens it too. A database of several data sources has a primary scrollable tab row, one
-  tab per data source. Under it (or under the app bar) the Tune icon button (view settings) starts a row with a secondary scrollable tab row of the data source's Notion views. The whole header (top app bar, tab rows, `surface`)
+- A database is a child page: back arrow, Notion's icon and name, then sync, Tune (view settings) and ⋮ (Pin or Unpin, Edit database, Quick actions, Open in Notion, Share). Edit database is a full-screen dialog (× and Save in its bar): the icon (a page's emoji sheet) next to the name field, then one field per property, labelled with its kind, with × to remove it (none for the title property), Add property with the kinds of New database, and "More options in Notion" (a text button with the external-link icon). Removing asks first (Remove and save). Tapping the icon or the name in the app bar opens it too. A database of several data sources has a primary scrollable tab row, one
+  tab per data source. Under it (or under the app bar) a secondary scrollable tab row of the data source's Notion views, in Notion's order. The whole header (top app bar, tab rows, `surface`)
   scrolls away with the notes and comes back on the first scroll up (`QuickReturnHeader`); the
   status bar area stays. Notes in a database follow their Notion view's order: a long press opens a card's menu, it doesn't move the card.
 - Search, a child page: a back arrow and the query field in the app bar, a row of filter chips
@@ -275,9 +275,8 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
 - Bottom sheets all open through `NoterSheet` (`ui/common/`): fully open at once, never under the status
   bar, closed by a swipe down that starts at the top of its list (or on the handle), a tap beside it or Back,
   never by a scroll in its list; with the keyboard open those close the keyboard first.
-- View settings (the Tune button at the start of a database's view tabs): a bottom sheet titled "View settings" with the views
-  arranged like a note's properties ("Views" and "Hidden" sections, a drag handle and an eye on each; the last shown view can't
-  be hidden), a text button "Edit views in Notion" with the external-link icon, a divider, then "Cards": switches for the header
+- View settings (the Tune button in a database's app bar): a bottom sheet titled "View settings" with
+  a text button "Edit views in Notion" with the external-link icon, a divider, then "Cards": switches for the header
   image and the start of the content, and filter chips for up to three properties.
 - Quick actions (a database's ⋮, or a note's ⋮ for its database, Bolt icon): a bottom sheet listing them as `ListItem`s (name, its changes as supporting
   text, a delete icon button; a tap edits), with a hint and a filled "New quick action" button. Editing is a sheet with

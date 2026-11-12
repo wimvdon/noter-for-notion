@@ -58,10 +58,8 @@ data class DatabaseUiState(
     val properties: List<PropertySchema> = emptyList(),
     /** Notion's web link to the database, for Open in Notion, Share and editing its views. */
     val notionUrl: String = "",
-    /** The data source's Notion views shown as tabs, in the user's order. */
+    /** The data source's Notion views shown as tabs, in Notion's order. */
     val views: List<NotionView> = emptyList(),
-    /** Its Notion views hidden from the tabs. */
-    val hiddenViews: List<NotionView> = emptyList(),
     /** The view shown (null: no views known yet). */
     val viewId: String? = null,
 )
@@ -86,8 +84,7 @@ sealed interface DatabaseEvent {
 }
 
 /**
- * A database: its notes as its Notion views show them, one tab each (the order and the hidden
- * ones kept on this phone), and the cards and quick actions kept for it ([DatabaseSetup], per
+ * A database: its notes as its Notion views show them, one tab each in Notion's order, and the cards and quick actions kept for it ([DatabaseSetup], per
  * data source). [openedId] is a data source (from Home or Search) or a database (a link, or a
  * database of several data sources); a database with several data sources shows one at a time,
  * with tabs.
@@ -127,7 +124,7 @@ class DatabaseViewModel(
         val db = databases[id]
         val setup = DatabaseSetups.of(settings.setups, id)
         val sourceViews = views.all[id]
-        val (shown, hidden) = arrangedViews(sourceViews, settings, id)
+        val shown = listedViews(sourceViews, id)
         val viewId = NotionViews.chosen(choiceOf(settings, id), shown)
         val listStatus = views.status[id]
         val resultStatus = viewId?.let { views.status["$id/$it"] }
@@ -162,7 +159,6 @@ class DatabaseViewModel(
             properties = db?.schema?.properties.orEmpty(),
             notionUrl = ReadOnlyBlocks.notionUrl(link ?: db?.schema?.databaseId ?: pinKey(id, list)),
             views = shown,
-            hiddenViews = hidden,
             viewId = viewId,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DatabaseUiState())
@@ -215,15 +211,8 @@ class DatabaseViewModel(
     private fun choiceOf(settings: be.wimvandonck.noter.data.store.AppSettings, id: String): String? =
         settings.views[id] ?: settings.views.entries.firstOrNull { plain(it.key) == plain(id) }?.value
 
-    private fun <T> byPlain(map: Map<String, T>, id: String): T? = map[id] ?: map.entries.firstOrNull { plain(it.key) == plain(id) }?.value
-
-    /** Data source [id]'s Notion views: the shown ones in the user's order, then the hidden ones. */
-    private fun arrangedViews(views: ViewsCache?, settings: be.wimvandonck.noter.data.store.AppSettings, id: String): Pair<List<NotionView>, List<NotionView>> =
-        NotionViews.arranged(
-            NotionViews.listed(views?.views.orEmpty(), id),
-            byPlain(settings.viewOrder, id).orEmpty(),
-            byPlain(settings.hiddenViews, id).orEmpty(),
-        )
+    /** Data source [id]'s Notion views that list its notes, in Notion's order. */
+    private fun listedViews(views: ViewsCache?, id: String): List<NotionView> = NotionViews.listed(views?.views.orEmpty(), id)
 
     /** The notes of Notion view [viewId] as last asked (null: not asked yet), with the ones made since. */
     private fun members(views: ViewsCache?, viewId: String, notes: List<NoteSummary>): List<String>? {
@@ -238,7 +227,7 @@ class DatabaseViewModel(
     private suspend fun openViews(id: String, force: Boolean = false, forceResults: Boolean = force) {
         repository.openViews(id, force)
         val settings = repository.currentSettings()
-        val (shown, _) = arrangedViews(repository.views.value[id], settings, id)
+        val shown = listedViews(repository.views.value[id], id)
         val chosen = NotionViews.chosen(choiceOf(settings, id), shown) ?: return
         if (choiceOf(settings, id) != chosen) repository.chooseView(id, chosen)
         repository.refreshViewResults(id, chosen, forceResults)
@@ -250,19 +239,6 @@ class DatabaseViewModel(
         if (viewId == state.value.viewId) return
         viewModelScope.launch {
             repository.chooseView(id, viewId)
-            openViews(id)
-        }
-    }
-
-    /**
-     * The view settings were arranged: [shown] views (by ID) are tabs in this order, [hidden] aren't.
-     * At least one view stays shown.
-     */
-    fun arrangeViews(shown: List<String>, hidden: List<String>) {
-        if (shown.isEmpty()) return
-        val id = sourceId
-        viewModelScope.launch {
-            repository.arrangeViews(id, shown + hidden, hidden)
             openViews(id)
         }
     }

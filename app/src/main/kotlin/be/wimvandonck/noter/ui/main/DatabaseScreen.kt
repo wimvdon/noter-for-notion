@@ -160,8 +160,8 @@ fun DatabaseScreen(
                             },
                             actions = {
                                 SyncButton(content.pendingCount, content.offline, syncing = false, onSync = { viewModel.refresh() }, alwaysShown = false)
-                                // Until the views are known the view settings (what the cards show) are here.
-                                if (state.views.isEmpty()) {
+                                // View settings: what the cards show (the same icon as a page's properties button).
+                                if (!content.sourceMissing) {
                                     IconButton(onClick = { settingsOpen = true }) {
                                         Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.view_settings))
                                     }
@@ -231,24 +231,18 @@ fun DatabaseScreen(
                                 }
                             }
                         }
-                        // The data source's Notion views, after the view settings (the same icon as a page's properties button).
+                        // The data source's Notion views, in Notion's order.
                         if (state.views.isNotEmpty() && !content.sourceMissing) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = { settingsOpen = true }, modifier = Modifier.padding(start = 4.dp)) {
-                                    Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.view_settings))
-                                }
-                                SecondaryScrollableTabRow(
-                                    selectedTabIndex = state.views.indexOfFirst { it.id == state.viewId }.coerceAtLeast(0),
-                                    edgePadding = 0.dp,
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    state.views.forEach { view ->
-                                        Tab(
-                                            selected = view.id == state.viewId,
-                                            onClick = { viewModel.selectView(view.id) },
-                                            text = { Text(view.name.ifBlank { untitled }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                        )
-                                    }
+                            SecondaryScrollableTabRow(
+                                selectedTabIndex = state.views.indexOfFirst { it.id == state.viewId }.coerceAtLeast(0),
+                                edgePadding = 16.dp,
+                            ) {
+                                state.views.forEach { view ->
+                                    Tab(
+                                        selected = view.id == state.viewId,
+                                        onClick = { viewModel.selectView(view.id) },
+                                        text = { Text(view.name.ifBlank { untitled }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    )
                                 }
                             }
                         }
@@ -290,11 +284,8 @@ fun DatabaseScreen(
 
     if (settingsOpen) {
         ViewSettingsSheet(
-            views = state.views,
-            hiddenViews = state.hiddenViews,
             cards = state.cards,
             properties = state.properties,
-            onArrangeViews = viewModel::arrangeViews,
             onCards = viewModel::editCards,
             onEditInNotion = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, state.notionUrl.toUri())) } },
             onDismiss = { settingsOpen = false },
