@@ -12,6 +12,9 @@ import be.wimvandonck.noter.data.model.PinnedDatabase
 import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.PropertyValue
+import be.wimvandonck.noter.data.model.NoteSort
+import be.wimvandonck.noter.data.model.SortKind
+import be.wimvandonck.noter.logic.NotionViews
 import be.wimvandonck.noter.data.store.CacheStore
 import be.wimvandonck.noter.data.store.DatabaseCache
 import be.wimvandonck.noter.data.sync.PendingOp
@@ -610,5 +613,55 @@ class NotesRepositoryTest {
         assertEquals(listOf("Ann", "Bob"), repo.users().map { it.name })
         repo.relatedPages("rel")
         assertEquals(pageQueries + 1, notion.requests.count { it.path.startsWith("/data_sources/rel/query") })
+    }
+
+    @Test
+    fun `a data source's Notion views are read, and a view's notes asked with its filter and sorts`() = runBlocking {
+        notion.respond = { sent ->
+            when {
+                sent.path.startsWith("/views?data_source_id=db") -> 200 to FakeNotion.list("""{"object":"view","id":"v1"}""", """{"object":"view","id":"v2"}""")
+                sent.path == "/views/v1" ->
+                    200 to """{"object":"view","id":"v1","name":"Open","type":"table","data_source_id":"db",
+                              "filter":{"property":"Done","checkbox":{"equals":false}},"sorts":[{"timestamp":"created_time","direction":"ascending"}]}"""
+                sent.path == "/views/v2" -> 404 to """{"object":"error","status":404,"code":"object_not_found","message":"Not found"}"""
+                sent.path.startsWith("/data_sources/db/query") -> 200 to FakeNotion.list(FakeNotion.page("p2", "db"), FakeNotion.page("p1", "db"))
+                else -> 200 to "{}"
+            }
+        }
+        val repo = repository()
+
+        repo.openViews("db")
+        val views = repo.views.value["db"]!!.views
+        assertEquals(listOf("v1"), views.map { it.id })
+
+        repo.refreshViewResults("db", "v1")
+        assertEquals(listOf("p2", "p1"), repo.views.value["db"]!!.results["v1"]!!.ids)
+        val query = notion.requests.last { it.path.startsWith("/data_sources/db/query") }
+        assertTrue(query.path, query.path.contains("filter_properties=title"))
+        assertTrue(query.body, query.body.contains(""""filter":{"property":"Done","checkbox":{"equals":false}}"""))
+        assertTrue(query.body, query.body.contains(""""sorts":[{"timestamp":"created_time","direction":"ascending"}]"""))
+
+        // Asked again within a minute: the answer from before is used.
+        val asked = notion.requests.size
+        repo.refreshViewResults("db", "v1")
+        repo.openViews("db")
+        assertEquals(asked, notion.requests.size)
+    }
+
+    @Test
+    fun `a change in a Notion view goes to the Noter view, and Undo puts both back`() = runBlocking {
+        val settings = newSettings()
+        val repo = repository(settings = settings)
+        settings.update { it.copy(setups = emptyMap(), views = mapOf("db" to "v1")) }
+
+        repo.switchToNoter("db", null) { it.copy(baseView = "v1", sort = NoteSort(SortKind.TITLE)) }
+        var now = settings.current()
+        assertEquals(NotionViews.NOTER, now.views["db"])
+        assertEquals("v1", now.setups["db"]?.baseView)
+
+        repo.undoSwitchToNoter("db", null, "v1")
+        now = settings.current()
+        assertEquals("v1", now.views["db"])
+        assertFalse(now.setups.containsKey("db"))
     }
 }

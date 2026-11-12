@@ -161,11 +161,19 @@ data class SearchUiState(
 
 /**
  * The notes of data source [sourceId] ([db]) as [setup] shows them: filtered, sorted, its quick
- * filters on top (see DatabaseViewModel).
+ * filters on top (see DatabaseViewModel). [within] and [inOrder]: a Notion view's notes (DatabaseSetups.content).
  */
-internal fun setupContent(base: NotesUiState, setup: DatabaseSetup, db: DatabaseState?, settings: AppSettings, sourceId: String): NotesUiState {
+internal fun setupContent(
+    base: NotesUiState,
+    setup: DatabaseSetup,
+    db: DatabaseState?,
+    settings: AppSettings,
+    sourceId: String,
+    within: List<String>? = null,
+    inOrder: Boolean = false,
+): NotesUiState {
     val notes = db?.notes.orEmpty()
-    val content = DatabaseSetups.content(notes, db?.schema, setup, settings.pinned, settings.order[sourceId].orEmpty())
+    val content = DatabaseSetups.content(notes, db?.schema, setup, settings.pinned, settings.order[sourceId].orEmpty(), within = within, inOrder = inOrder)
     val selected = DatabaseSetups.selection(setup, db?.schema)
     return base.copy(
         chipGroups = content.groups,

@@ -2,6 +2,7 @@ package be.wimvandonck.noter.data.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 /**
  * How one data source's notes are shown, kept on this phone per data source (Notion isn't
@@ -25,6 +26,13 @@ data class DatabaseSetup(
     val cards: CardLayout? = null,
     /** Quick actions (#119): named sets of property changes, run on a note from its page. */
     val quickActions: List<QuickAction> = emptyList(),
+    /**
+     * The Notion view whose filter the Noter view starts from (null: none): set when a change in
+     * a Notion view turned it into the Noter view (see NotionViews.copy). Only its notes show.
+     */
+    val baseView: String? = null,
+    /** [baseView]'s name when it was copied, for the chip that removes it. */
+    val baseViewName: String = "",
 ) {
     /**
      * The order the notes are in now ([SortKind.NOTION] from before reads as the custom order,
@@ -194,6 +202,25 @@ data class NoteSort(
     val property: String? = null,
     /** Newest (or Z) first; for [SortKind.NOTION] and [SortKind.CUSTOM] it doesn't apply. */
     val descending: Boolean = kind != SortKind.TITLE,
+)
+
+/**
+ * One of a data source's views in Notion: its name, type and the filter, sorts and quick filters it
+ * applies, in Notion's format (sent back as they are when its notes are asked). Read from Notion;
+ * Noter never changes it.
+ */
+@Serializable
+data class NotionView(
+    val id: String,
+    val name: String = "",
+    /** table, board, list, calendar, timeline, gallery, form, chart, map or dashboard. */
+    val type: String = "",
+    /** The data source it shows (null for one that shows several, such as a dashboard). */
+    val dataSourceId: String? = null,
+    val filter: JsonElement? = null,
+    val sorts: JsonElement? = null,
+    /** Quick filters by property: a condition each, empty while it has none. */
+    val quickFilters: JsonElement? = null,
 )
 
 /** What a database's cards show. */

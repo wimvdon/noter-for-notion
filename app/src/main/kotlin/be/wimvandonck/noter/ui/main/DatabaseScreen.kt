@@ -35,6 +35,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.SecondaryScrollableTabRow
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.foundation.layout.size
+import be.wimvandonck.noter.logic.NotionViews
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -102,6 +108,7 @@ fun DatabaseScreen(
 
     val sortedByHand = stringResource(R.string.sorted_by_hand)
     val quickActionDeleted = stringResource(R.string.quick_action_deleted)
+    val switchedToNoter = stringResource(R.string.switched_to_noter)
     val undo = stringResource(R.string.undo)
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -110,6 +117,11 @@ fun DatabaseScreen(
                     // Dragging changed the order; the old one is a tap away.
                     val result = snackbar.showSnackbar(sortedByHand, actionLabel = undo, duration = SnackbarDuration.Long)
                     if (result == SnackbarResult.ActionPerformed) viewModel.undoSortedByHand(event)
+                }
+                is DatabaseEvent.SwitchedToNoter -> {
+                    // A change in a Notion view went to the Noter view; Notion's view is a tap away.
+                    val result = snackbar.showSnackbar(switchedToNoter, actionLabel = undo, duration = SnackbarDuration.Long)
+                    if (result == SnackbarResult.ActionPerformed) viewModel.undoSwitchToNoter(event)
                 }
                 is DatabaseEvent.QuickActionDeleted -> {
                     val result = snackbar.showSnackbar(quickActionDeleted, actionLabel = undo, duration = SnackbarDuration.Long)
@@ -122,7 +134,7 @@ fun DatabaseScreen(
     // The header (app bar, tabs and rows of chips) scrolls away with the notes and comes back on
     // the first scroll up. Another data source brings it back (a short list can't scroll it into view).
     val header = rememberQuickReturnHeaderState()
-    LaunchedEffect(state.sourceId) { header.show() }
+    LaunchedEffect(state.sourceId, state.viewId) { header.show() }
 
     Scaffold(
         modifier = Modifier.nestedScroll(header.connection),
@@ -232,6 +244,33 @@ fun DatabaseScreen(
                                         text = { Text(source.title.ifBlank { untitled }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                     )
                                 }
+                            }
+                        }
+                        // The data source's Notion views, then the Noter view: peers showing the same notes.
+                        if (state.views.isNotEmpty() && !content.sourceMissing) {
+                            val tabs = state.views.map { it.id to it.name.ifBlank { untitled } } + (NotionViews.NOTER to stringResource(R.string.view_noter))
+                            SecondaryScrollableTabRow(selectedTabIndex = tabs.indexOfFirst { it.first == state.viewId }.coerceAtLeast(0), edgePadding = 16.dp) {
+                                tabs.forEach { (id, name) ->
+                                    Tab(
+                                        selected = id == state.viewId,
+                                        onClick = { viewModel.selectView(id) },
+                                        text = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    )
+                                }
+                            }
+                        }
+                        // The Noter view started from a Notion view shows only its notes; × shows them all.
+                        state.baseViewName?.let { name ->
+                            if (state.viewId == NotionViews.NOTER && !content.sourceMissing) {
+                                InputChip(
+                                    selected = true,
+                                    onClick = viewModel::clearBaseView,
+                                    label = { Text(stringResource(R.string.base_view, name.ifBlank { untitled }), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    trailingIcon = {
+                                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.show_all_notes), modifier = Modifier.size(InputChipDefaults.IconSize))
+                                    },
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                )
                             }
                         }
                         if (content.hasKey && content.chipGroups.isNotEmpty() && !content.sourceMissing) {

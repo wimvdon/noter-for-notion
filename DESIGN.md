@@ -267,7 +267,7 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   "New page at the top" when its token may, then its databases).
 - A database is a child page: back arrow, Notion's icon and name, then sync, Filters, Sort, Cards
   (Tune icon, as a page's properties button) and ⋮ (Pin or Unpin, Edit database, Open in Notion, Share). Edit database is a full-screen dialog (× and Save in its bar): the icon (a page's emoji sheet) next to the name field, then one field per property, labelled with its kind, with × to remove it (none for the title property), and Add property with the kinds of New database. Removing asks first (Remove and save). Tapping the icon or the name in the app bar opens it too. A database of several data sources has a primary scrollable tab row, one
-  tab per data source. The whole header (top app bar, tab row and rows of chips, `surface`)
+  tab per data source. Under it (or under the app bar) a secondary scrollable tab row lists the data source's Notion views, then "Noter" (the view kept in the app), when Notion has views for it. A change in a Notion view goes to the Noter tab with a snackbar and Undo; the Noter view started from a Notion view shows an input chip "Notes in …" with × under the tabs. The whole header (top app bar, tab rows, that chip and rows of chips, `surface`)
   scrolls away with the notes and comes back on the first scroll up (`QuickReturnHeader`); the
   status bar area stays.
 - Filters and sort: icon buttons in a database's top app bar. Filters shows a small badge dot

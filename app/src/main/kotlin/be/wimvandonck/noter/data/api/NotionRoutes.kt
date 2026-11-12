@@ -5,7 +5,10 @@ import kotlinx.serialization.json.JsonObject
 
 /** How a Notion request is matched to a token when there are several (#58, see [NotionClient]). */
 object NotionRoutes {
-    private val subject = Regex("^/(pages|blocks|data_sources|databases)/([^/?]+)")
+    private val subject = Regex("^/(pages|blocks|data_sources|databases|views)/([^/?]+)")
+
+    /** The views of a data source (`GET /views?data_source_id=…`) are about that data source. */
+    private val viewsOf = Regex("^/views\\?(?:.*&)?data_source_id=([^&]+)")
 
     /**
      * The object a request is about: the ID in the path, or for a new page the parent's ID.
@@ -13,6 +16,7 @@ object NotionRoutes {
      */
     fun subjectId(endpoint: String, body: Any?): String? {
         subject.find(endpoint)?.let { return it.groupValues[2] }
+        viewsOf.find(endpoint)?.let { return it.groupValues[1] }
         val parent = (body as? Map<*, *>)?.get("parent") as? Map<*, *> ?: return null
         return (parent["page_id"] ?: parent["data_source_id"] ?: parent["database_id"]) as? String
     }

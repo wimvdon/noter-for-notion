@@ -5,6 +5,7 @@ import be.wimvandonck.noter.data.model.WorkspaceItem
 import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.NotionUser
+import be.wimvandonck.noter.data.model.NotionView
 import be.wimvandonck.noter.data.model.PageContent
 import be.wimvandonck.noter.data.model.PageRef
 import be.wimvandonck.noter.data.sync.PendingOp
@@ -24,6 +25,26 @@ data class DatabaseCache(
     /** Phone time (ms) the last refresh started; the next one asks for changes since then. */
     val lastSyncMs: Long = 0,
     val lastFullSyncMs: Long = 0,
+)
+
+/** The notes a Notion view showed when Notion was last asked: their IDs in its order. */
+@Serializable
+data class ViewResult(
+    val ids: List<String> = emptyList(),
+    /** Phone time (ms) it was asked. */
+    val fetchedMs: Long = 0,
+    /** The same, as Notion writes times (ISO 8601), to tell notes made since (NotionViews.members). */
+    val fetchedAt: String = "",
+)
+
+/** A data source's Notion views, and the notes of the ones shown, as Notion said when last asked. */
+@Serializable
+data class ViewsCache(
+    val views: List<NotionView> = emptyList(),
+    /** Phone time (ms) the views were last asked. */
+    val fetchedMs: Long = 0,
+    /** By view ID. */
+    val results: Map<String, ViewResult> = emptyMap(),
 )
 
 @Serializable
@@ -110,6 +131,12 @@ class CacheStore(private val dir: File) {
     @Synchronized
     fun savePages(databaseId: String, cache: PagesCache) =
         write("pages_${safe(databaseId)}.json", PagesCache.serializer(), cache)
+
+    @Synchronized
+    fun views(sourceId: String): ViewsCache? = read("views_${safe(sourceId)}.json", ViewsCache.serializer())
+
+    @Synchronized
+    fun saveViews(sourceId: String, cache: ViewsCache) = write("views_${safe(sourceId)}.json", ViewsCache.serializer(), cache)
 
     /** Databases' names and data sources, by database ID, as Notion said when last asked. */
     @Synchronized

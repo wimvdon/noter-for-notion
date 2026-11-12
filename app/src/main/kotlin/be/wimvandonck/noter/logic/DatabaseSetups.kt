@@ -106,6 +106,10 @@ object DatabaseSetups {
     fun selection(setup: DatabaseSetup, schema: DatabaseSchema?): Map<String, Set<String>> =
         setup.selected.filterKeys { schema == null || schema.property(it) != null }.mapValues { it.value.toSet() }
 
+    /**
+     * [within]: only these notes, by ID (a Notion view's, see NotionViews.members; null: all);
+     * [inOrder]: in that order, as the Notion view sorts them, rather than by [setup]'s sort.
+     */
     fun content(
         notes: List<NoteSummary>,
         schema: DatabaseSchema?,
@@ -113,6 +117,8 @@ object DatabaseSetups {
         pinned: List<String>,
         customOrder: List<String>,
         today: LocalDate = LocalDate.now(),
+        within: List<String>? = null,
+        inOrder: Boolean = false,
     ): SetupContent {
         // A value that no note has any more (an option deleted in Notion) doesn't hide every note.
         val selected = selection(setup, schema).mapValues { (name, values) ->
@@ -125,8 +131,12 @@ object DatabaseSetups {
             val property = schema?.property(name) ?: return@mapNotNull null
             ChipGroup(property, ChipFilter.chips(property, notes, today), selected[name].orEmpty())
         }.filter { ChipFilter.anyValue(it.chips) }
-        val filtered = filter(notes, selected, today)
-        val sortedNotes = sorted(filtered, setup.currentSort, customOrder, schema)
+        val scoped = within?.let { ids ->
+            val byId = notes.associateBy { it.id }
+            ids.distinct().mapNotNull { byId[it] }
+        } ?: notes
+        val filtered = filter(scoped, selected, today)
+        val sortedNotes = if (inOrder && within != null) filtered else sorted(filtered, setup.currentSort, customOrder, schema)
         val pinnedSet = pinned.toSet()
         val (top, rest) = sortedNotes.partition { it.id in pinnedSet }
         return SetupContent(groups, top, rest, selected.count { it.value.isNotEmpty() })

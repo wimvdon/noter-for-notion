@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import okhttp3.Call
@@ -299,6 +300,31 @@ class NotionClient(
                 },
             )
         }
+
+    /**
+     * The pages of [dataSourceId] that [filter] lets through, in the order of [sorts] (both in
+     * Notion's format, as a view has them; none: Notion's own order). Only the title comes back:
+     * these are a view's notes, whose properties the app has already.
+     */
+    suspend fun queryPageIds(dataSourceId: String, filter: JsonElement?, sorts: JsonElement?): List<JsonObject> =
+        paged { cursor ->
+            call(
+                "POST", "/data_sources/$dataSourceId/query?filter_properties=title",
+                buildMap {
+                    if (filter != null) put("filter", filter)
+                    if (sorts != null) put("sorts", sorts)
+                    put("page_size", 100)
+                    if (cursor != null) put("start_cursor", cursor)
+                },
+            )
+        }
+
+    /** The views of data source [dataSourceId], in Notion's order (only their IDs, see [getView]). */
+    suspend fun listViews(dataSourceId: String): List<JsonObject> =
+        paged { cursor -> call("GET", "/views?data_source_id=$dataSourceId&page_size=100" + (cursor?.let { "&start_cursor=$it" } ?: "")) }
+
+    /** A view: its name, type, filter, sorts and quick filters. */
+    suspend fun getView(viewId: String): JsonObject = call("GET", "/views/$viewId")
 
     suspend fun getPage(pageId: String): JsonObject = call("GET", "/pages/$pageId")
 
