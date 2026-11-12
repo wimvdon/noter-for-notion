@@ -2,6 +2,14 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-11-12: The view tabs follow Notion; the view settings only set the cards
+
+Listed by database, the view tabs turned out to come in Notion's order after all, so arranging
+and hiding them on the phone goes (`AppSettings.viewOrder` and `hiddenViews` are no longer kept).
+The view settings (Tune) move back to the app bar and only set what the cards show; Edit views in
+Notion stays in the sheet. Rejected: keeping hidden views (a view nobody wants on the phone is
+better removed or moved in Notion, where it is the same for everyone).
+
 ## 2026-11-12: A database is its Notion views; Noter's own filters, sort and order go
 
 Listed by database, Notion's views still didn't come in the order of the tabs: the API has no

@@ -29,30 +29,22 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import be.wimvandonck.noter.R
 import be.wimvandonck.noter.data.model.CardLayout
-import be.wimvandonck.noter.data.model.NotionView
-import be.wimvandonck.noter.data.model.PropertyLayout
 import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.logic.PropertyLayouts
 import be.wimvandonck.noter.ui.common.NoterSheet
-import be.wimvandonck.noter.ui.note.PropertyArranger
 
 /**
- * A database's view settings (the Tune button at the start of its tabs): its Notion views, dragged
- * into order and hidden with the eye (at least one stays shown), what the cards of every view show,
- * and a link to edit the views in Notion (Noter never changes them).
+ * A database's view settings (the Tune button in its app bar): what the cards of every view show,
+ * and a link to edit the views in Notion (Noter never changes them; the tabs follow Notion's order).
  */
 @Composable
 internal fun ViewSettingsSheet(
-    views: List<NotionView>,
-    hiddenViews: List<NotionView>,
     cards: CardLayout,
     properties: List<PropertySchema>,
-    onArrangeViews: (shown: List<String>, hidden: List<String>) -> Unit,
     onCards: ((CardLayout) -> CardLayout) -> Unit,
     onEditInNotion: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val untitled = stringResource(R.string.untitled)
     NoterSheet(onDismiss = onDismiss) {
         Column(
             Modifier
@@ -62,18 +54,6 @@ internal fun ViewSettingsSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(stringResource(R.string.view_settings), style = MaterialTheme.typography.titleLarge)
-            val all = views + hiddenViews
-            if (all.isNotEmpty()) {
-                val names = all.associate { it.id to it.name.ifBlank { untitled } }
-                PropertyArranger(
-                    names = all.map { it.id },
-                    layout = PropertyLayout(order = all.map { it.id }, hidden = hiddenViews.map { it.id }),
-                    onArrange = onArrangeViews,
-                    onDone = null,
-                    shownTitle = stringResource(R.string.views_shown),
-                    label = { names[it] ?: untitled },
-                )
-            }
             TextButton(onClick = onEditInNotion) {
                 Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                 Text(stringResource(R.string.edit_views_in_notion))

@@ -655,17 +655,14 @@ class NotesRepositoryTest {
     }
 
     @Test
-    fun `the view shown, the tabs' order and the hidden views are kept per data source`() = runBlocking {
+    fun `the view shown is kept per data source`() = runBlocking {
         val settings = newSettings()
         val repo = repository(settings = settings)
         repo.chooseView("ds-1", "v2")
-        repo.arrangeViews("ds-1", listOf("v2", "v1", "v3"), listOf("v3"))
         // Written without dashes: the same data source.
         repo.chooseView("ds1", "v1")
         val now = settings.current()
         assertEquals(mapOf("ds-1" to "v1"), now.views)
-        assertEquals(mapOf("ds-1" to listOf("v2", "v1", "v3")), now.viewOrder)
-        assertEquals(mapOf("ds-1" to listOf("v3")), now.hiddenViews)
     }
 
     @Test

@@ -5,8 +5,7 @@ Listed on the Play Store as **Noter for Notion**; in the app and on the phone it
 A note app for Android in the style of Google Keep, with your notes kept in **Notion**.
 **Home** has a large search bar, everything you pinned (databases, pages and notes) and the
 databases and pages you edited last in Notion. Open a database to see its notes through its Notion
-views, one tab each: put the tabs in your order, hide the ones you don't need and choose what the
-cards show. Views themselves are edited in Notion.
+views, one tab each in Notion's order, and choose what the cards show. Views themselves are edited in Notion.
 
 - Notes as cards with a preview of their content, pinned notes on top (drag and drop to reorder on Home).
 - Pin any database, page or note to Home; **+** makes a note in a database or a new page.

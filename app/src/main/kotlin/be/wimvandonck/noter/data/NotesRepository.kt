@@ -1382,15 +1382,6 @@ class NotesRepository(
         }
     }
 
-    /** Data source [sourceId]'s view tabs: [order] (every view, shown and hidden) and the [hidden] ones. */
-    suspend fun arrangeViews(sourceId: String, order: List<String>, hidden: List<String>) {
-        settings.update { s ->
-            val orderKey = s.viewOrder.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
-            val hiddenKey = s.hiddenViews.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
-            s.copy(viewOrder = s.viewOrder + (orderKey to order), hiddenViews = s.hiddenViews + (hiddenKey to hidden))
-        }
-    }
-
     // ---- Browse -------------------------------------------------------------------------
 
     /**

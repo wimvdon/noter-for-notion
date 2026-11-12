@@ -277,7 +277,6 @@
         <item quantity="other">%d días</item>
     </plurals>
     <string name="view_settings">Ajustes de vistas</string>
-    <string name="views_shown">Vistas</string>
     <string name="edit_views_in_notion">Editar vistas en Notion</string>
     <string name="more_in_notion">Más opciones en Notion</string>
 </resources>
