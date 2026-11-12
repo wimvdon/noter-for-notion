@@ -271,7 +271,10 @@ class DatabaseViewModel(
 
     fun refresh() = viewModelScope.launch {
         repository.flush()
+        launch { repository.refreshLookups() }
         repository.refresh(sourceId, userAsked = true)
+        // The quick actions' choices too, when their sheets were open before.
+        _quickLookups.value = QuickLookups()
     }
 
     fun togglePin(id: String) = viewModelScope.launch { repository.togglePin(id) }

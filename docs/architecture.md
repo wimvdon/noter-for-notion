@@ -37,7 +37,7 @@ properties and content: the pages of databases and pages on their own.
     (`AppSettings.hiddenOnHome`, `logic/HiddenOnHome.kt`, `PageTree.build(items, hidden)`); Search,
     pins and + still show it, and Settings › "Hidden from Databases and pages" shows it again.
     The list is kept on this phone (`recent.json`), so Home shows it at once and offline; it
-    is asked again when the app starts (with a token) and on pull-to-refresh, whose indicator stays until the list and the pinned notes' databases are back (`MainViewModel.refresh`, #93). A pin at the end of
+    is asked again when the app starts (with a token) and on pull-to-refresh, whose indicator stays until the list and the pinned notes' databases are back (`MainViewModel.refresh`, #93). Pull-to-refresh on Home or in a database also makes the people (kept a day) and the pages of related databases (kept ten minutes) out of date, and asks for the people at once, so someone added in Notion shows up straight away (`NotesRepository.refreshLookups`). A pin at the end of
     a row shows it is pinned.
   - **+** (`logic/NoteTargets.kt`) offers a page at the top of the workspace (not with a
     connection's token; when Notion refuses, the page is removed again and the app says to check

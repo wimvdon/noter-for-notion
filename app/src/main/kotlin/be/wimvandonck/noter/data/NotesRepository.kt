@@ -1202,13 +1202,29 @@ class NotesRepository(
 
     // ---- Lookups for property editors ------------------------------------------------------
 
+    /** Lookups fetched before this phone time are out of date, whatever their age (see [refreshLookups]). */
+    @Volatile
+    private var lookupsStaleBefore = 0L
+
+    private fun fresh(fetchedMs: Long, ttlMs: Long) = fetchedMs >= lookupsStaleBefore && clock() - fetchedMs < ttlMs
+
+    /**
+     * Pull-to-refresh: the people and the pages of related databases kept here are out of date,
+     * so the next use asks Notion again; the people are asked at once (a person added in Notion
+     * shows without waiting a day).
+     */
+    suspend fun refreshLookups() {
+        lookupsStaleBefore = clock()
+        runCatching { users(forceRefresh = true) }
+    }
+
     /**
      * People in the workspace, for person properties (cached for a day). A personal access token
      * can't list them: then the people in the notes here and the token's owner ([KnownUsers]).
      */
     suspend fun users(forceRefresh: Boolean = false): List<NotionUser> = withContext(Dispatchers.IO) {
         val cached = cache.users()
-        if (!forceRefresh && cached != null && clock() - cached.fetchedMs < LOOKUP_TTL_MS) return@withContext cached.users
+        if (!forceRefresh && cached != null && fresh(cached.fetchedMs, LOOKUP_TTL_MS)) return@withContext cached.users
         try {
             val users = client.listUsers()
                 .filter { it.stringOrNull("type") == "person" }
@@ -1226,7 +1242,7 @@ class NotesRepository(
     suspend fun relatedPages(databaseId: String, forceRefresh: Boolean = false): List<PageRef>? =
         withContext(Dispatchers.IO) {
             val cached = cache.pages(databaseId)
-            if (!forceRefresh && cached != null && clock() - cached.fetchedMs < RELATED_TTL_MS) return@withContext cached.pages
+            if (!forceRefresh && cached != null && fresh(cached.fetchedMs, RELATED_TTL_MS)) return@withContext cached.pages
             try {
                 val pages = client.queryDataSource(resolveSource(databaseId)).mapNotNull { page ->
                     PropertyCodec.parsePage(page, databaseId)?.let { PageRef(it.id, InlineMarkdown.stripped(it.title)) }
