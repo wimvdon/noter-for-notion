@@ -616,10 +616,14 @@ class NotesRepositoryTest {
     }
 
     @Test
-    fun `a data source's Notion views are read, and a view's notes asked with its filter and sorts`() = runBlocking {
+    fun `a database's Notion views are read, and a view's notes asked with its filter and sorts`() = runBlocking {
         notion.respond = { sent ->
             when {
-                sent.path.startsWith("/views?data_source_id=db") -> 200 to FakeNotion.list("""{"object":"view","id":"v1"}""", """{"object":"view","id":"v2"}""")
+                sent.path.startsWith("/views?database_id=dbase") ->
+                    200 to FakeNotion.list("""{"object":"view","id":"v3"}""", """{"object":"view","id":"v1"}""", """{"object":"view","id":"v2"}""")
+                sent.path == "/views/v3" -> 200 to """{"object":"view","id":"v3","name":"Other","type":"table","data_source_id":"other"}"""
+                sent.path == "/data_sources/db" ->
+                    200 to """{"object":"data_source","id":"db","parent":{"type":"database_id","database_id":"dbase"},"title":[],"properties":{"Name":{"id":"title","name":"Name","type":"title","title":{}}}}"""
                 sent.path == "/views/v1" ->
                     200 to """{"object":"view","id":"v1","name":"Open","type":"table","data_source_id":"db",
                               "filter":{"property":"Done","checkbox":{"equals":false}},"sorts":[{"timestamp":"created_time","direction":"ascending"}]}"""
@@ -631,8 +635,10 @@ class NotesRepositoryTest {
         val repo = repository()
 
         repo.openViews("db")
+        // Asked by the database the data source is in; a view Notion won't show is left out.
         val views = repo.views.value["db"]!!.views
-        assertEquals(listOf("v1"), views.map { it.id })
+        assertEquals(listOf("v3", "v1"), views.map { it.id })
+        assertEquals(listOf("v1"), NotionViews.listed(views, "db").map { it.id })
 
         repo.refreshViewResults("db", "v1")
         assertEquals(listOf("p2", "p1"), repo.views.value["db"]!!.results["v1"]!!.ids)

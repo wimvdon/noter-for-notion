@@ -319,9 +319,15 @@ class NotionClient(
             )
         }
 
-    /** The views of data source [dataSourceId], in Notion's order (only their IDs, see [getView]). */
-    suspend fun listViews(dataSourceId: String): List<JsonObject> =
-        paged { cursor -> call("GET", "/views?data_source_id=$dataSourceId&page_size=100" + (cursor?.let { "&start_cursor=$it" } ?: "")) }
+    /**
+     * The views of database [databaseId] (all its data sources'), or of data source [dataSourceId]
+     * when the database isn't known, in the order Notion lists them (only their IDs, see [getView]).
+     * Notion has no field for the order of the tabs; asked by data source, the list didn't follow it.
+     */
+    suspend fun listViews(dataSourceId: String, databaseId: String? = null): List<JsonObject> {
+        val parent = if (databaseId != null) "database_id=$databaseId" else "data_source_id=$dataSourceId"
+        return paged { cursor -> call("GET", "/views?$parent&page_size=100" + (cursor?.let { "&start_cursor=$it" } ?: "")) }
+    }
 
     /** A view: its name, type, filter, sorts and quick filters. */
     suspend fun getView(viewId: String): JsonObject = call("GET", "/views/$viewId")
