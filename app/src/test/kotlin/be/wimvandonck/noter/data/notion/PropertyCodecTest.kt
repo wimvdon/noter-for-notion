@@ -4,6 +4,7 @@ import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.NotionUser
 import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.model.SelectOption
+import be.wimvandonck.noter.data.model.withoutHidden
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -161,5 +162,25 @@ class PropertyCodecTest {
         val external = PropertyCodec.parsePage(obj("""{"id":"p","cover":{"type":"external","external":{"url":"https://x/c.jpg"}},"properties":{}}"""), "db")!!
         assertEquals("https://x/c.jpg", external.cover)
         assertNull(PropertyCodec.parsePage(obj("""{"id":"p","cover":null,"properties":{}}"""), "db")!!.cover)
+    }
+
+    @Test
+    fun `Notion's buttons are left out of schemas, pages and stored copies`() {
+        val schema = PropertyCodec.parseSchema(
+            obj("""{"id":"db","title":[],"properties":{"Name":{"id":"t","name":"Name","type":"title","title":{}},"Go":{"id":"b","name":"Go","type":"button","button":{}}}}"""),
+        )
+        assertEquals(listOf("Name"), schema.properties.map { it.name })
+        val note = PropertyCodec.parsePage(
+            obj("""{"id":"p","properties":{"Name":{"type":"title","title":[]},"Go":{"type":"button","button":{}}}}"""),
+            "db",
+        )!!
+        assertEquals(listOf("Name"), note.properties.map { it.name })
+        // A copy stored before this version still has one: it goes when read.
+        val stored = note.copy(properties = note.properties + NoteProperty("Go", "button", PropertyValue.ReadOnly("")))
+        assertEquals(listOf("Name"), stored.withoutHidden().properties.map { it.name })
+        val storedSchema = schema.copy(properties = schema.properties + be.wimvandonck.noter.data.model.PropertySchema(name = "Go", type = "button"))
+        assertEquals(listOf("Name"), storedSchema.withoutHidden().properties.map { it.name })
+        assertTrue(be.wimvandonck.noter.logic.ReadOnlyBlocks.isHidden("button"))
+        assertFalse(be.wimvandonck.noter.logic.ReadOnlyBlocks.isHidden("bookmark"))
     }
 }

@@ -23,7 +23,7 @@ data class DatabaseSetup(
     val sort: NoteSort? = null,
     /** What the cards show (null: what the database's cards showed before, see PropertyLayouts.cards). */
     val cards: CardLayout? = null,
-    /** Quick actions (#119): named sets of values for a new note, offered by the + button. */
+    /** Quick actions (#119): named sets of property changes, run on a note from its page. */
     val quickActions: List<QuickAction> = emptyList(),
 ) {
     /**
@@ -46,16 +46,57 @@ data class DatabaseSetup(
  * sources), with its name and icon as last seen, for Home to show without asking Notion.
  */
 /**
- * A quick action (#119), like a Notion button that adds a page: a name, and the values a new
- * note gets, by property name. The values are filter chip keys (ChipFilter): option names,
- * people and linked page IDs, checked or not, or today for a date. See logic/QuickActions.kt.
+ * A quick action (#119), like a Notion button that edits the page it is on: a name and the
+ * changes it makes to a note's properties, run from the note. See logic/QuickActions.kt.
  */
 @Serializable
 data class QuickAction(
     val id: String,
     val name: String,
+    /** Version 2.6.14 kept values to set by property name (filter chip keys); read as [edits]. */
     val values: Map<String, List<String>> = emptyMap(),
+    val edits: List<PropertyEdit> = emptyList(),
 )
+
+/** What a quick action does with one property, as Notion's button step "Edit property" does. */
+@Serializable
+enum class EditMode {
+    /** Replace the value (a date: today plus [PropertyEdit.days]). */
+    SET,
+
+    /** Add options, people or pages; a number goes up by the amount; a date moves by [PropertyEdit.days]. */
+    ADD,
+
+    /** Take options, people or pages away; a number goes down by the amount. */
+    REMOVE,
+
+    /** Empty the property. */
+    CLEAR,
+
+    /** A checkbox: checked becomes unchecked and the other way round. */
+    TOGGLE,
+}
+
+@Serializable
+data class PropertyEdit(
+    /** The property's name. */
+    val property: String,
+    val mode: EditMode = EditMode.SET,
+    /** Option names, linked page IDs, or "checked"/"unchecked" for a checkbox. */
+    val values: List<String> = emptyList(),
+    /** People; one with the ID [PropertyEdit.ME] is whoever runs the quick action. */
+    val people: List<NotionUser> = emptyList(),
+    /** Text, a number, a link, an e-mail address or a phone number. */
+    val text: String = "",
+    /** Dates: days from today ([EditMode.SET]) or from the date the note has ([EditMode.ADD]). */
+    val days: Int = 0,
+) {
+    companion object {
+        const val ME = "__me"
+        const val CHECKED = "checked"
+        const val UNCHECKED = "unchecked"
+    }
+}
 
 @Serializable
 data class PinnedDatabase(
@@ -392,6 +433,12 @@ data class NoteProperty(
             "title", "rich_text", "number", "select", "status", "multi_select", "date",
             "people", "checkbox", "url", "email", "phone_number", "relation",
         )
+
+        /**
+         * Kinds the app leaves out everywhere: Notion's buttons can't be pressed through its API,
+         * so they would only be empty rows (#119 has the app's own quick actions instead).
+         */
+        val HIDDEN_TYPES = setOf("button")
     }
 }
 
@@ -520,3 +567,11 @@ data class PageContent(
 
 @Serializable
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
+/** [this] without the properties the app leaves out ([NoteProperty.HIDDEN_TYPES]). */
+fun DatabaseSchema.withoutHidden(): DatabaseSchema =
+    if (properties.none { it.type in NoteProperty.HIDDEN_TYPES }) this else copy(properties = properties.filter { it.type !in NoteProperty.HIDDEN_TYPES })
+
+/** [this] without the properties the app leaves out ([NoteProperty.HIDDEN_TYPES]). */
+fun NoteSummary.withoutHidden(): NoteSummary =
+    if (properties.none { it.type in NoteProperty.HIDDEN_TYPES }) this else copy(properties = properties.filter { it.type !in NoteProperty.HIDDEN_TYPES })

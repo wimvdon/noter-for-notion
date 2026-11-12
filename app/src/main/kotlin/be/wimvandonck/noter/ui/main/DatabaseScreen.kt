@@ -92,11 +92,10 @@ fun DatabaseScreen(
     var filtersOpen by remember { mutableStateOf(false) }
     var cardsOpen by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
-    // Quick actions (#119): the list (⋮), the one being made or changed, and what + offers.
+    // Quick actions (#119): the list (⋮) and the one being made or changed. They run from a note.
     var quickActionsOpen by remember { mutableStateOf(false) }
     var editingAction by remember { mutableStateOf<QuickAction?>(null) }
     var editorOpen by remember { mutableStateOf(false) }
-    var newNoteOpen by remember { mutableStateOf(false) }
     val editing by viewModel.editing.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val actions = SetupActions(onArrangeFilters = viewModel::arrangeFilters, onSort = viewModel::setSort)
@@ -244,9 +243,7 @@ fun DatabaseScreen(
         },
         floatingActionButton = {
             if (content.hasKey && !content.sourceMissing) {
-                // With quick actions, + offers them next to an empty note; without, it makes one at once.
-                val quickActions = content.setup?.quickActions.orEmpty()
-                FloatingActionButton(onClick = { if (quickActions.isEmpty()) viewModel.createNote(onOpenNote) else newNoteOpen = true }) {
+                FloatingActionButton(onClick = { viewModel.createNote(onOpenNote) }) {
                     Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.action_new_note))
                 }
             }
@@ -298,24 +295,14 @@ fun DatabaseScreen(
             onDismiss = viewModel::dismissEdit,
         )
     }
-    if (newNoteOpen) {
-        NewNoteSheet(
-            actions = content.setup?.quickActions.orEmpty(),
-            state = content,
-            onEmptyNote = {
-                newNoteOpen = false
-                viewModel.createNote(onOpenNote)
-            },
-            onQuickAction = { action ->
-                newNoteOpen = false
-                viewModel.runQuickAction(action, onOpenNote)
-            },
-            onDismiss = { newNoteOpen = false },
-        )
-    }
+    // People and linked pages to choose from in quick actions, loaded when their sheets open.
+    val quickLookups by viewModel.quickLookups.collectAsStateWithLifecycle()
+    LaunchedEffect(quickActionsOpen || editorOpen) { if (quickActionsOpen || editorOpen) viewModel.loadQuickLookups() }
     if (quickActionsOpen) {
         QuickActionsSheet(
             state = content,
+            properties = state.properties,
+            lookups = quickLookups,
             onEdit = { action ->
                 editingAction = action
                 editorOpen = true
@@ -333,6 +320,8 @@ fun DatabaseScreen(
         QuickActionEditor(
             action = editingAction,
             state = content,
+            properties = state.properties,
+            lookups = quickLookups,
             onSave = { action ->
                 viewModel.saveQuickAction(action)
                 close()

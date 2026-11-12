@@ -24,7 +24,7 @@ object PropertyCodec {
         val title = InlineMarkdown.plainText(database.arrayOrNull("title")).trim()
         val properties = database.objOrNull("properties").orEmpty().mapNotNull { (name, element) ->
             val prop = element.asObjectOrNull() ?: return@mapNotNull null
-            val type = prop.stringOrNull("type") ?: return@mapNotNull null
+            val type = prop.stringOrNull("type")?.takeIf { it !in NoteProperty.HIDDEN_TYPES } ?: return@mapNotNull null
             val config = prop.objOrNull(type)
             PropertySchema(
                 id = prop.stringOrNull("id").orEmpty(),
@@ -57,7 +57,7 @@ object PropertyCodec {
         val id = page.stringOrNull("id") ?: return null
         val properties = page.objOrNull("properties").orEmpty().mapNotNull { (name, element) ->
             val prop = element.asObjectOrNull() ?: return@mapNotNull null
-            val type = prop.stringOrNull("type") ?: return@mapNotNull null
+            val type = prop.stringOrNull("type")?.takeIf { it !in NoteProperty.HIDDEN_TYPES } ?: return@mapNotNull null
             NoteProperty(name = name, type = type, value = parseValue(type, prop))
         }.sortedWith(compareBy<NoteProperty> { if (it.type == "title") 0 else 1 }.thenBy { it.name.lowercase() })
         val title = properties.firstOrNull { it.type == "title" }?.value as? PropertyValue.Text

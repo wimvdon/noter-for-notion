@@ -2,6 +2,25 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-11-12: Quick actions run on a note, with Notion's property steps; Notion's buttons go
+
+The owner explained the first version missed the point: a Notion button works inside one page.
+So a quick action is still made in the database (⋮ › Quick actions), but it now runs from a note,
+as a small button under its properties, and changes that note's properties; + only makes a new
+note again. A quick action holds changes, each what Notion's button step "Edit property" offers
+for that kind of property: set or empty, add, remove or replace (options, people, pages), up or
+down (numbers), check, uncheck or toggle, and dates as today plus or minus some days or the
+note's date moved by some days. "Me" is the person the sign-in acts as, asked of Notion when
+first needed. Changes are saved as edits by hand, so they wait offline like any edit, and Undo
+puts the old values back. Version 2.6.14's quick actions (values to set) read as Set changes.
+
+Notion's own buttons (button properties, and button blocks in a page) can't be pressed through
+the API, so the app leaves them out everywhere: they are dropped when schemas and pages are read
+(also from stored copies), so they show nowhere and are never part of a sync.
+
+Rejected: running other button steps (add a page elsewhere, edit other pages, send mail, open a
+link); they need choices a phone sheet can't show well and were not asked for.
+
 ## 2026-11-11: Quick actions in place of Notion's buttons (#119)
 
 Notion's API can't read or press a database's buttons, so the owner asked for Noter's own: per

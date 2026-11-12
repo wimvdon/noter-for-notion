@@ -26,6 +26,7 @@ node --test worker/test/noter-sign-in.test.mjs
 |---|---|
 | `ui/common/SheetGuardsTest` | A scroll or fling in a sheet's list never pulls the sheet down; a swipe from the top does; with the keyboard open or the sheet still moving a close only closes the keyboard |
 | `logic/ContentMergeTest` | Typing while a newer version comes from Notion: the edits go on top of it, keeping blocks added or changed in Notion meanwhile |
+| `data/NotesRepositoryTest` (pull-to-refresh) | Pull-to-refresh asks Notion again for the people and linked pages kept here, before they would expire |
 | `data/NotesRepositoryTest` (lost answers) | A page Notion made without answering isn't made again; one it didn't make is made on the next try |
 | `data/NotesRepositoryTest` (stopped refresh), `data/api/NotionClientTest` | A refresh stopped halfway (the screen closed) doesn't block the next one; an answer cut off halfway counts as offline instead of crashing |
 | `logic/LauncherShortcutsTest` | Which pinned databases and notes become launcher shortcuts, in which order, and what a shortcut may open |
@@ -42,7 +43,7 @@ node --test worker/test/noter-sign-in.test.mjs
 | `data/notion/BlockCodecTest` | Reading and writing every editable block type; images, files, links, tables and linked pages read-only |
 | `data/model/NotionFilesTest`, `logic/ReadOnlyBlocksTest` | Expiring links to files Notion hosts; file names and links of read-only blocks |
 | `data/notion/InlineMarkdownTest` | Bold, italic, strikethrough, code and links ⇄ Notion rich text |
-| `data/notion/PropertyCodecTest` | Reading and writing page properties |
+| `data/notion/PropertyCodecTest` | Reading and writing page properties; Notion's buttons left out of schemas, pages and stored copies, button blocks hidden |
 | `data/sync/ContentDiffTest` | The block changes sent to Notion for an edit, also for nested blocks (new blocks in their parent, moved blocks added again) |
 | `data/sync/BlockMatchTest` | New blocks keep the IDs Notion gave them, and blocks Notion added without answering are recognised, so nothing is added twice |
 | `data/sync/OutboxTest` | The queue of unsent changes (merging, renaming new notes) |
@@ -60,7 +61,7 @@ node --test worker/test/noter-sign-in.test.mjs
 | `data/api/NotionErrorsTest` | Which errors the screens say in the user's language |
 | `logic/NewOptionsTest` | When the picker of a select or multi-select offers to add what was typed (not for an existing name in any case, nor with a comma) |
 | `logic/SchemaOptionsTest` | An option a note has (added on the phone or in Notion) joins its property's options once, so every picker shows it |
-| `logic/QuickActionsTest` | Quick actions (#119): which values a quick action can choose (no computed properties, a date only today), one value or several per kind, the values a new note gets, values the database no longer has skipped, saving in place or at the end (never with a blank name), Undo after delete puts it back in its place |
+| `logic/QuickActionsTest` | Quick actions (#119): what each kind of property can do (set, add, remove, replace, empty, toggle, increase, decrease, move), the new values of every kind (options, people with "me", pages, text, numbers, links, checkboxes, dates today ± days or moved, also with a time), changes in order, only what changes, what can't change skipped, quick actions of 2.6.14 read as changes, editing a change, saving and Undo after delete |
 | `logic/DatabaseSetupsTest` | A database's notes as its setup shows them: filters per property, sorts (also by any property that can be sorted: formulas, rollups, numbers, options in the database's order, empty values last; what the Sort menu offers), the first chip row of a database opened for the first time, the setup found with or without dashes, the order of the chip rows, a page's order from before read as the custom order |
 | `logic/LegacyNotebooksTest` | Notebooks from before the redesign: each database keeps its notebook's setup and is pinned in the order of the tabs (also a notebook of several data sources), a page's notebook becomes a pinned page, the first notebook of a database wins, a setup made since then stays, old filter properties |
 | `logic/ColumnsTest` | Columns: how far their blocks are indented, and that blocks stay in their column |

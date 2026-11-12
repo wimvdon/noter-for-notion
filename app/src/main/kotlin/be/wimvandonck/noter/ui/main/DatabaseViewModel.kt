@@ -10,7 +10,9 @@ import be.wimvandonck.noter.data.NotesRepository
 import be.wimvandonck.noter.data.api.NotionErrors
 import be.wimvandonck.noter.data.api.NotionException
 import be.wimvandonck.noter.data.model.CardLayout
+import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.DatabaseSetup
+import be.wimvandonck.noter.data.model.NotionUser
 import be.wimvandonck.noter.data.model.NoteSort
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.PageIcon
@@ -62,6 +64,12 @@ data class DatabaseUiState(
  * it, and what went wrong ([error]: see NotionErrors).
  */
 data class DatabaseEditState(val properties: List<PropertySchema>, val saving: Boolean = false, val error: String? = null)
+
+/** What quick actions can choose from (#119): people, and pages of related databases by database ID. */
+data class QuickLookups(
+    val users: List<NotionUser> = emptyList(),
+    val pages: Map<String, List<PageRef>> = emptyMap(),
+)
 
 /** Something the database's screen tells the user once. */
 sealed interface DatabaseEvent {
@@ -263,7 +271,10 @@ class DatabaseViewModel(
 
     fun refresh() = viewModelScope.launch {
         repository.flush()
+        launch { repository.refreshLookups() }
         repository.refresh(sourceId, userAsked = true)
+        // The quick actions' choices too, when their sheets were open before.
+        _quickLookups.value = QuickLookups()
     }
 
     fun togglePin(id: String) = viewModelScope.launch { repository.togglePin(id) }
@@ -303,13 +314,22 @@ class DatabaseViewModel(
         }
     }
 
-    /** A new note with [action]'s values (#119), opened like one made with +. */
-    fun runQuickAction(action: QuickAction, onCreated: (String) -> Unit) {
-        val ui = state.value.content
-        val id = ui.databaseId ?: return
-        viewModelScope.launch {
-            val note = repository.createNote(id, QuickActions.presets(action, ui.filterOptions)) ?: return@launch
-            onCreated(note)
+    /** The data source's properties as Notion describes them (null until known). */
+    fun schema(): DatabaseSchema? = repository.databases.value[sourceId]?.schema
+
+    private val _quickLookups = MutableStateFlow(QuickLookups())
+
+    /** People and the pages of related databases, for making quick actions (#119). */
+    val quickLookups: StateFlow<QuickLookups> = _quickLookups
+
+    fun loadQuickLookups() = viewModelScope.launch {
+        if (_quickLookups.value.users.isEmpty()) {
+            _quickLookups.update { it.copy(users = runCatching { repository.users() }.getOrDefault(emptyList())) }
+        }
+        schema()?.properties.orEmpty().mapNotNull { it.relationDatabaseId.takeIf { _ -> it.type == "relation" } }.distinct().forEach { related ->
+            if (related in _quickLookups.value.pages) return@forEach
+            val pages = runCatching { repository.relatedPages(related) }.getOrNull() ?: return@forEach
+            _quickLookups.update { it.copy(pages = it.pages + (related to pages)) }
         }
     }
 

@@ -340,8 +340,9 @@ class MainViewModel(
     }
 
     /**
-     * Pull-to-refresh: sends what waits, refreshes the pinned notes' databases and the list. The
-     * indicator stays until all of it is done (the list can take a few seconds).
+     * Pull-to-refresh: sends what waits, refreshes the pinned notes' databases and the list, and
+     * the people and linked pages kept for the property editors. The indicator stays until all of
+     * it is done (the list can take a few seconds).
      */
     fun refresh() {
         if (pulling.value) return
@@ -352,6 +353,7 @@ class MainViewModel(
                     repository.flush()
                     repository.pinnedSources().forEach { launch { repository.refresh(it, userAsked = true) } }
                     refreshRecent()
+                    launch { repository.refreshLookups() }
                 }
             } finally {
                 pulling.value = false

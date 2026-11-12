@@ -584,4 +584,31 @@ class NotesRepositoryTest {
         repo.refresh("db", userAsked = true)
         assertEquals(listOf("page-1"), repo.databases.value["db"]?.notes?.map { it.id })
     }
+
+    @Test
+    fun `pull-to-refresh asks Notion again for people and linked pages kept here`() = runBlocking {
+        val people = mutableListOf("""{"object":"user","id":"u1","type":"person","name":"Ann"}""")
+        notion.respond = { sent ->
+            when {
+                sent.path.startsWith("/users") -> 200 to FakeNotion.list(*people.toTypedArray())
+                sent.path.startsWith("/data_sources/rel/query") -> 200 to FakeNotion.list(FakeNotion.page("r1", "rel", "One"))
+                else -> 200 to "{}"
+            }
+        }
+        val repo = repository()
+        assertEquals(listOf("Ann"), repo.users().map { it.name })
+        repo.relatedPages("rel")
+        // Someone new in Notion: kept for a day, so not seen yet.
+        people += """{"object":"user","id":"u2","type":"person","name":"Bob"}"""
+        assertEquals(listOf("Ann"), repo.users().map { it.name })
+        val pageQueries = notion.requests.count { it.path.startsWith("/data_sources/rel/query") }
+        repo.relatedPages("rel")
+        assertEquals(pageQueries, notion.requests.count { it.path.startsWith("/data_sources/rel/query") })
+
+        repo.refreshLookups()
+
+        assertEquals(listOf("Ann", "Bob"), repo.users().map { it.name })
+        repo.relatedPages("rel")
+        assertEquals(pageQueries + 1, notion.requests.count { it.path.startsWith("/data_sources/rel/query") })
+    }
 }

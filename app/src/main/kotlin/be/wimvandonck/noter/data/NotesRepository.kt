@@ -8,6 +8,7 @@ import be.wimvandonck.noter.data.api.stringOrNull
 import be.wimvandonck.noter.data.model.Block
 import be.wimvandonck.noter.data.model.BlockType
 import be.wimvandonck.noter.data.model.DatabaseInfo
+import be.wimvandonck.noter.data.model.withoutHidden
 import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.NoteSummary
@@ -240,14 +241,15 @@ class NotesRepository(
             cacheRead += id
             val cached = cache.database(id)
             val queue = _outbox.value
-            val cachedNotes = cached?.notes.orEmpty().map { Outbox.applyPending(it, queue) }
+            // Copies from before buttons were left out (#119) lose them here too.
+            val cachedNotes = cached?.notes.orEmpty().map { Outbox.applyPending(it.withoutHidden(), queue) }
             _databases.update { map ->
                 // Something may already be here (a note created right at start-up): keep it.
                 val existing = map[id]
                 val notes = existing?.notes.orEmpty().let { now -> now + cachedNotes.filter { c -> now.none { it.id == c.id } } }
                 map + (
                     id to (existing ?: DatabaseState()).copy(
-                        schema = existing?.schema ?: cached?.schema,
+                        schema = existing?.schema ?: cached?.schema?.withoutHidden(),
                         notes = notes,
                         lastSyncMs = cached?.lastSyncMs ?: 0,
                         lastFullSyncMs = cached?.lastFullSyncMs ?: 0,
@@ -1200,13 +1202,29 @@ class NotesRepository(
 
     // ---- Lookups for property editors ------------------------------------------------------
 
+    /** Lookups fetched before this phone time are out of date, whatever their age (see [refreshLookups]). */
+    @Volatile
+    private var lookupsStaleBefore = 0L
+
+    private fun fresh(fetchedMs: Long, ttlMs: Long) = fetchedMs >= lookupsStaleBefore && clock() - fetchedMs < ttlMs
+
+    /**
+     * Pull-to-refresh: the people and the pages of related databases kept here are out of date,
+     * so the next use asks Notion again; the people are asked at once (a person added in Notion
+     * shows without waiting a day).
+     */
+    suspend fun refreshLookups() {
+        lookupsStaleBefore = clock()
+        runCatching { users(forceRefresh = true) }
+    }
+
     /**
      * People in the workspace, for person properties (cached for a day). A personal access token
      * can't list them: then the people in the notes here and the token's owner ([KnownUsers]).
      */
     suspend fun users(forceRefresh: Boolean = false): List<NotionUser> = withContext(Dispatchers.IO) {
         val cached = cache.users()
-        if (!forceRefresh && cached != null && clock() - cached.fetchedMs < LOOKUP_TTL_MS) return@withContext cached.users
+        if (!forceRefresh && cached != null && fresh(cached.fetchedMs, LOOKUP_TTL_MS)) return@withContext cached.users
         try {
             val users = client.listUsers()
                 .filter { it.stringOrNull("type") == "person" }
@@ -1224,7 +1242,7 @@ class NotesRepository(
     suspend fun relatedPages(databaseId: String, forceRefresh: Boolean = false): List<PageRef>? =
         withContext(Dispatchers.IO) {
             val cached = cache.pages(databaseId)
-            if (!forceRefresh && cached != null && clock() - cached.fetchedMs < RELATED_TTL_MS) return@withContext cached.pages
+            if (!forceRefresh && cached != null && fresh(cached.fetchedMs, RELATED_TTL_MS)) return@withContext cached.pages
             try {
                 val pages = client.queryDataSource(resolveSource(databaseId)).mapNotNull { page ->
                     PropertyCodec.parsePage(page, databaseId)?.let { PageRef(it.id, InlineMarkdown.stripped(it.title)) }
