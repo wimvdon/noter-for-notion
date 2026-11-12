@@ -298,4 +298,9 @@
         <item quantity="many">%d giorni</item>
         <item quantity="other">%d giorni</item>
     </plurals>
+    <string name="view_noter">Noter</string>
+    <string name="views">Viste</string>
+    <string name="switched_to_noter">Ora nella tua vista Noter. La vista di Notion non cambia.</string>
+    <string name="base_view">Note di %1$s</string>
+    <string name="show_all_notes">Mostra tutte le note</string>
 </resources>

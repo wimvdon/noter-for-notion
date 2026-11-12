@@ -294,4 +294,9 @@
         <item quantity="one">%d dag</item>
         <item quantity="other">%d dagen</item>
     </plurals>
+    <string name="view_noter">Noter</string>
+    <string name="views">Weergaven</string>
+    <string name="switched_to_noter">Nu in je Noter-weergave. De weergave in Notion blijft zoals ze is.</string>
+    <string name="base_view">Notities in %1$s</string>
+    <string name="show_all_notes">Alle notities tonen</string>
 </resources>

@@ -200,4 +200,20 @@ class DatabaseSetupsTest {
         val texts = listOf("banana", "Apple", "").mapIndexed { i, v -> noteWith("$i", NoteProperty("Note", "rich_text", PropertyValue.Text(v))) }
         assertEquals(listOf("1", "0", "2"), DatabaseSetups.sorted(texts, NoteSort(SortKind.PROPERTY, "Note", descending = false), emptyList()).map { it.id })
     }
+
+    @Test
+    fun `a Notion view shows only its notes, in its order, pinned ones first`() {
+        val notes = listOf(note("1"), note("2"), note("3"), note("4"))
+        val content = DatabaseSetups.content(notes, null, DatabaseSetup(), pinned = listOf("4"), customOrder = emptyList(), within = listOf("3", "4", "1", "9"), inOrder = true)
+        assertEquals(listOf("4"), content.pinned.map { it.id })
+        assertEquals(listOf("3", "1"), content.others.map { it.id })
+    }
+
+    @Test
+    fun `the Noter view started from a Notion view keeps its notes and sorts them itself`() {
+        val notes = listOf(note("1"), note("2"), note("3"))
+        val setup = DatabaseSetup(sort = NoteSort(SortKind.LAST_EDITED))
+        val content = DatabaseSetups.content(notes, null, setup, pinned = emptyList(), customOrder = emptyList(), within = listOf("1", "3"))
+        assertEquals(listOf("3", "1"), content.others.map { it.id })
+    }
 }

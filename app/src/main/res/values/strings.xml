@@ -294,4 +294,9 @@
         <item quantity="one">%d day</item>
         <item quantity="other">%d days</item>
     </plurals>
+    <string name="view_noter">Noter</string>
+    <string name="views">Views</string>
+    <string name="switched_to_noter">Now in your Noter view. Notion’s view stays as it is.</string>
+    <string name="base_view">Notes in %1$s</string>
+    <string name="show_all_notes">Show all notes</string>
 </resources>

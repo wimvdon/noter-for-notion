@@ -43,6 +43,10 @@ import be.wimvandonck.noter.data.store.DatabaseCache
 import be.wimvandonck.noter.data.store.PagesCache
 import be.wimvandonck.noter.data.store.SettingsStore
 import be.wimvandonck.noter.data.store.UsersCache
+import be.wimvandonck.noter.data.store.ViewResult
+import be.wimvandonck.noter.data.store.ViewsCache
+import be.wimvandonck.noter.data.notion.ViewCodec
+import be.wimvandonck.noter.logic.NotionViews
 import be.wimvandonck.noter.data.sync.BlockMatch
 import be.wimvandonck.noter.data.sync.BlockRef
 import be.wimvandonck.noter.data.sync.ContentDiff
@@ -1254,6 +1258,127 @@ class NotesRepository(
             }
         }
 
+    // ---- Notion's views ------------------------------------------------------------------
+
+    private val _views = MutableStateFlow<Map<String, ViewsCache>>(emptyMap())
+
+    /** Each data source's Notion views and the notes of the ones shown, by data source ID (see [openViews]). */
+    val views: StateFlow<Map<String, ViewsCache>> = _views.asStateFlow()
+
+    private val viewsRead = mutableSetOf<String>()
+    private val viewsAsking = mutableSetOf<String>()
+
+    private fun setViews(sourceId: String, transform: (ViewsCache) -> ViewsCache) {
+        var saved: ViewsCache? = null
+        _views.update { map -> transform(map[sourceId] ?: ViewsCache()).let { saved = it; map + (sourceId to it) } }
+        saved?.let { cache.saveViews(sourceId, it) }
+    }
+
+    /**
+     * Data source [sourceId]'s Notion views: the copy on this phone at once, then Notion's when
+     * that is older than ten minutes (or [force]). One request lists them and one more reads each.
+     * Offline, or when Notion refuses, the copy stays.
+     */
+    suspend fun openViews(sourceId: String, force: Boolean = false) = withContext(Dispatchers.IO) {
+        synchronized(viewsRead) { viewsRead.add(sourceId) }.let { first ->
+            if (first && sourceId !in _views.value) cache.views(sourceId)?.let { cached -> _views.update { it + (sourceId to cached) } }
+        }
+        if (!hasKey() || sourceId == PAGES || isPageNotebook(sourceId)) return@withContext
+        val current = _views.value[sourceId]
+        if (!force && current != null && clock() - current.fetchedMs < VIEWS_TTL_MS) return@withContext
+        if (!synchronized(viewsAsking) { viewsAsking.add(sourceId) }) return@withContext
+        try {
+            val ids = client.listViews(sourceId).mapNotNull { it.stringOrNull("id") }
+            val views = ids.mapNotNull { id ->
+                try {
+                    ViewCodec.parse(client.getView(id))
+                } catch (e: NotionException) {
+                    // Offline or Notion busy: try again later; one view Notion won't show is left out.
+                    if (e.isTemporary) throw e
+                    null
+                }
+            }
+            val started = clock()
+            setViews(sourceId) { old -> old.copy(views = views, fetchedMs = started, results = old.results.filterKeys { id -> views.any { it.id == id } }) }
+        } catch (e: NotionException) {
+            if (e.isOffline) _offline.value = true
+        } finally {
+            synchronized(viewsAsking) { viewsAsking.remove(sourceId) }
+        }
+    }
+
+    /**
+     * Asks Notion which notes Notion view [viewId] of data source [sourceId] shows, in its order,
+     * when the last answer is older than a minute (or [force]). Its notes themselves are the data
+     * source's, kept here already; only their IDs come back.
+     */
+    suspend fun refreshViewResults(sourceId: String, viewId: String, force: Boolean = false) = withContext(Dispatchers.IO) {
+        if (!hasKey()) return@withContext
+        val entry = _views.value[sourceId] ?: return@withContext
+        val view = entry.views.firstOrNull { it.id == viewId } ?: return@withContext
+        val known = entry.results[viewId]
+        if (!force && known != null && clock() - known.fetchedMs < VIEW_RESULTS_TTL_MS) return@withContext
+        val asking = "$sourceId/$viewId"
+        if (!synchronized(viewsAsking) { viewsAsking.add(asking) }) return@withContext
+        try {
+            val started = clock()
+            // Sorts name properties by name: the data source's properties, asked when not known yet.
+            val schema = _databases.value[sourceId]?.schema
+                ?: try { PropertyCodec.parseSchema(client.getDataSource(sourceId)) } catch (e: NotionException) { null }
+            val pages = try {
+                val (filter, sorts) = NotionViews.query(view, schema)
+                client.queryPageIds(sourceId, filter, sorts)
+            } catch (e: NotionException) {
+                // A quick filter Notion's query doesn't take: the view's own filter still applies.
+                if (e.status != 400 || view.quickFilters == null) throw e
+                val (filter, sorts) = NotionViews.query(view, schema, quickFilters = false)
+                client.queryPageIds(sourceId, filter, sorts)
+            }
+            val ids = pages.filterNot { PropertyCodec.isTrashed(it) }.mapNotNull { it.stringOrNull("id") }
+            val result = ViewResult(ids, started, Instant.ofEpochMilli(started).toString())
+            setViews(sourceId) { it.copy(results = it.results + (viewId to result)) }
+        } catch (e: NotionException) {
+            if (e.isOffline) _offline.value = true
+        } finally {
+            synchronized(viewsAsking) { viewsAsking.remove(asking) }
+        }
+    }
+
+    /** Data source [sourceId] shows view [viewId] (a Notion view's ID, or NotionViews.NOTER) from now on. */
+    suspend fun chooseView(sourceId: String, viewId: String) {
+        settings.update { s ->
+            val key = s.views.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
+            s.copy(views = s.views + (key to viewId))
+        }
+    }
+
+    /**
+     * A change made in Notion view [viewId]: data source [sourceId] shows the Noter view from now on,
+     * its setup [transform]ed, in one step (Notion's view isn't changed).
+     */
+    suspend fun switchToNoter(sourceId: String, schema: DatabaseSchema?, transform: (DatabaseSetup) -> DatabaseSetup) {
+        settings.update { s ->
+            val setupKey = s.setups.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
+            val viewKey = s.views.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
+            s.copy(
+                setups = s.setups + (setupKey to transform(DatabaseSetups.of(s.setups, sourceId, schema))),
+                views = s.views + (viewKey to NotionViews.NOTER),
+            )
+        }
+    }
+
+    /** Undo for [switchToNoter]: [previous] setup back (none: the first one again) and Notion view [viewId] shown. */
+    suspend fun undoSwitchToNoter(sourceId: String, previous: DatabaseSetup?, viewId: String) {
+        settings.update { s ->
+            val setupKey = s.setups.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
+            val viewKey = s.views.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
+            s.copy(
+                setups = if (previous != null) s.setups + (setupKey to previous) else s.setups - setupKey,
+                views = s.views + (viewKey to viewId),
+            )
+        }
+    }
+
     // ---- Browse -------------------------------------------------------------------------
 
     /**
@@ -1550,6 +1675,8 @@ class NotesRepository(
             cache.clear()
             databaseInfos.clear()
             databasesAsked.clear()
+            _views.value = emptyMap()
+            synchronized(viewsRead) { viewsRead.clear() }
             _recent.value = null
             _outbox.value = emptyList()
             _databases.update { map -> map.mapValues { DatabaseState(loaded = true) } }
@@ -1624,6 +1751,10 @@ class NotesRepository(
         private const val RETRY_OFFLINE_MAX_MS = 60_000L
         private const val LOOKUP_TTL_MS = 24 * 60 * 60_000L
         private const val RELATED_TTL_MS = 10 * 60_000L
+
+        /** How long a data source's list of Notion views, and a view's notes, are used before Notion is asked again. */
+        private const val VIEWS_TTL_MS = 10 * 60_000L
+        private const val VIEW_RESULTS_TTL_MS = 60_000L
 
         /** How deep nested blocks are downloaded (deeper ones stay in Notion, as nested content). */
         const val MAX_DEPTH = 5

@@ -21,6 +21,14 @@ class NotionRoutesTest {
     }
 
     @Test
+    fun `a view's subject is the view, and the views of a data source that data source`() {
+        assertEquals("v1", NotionRoutes.subjectId("/views/v1", null))
+        assertEquals("d1", NotionRoutes.subjectId("/views?data_source_id=d1&page_size=100", null))
+        assertEquals("d1", NotionRoutes.subjectId("/views?page_size=100&data_source_id=d1", null))
+        assertNull(NotionRoutes.subjectId("/views?page_size=100", null))
+    }
+
+    @Test
     fun `a new page's subject is its parent`() {
         val inSource = mapOf("parent" to mapOf("type" to "data_source_id", "data_source_id" to "d1"))
         val inPage = mapOf("parent" to mapOf("type" to "page_id", "page_id" to "p1"))

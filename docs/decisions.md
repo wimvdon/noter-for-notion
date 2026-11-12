@@ -2,6 +2,25 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-11-12: Notion's views in a database, plus one Noter view
+
+A database now shows its Notion views as tabs (Notion's order), with one more tab for the Noter
+view: the filters, sort and rows of chips kept on this phone as before. Notion's views are only
+read (`GET /views?data_source_id=…`, then `GET /views/{id}` for each; Notion-Version 2026-03-11,
+which the app already used) and never changed: a change made in a Notion view (a chip, the sort,
+dragging a note) turns it into the Noter view, which starts from that view's notes and its first
+sort, with Undo. The Noter view keeps that view's filter as a chip ("Notes in …", × shows all
+notes). A view's notes are asked with its filter, quick filters and sorts on the data source
+(`POST /data_sources/{id}/query?filter_properties=title`, IDs only) rather than with Notion's view
+query, which caps the results at 10,000 and can't be filtered while paging; the notes themselves are
+the copy the app keeps already, so a view works offline with its last answer. A database opens on
+Notion's first view the first time and on the last view used after that; one set up in Noter before
+(it has a setup) opens on the Noter view, so nothing changes for it. Left out on purpose: the
+views' visible properties (a card is too different from Notion's table or board), grouping (boards,
+calendars), and views of several data sources or that list no pages (dashboards, forms, charts).
+Rejected: turning a Notion filter into Noter's chips (most can't be), and writing changes back to
+Notion's views (the owner wants Notion's views left alone).
+
 ## 2026-11-12: Quick actions run on a note, with Notion's property steps; Notion's buttons go
 
 The owner explained the first version missed the point: a Notion button works inside one page.
