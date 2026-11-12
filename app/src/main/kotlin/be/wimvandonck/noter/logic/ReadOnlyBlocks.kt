@@ -21,6 +21,9 @@ object ReadOnlyBlocks {
     /** Notion's web link to block [blockId] on page [pageId]: the page, scrolled to the block. */
     fun blockUrl(pageId: String, blockId: String): String = notionUrl(pageId) + "#" + blockId.replace("-", "")
 
+    /** Blocks the editor leaves out: Notion's buttons can't be pressed through its API (#119). */
+    fun isHidden(rawType: String?): Boolean = rawType == "button"
+
     /** A block kind as Notion names it, for people: "synced_block" becomes "Synced block". */
     fun kindName(rawType: String?): String =
         rawType.orEmpty().replace('_', ' ').replaceFirstChar { it.uppercase() }

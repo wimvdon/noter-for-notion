@@ -15,17 +15,24 @@ import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.NotionUser
 import be.wimvandonck.noter.data.model.PageRef
+import be.wimvandonck.noter.data.model.PropertyEdit
 import be.wimvandonck.noter.data.model.PropertyLayout
+import be.wimvandonck.noter.data.model.QuickAction
+import be.wimvandonck.noter.data.notion.PropertyCodec
 import be.wimvandonck.noter.data.model.PropertyValue
 import be.wimvandonck.noter.data.sync.SaveTiming
 import be.wimvandonck.noter.logic.ContentMerge
+import be.wimvandonck.noter.logic.DatabaseSetups
 import be.wimvandonck.noter.logic.DocumentEditor
 import be.wimvandonck.noter.logic.EditResult
 import be.wimvandonck.noter.logic.NestedContent
 import be.wimvandonck.noter.logic.PropertyLayouts
+import be.wimvandonck.noter.logic.QuickActions
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -57,6 +64,8 @@ data class NoteUiState(
     val offline: Boolean = false,
     /** True while the sync button's sync runs. */
     val syncing: Boolean = false,
+    /** The quick actions of the note's database (#119): a button each under the properties. */
+    val quickActions: List<QuickAction> = emptyList(),
 ) {
     /** The content can be edited: not while the note's full content is still on its way. */
     val editable: Boolean get() = nested != NestedContent.State.LOADING
@@ -105,6 +114,7 @@ class NoteViewModel(
             schema = note?.let { databases[it.databaseId]?.schema },
             pinned = note != null && repository.resolve(pageId) in settings.pinned,
             layout = note?.let { settings.propertyLayouts[it.databaseId] },
+            quickActions = note?.let { DatabaseSetups.of(settings.setups, it.databaseId, null).quickActions }.orEmpty(),
             blocks = blocks,
             loadingContent = loading,
         )
@@ -253,6 +263,45 @@ class NoteViewModel(
             repository.updateProperty(pageId, property)
         }
     }
+
+    // ---- Quick actions (#119) ----
+
+    /** Something the note's screen says once after a quick action. */
+    sealed interface QuickActionResult {
+        /** [name] changed the note; Undo puts [previous] back. */
+        data class Done(val name: String, val previous: List<NoteProperty>) : QuickActionResult
+
+        /** The note already was as [name] would make it. */
+        data class NothingToChange(val name: String) : QuickActionResult
+    }
+
+    private val _quickActionResults = MutableSharedFlow<QuickActionResult>(extraBufferCapacity = 4)
+    val quickActionResults: SharedFlow<QuickActionResult> = _quickActionResults
+
+    /** The person the sign-in acts as, for "me" in a person property (null until known, or offline). */
+    private var me: NotionUser? = null
+
+    /** Runs [action] on the note: its changes are saved like edits made by hand. */
+    fun runQuickAction(action: QuickAction) = viewModelScope.launch {
+        val ui = state.value
+        val note = ui.note ?: return@launch
+        val schema = ui.schema
+        val needsMe = QuickActions.editsOf(action, schema).any { edit -> edit.people.any { it.id == PropertyEdit.ME } }
+        if (needsMe && me == null) me = runCatching { repository.tokenInfo().owner }.getOrNull()
+        val changes = QuickActions.apply(action, note, schema, me)
+        if (changes.isEmpty()) {
+            _quickActionResults.tryEmit(QuickActionResult.NothingToChange(action.name))
+            return@launch
+        }
+        val previous = changes.map { change ->
+            note.property(change.name) ?: schema?.property(change.name)?.let { PropertyCodec.emptyValue(it) } ?: change
+        }
+        changes.forEach { setProperty(it) }
+        _quickActionResults.tryEmit(QuickActionResult.Done(action.name, previous))
+    }
+
+    /** Undo after a quick action: the properties as they were. */
+    fun undoQuickAction(result: QuickActionResult.Done) = result.previous.forEach { setProperty(it) }
 
     // ---- How properties are shown (per database) ----
 

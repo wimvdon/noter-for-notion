@@ -8,6 +8,7 @@ import be.wimvandonck.noter.data.api.stringOrNull
 import be.wimvandonck.noter.data.model.Block
 import be.wimvandonck.noter.data.model.BlockType
 import be.wimvandonck.noter.data.model.DatabaseInfo
+import be.wimvandonck.noter.data.model.withoutHidden
 import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.NoteSummary
@@ -240,14 +241,15 @@ class NotesRepository(
             cacheRead += id
             val cached = cache.database(id)
             val queue = _outbox.value
-            val cachedNotes = cached?.notes.orEmpty().map { Outbox.applyPending(it, queue) }
+            // Copies from before buttons were left out (#119) lose them here too.
+            val cachedNotes = cached?.notes.orEmpty().map { Outbox.applyPending(it.withoutHidden(), queue) }
             _databases.update { map ->
                 // Something may already be here (a note created right at start-up): keep it.
                 val existing = map[id]
                 val notes = existing?.notes.orEmpty().let { now -> now + cachedNotes.filter { c -> now.none { it.id == c.id } } }
                 map + (
                     id to (existing ?: DatabaseState()).copy(
-                        schema = existing?.schema ?: cached?.schema,
+                        schema = existing?.schema ?: cached?.schema?.withoutHidden(),
                         notes = notes,
                         lastSyncMs = cached?.lastSyncMs ?: 0,
                         lastFullSyncMs = cached?.lastFullSyncMs ?: 0,

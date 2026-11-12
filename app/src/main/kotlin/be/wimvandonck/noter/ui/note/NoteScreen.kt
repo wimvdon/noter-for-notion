@@ -61,8 +61,10 @@ import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -92,6 +94,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -212,6 +215,24 @@ fun NoteScreen(
         if (openFailed) {
             viewModel.openFailedShown()
             snackbar.showSnackbar(openFailedText)
+        }
+    }
+    // After a quick action (#119): what it did, with Undo, or that there was nothing to change.
+    val resources = LocalResources.current
+    LaunchedEffect(viewModel) {
+        viewModel.quickActionResults.collect { result ->
+            when (result) {
+                is NoteViewModel.QuickActionResult.Done -> {
+                    val shown = snackbar.showSnackbar(
+                        resources.getString(R.string.quick_action_done, result.name),
+                        actionLabel = resources.getString(R.string.undo),
+                        duration = SnackbarDuration.Short,
+                    )
+                    if (shown == SnackbarResult.ActionPerformed) viewModel.undoQuickAction(result)
+                }
+                is NoteViewModel.QuickActionResult.NothingToChange ->
+                    snackbar.showSnackbar(resources.getString(R.string.quick_action_nothing, result.name))
+            }
         }
     }
     val context = LocalContext.current
@@ -567,8 +588,11 @@ fun NoteScreen(
                         onDone = { arranging = false },
                     )
                 } else {
-                    PropertiesPanel(note, state, lookups) { prop, debounce ->
-                        viewModel.setProperty(prop, debounce)
+                    Column {
+                        PropertiesPanel(note, state, lookups) { prop, debounce ->
+                            viewModel.setProperty(prop, debounce)
+                        }
+                        QuickActionButtons(state.quickActions, onRun = viewModel::runQuickAction)
                     }
                 }
             }
@@ -902,6 +926,7 @@ private fun BlockRow(
     when (block.type) {
         BlockType.UNSUPPORTED -> {
             when {
+                ReadOnlyBlocks.isHidden(block.rawType) -> Unit
                 // Columns whose content hasn't arrived yet: a placeholder until it does.
                 NestedContent.isMissing(block) -> NestedPlaceholder(nested)
                 block.rawType == Columns.TAB -> TabLabel(block)

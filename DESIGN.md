@@ -287,10 +287,15 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   never by a scroll in its list; with the keyboard open those close the keyboard first.
 - Cards panel (the Cards button in a database's top app bar): a bottom sheet with switches for the header image and
   the start of the content, and filter chips for up to three properties.
-- Quick actions (a database's ⋮, Bolt icon): a bottom sheet listing them as `ListItem`s (name, the values as supporting
+- Quick actions (a database's ⋮, Bolt icon): a bottom sheet listing them as `ListItem`s (name, its changes as supporting
   text, a delete icon button; a tap edits), with a hint and a filled "New quick action" button. Editing is a sheet with
-  a name field and a row of filter chips per property, Cancel (outlined) and Save (filled). With quick actions the
-  database's one FAB (+) opens a sheet: Empty note, then each quick action; deleting one shows a snackbar with Undo.
+  a name field and "Changes": per change the property's name with a × to remove it, a segmented button for what it
+  does (Add, Remove, Replace, Clear; Set, Increase, Decrease; Set, Move; Set, Toggle), then its value (filter chips
+  for options, people with "Me" first and linked pages; a text field; a switch for a checkbox; for a date a few
+  filter chips such as Today, Tomorrow and 7 days, and a days field with the result in words below). "Add change"
+  (outlined) opens a menu of the properties; Cancel (outlined) and Save (filled). In a note each quick action is a
+  small outlined button with the Bolt icon, in a row that wraps under the properties; after a tap a snackbar says it
+  is done, with Undo. Deleting a quick action shows a snackbar with Undo.
 - The note editor follows Notion's look: headings in SemiBold, quotes with a bar, callouts and
   code on `surfaceContainerHigh` (code in a monospace font), dividers as `outlineVariant` lines.
   Blocks the app can't show sit in an outlined box (`outlineVariant`) with their kind and an
