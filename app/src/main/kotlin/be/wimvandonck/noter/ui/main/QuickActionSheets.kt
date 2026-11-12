@@ -35,6 +35,14 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -417,3 +425,64 @@ private fun editSummary(edit: PropertyEdit, property: PropertySchema, lookups: Q
 
 /** The properties as a schema, for [QuickActions], which reads them by name. */
 private fun List<PropertySchema>.toSchema() = be.wimvandonck.noter.data.model.DatabaseSchema("", "", this)
+
+/**
+ * A database's quick actions: the list, and the editor for a new or changed one (back to the list
+ * when it closes). The people and linked pages to choose from load when it opens.
+ */
+@Composable
+internal fun QuickActionsFlow(viewModel: DatabaseViewModel, onDismiss: () -> Unit) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val lookups by viewModel.quickLookups.collectAsStateWithLifecycle()
+    var editing by remember { mutableStateOf<QuickAction?>(null) }
+    var editorOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(viewModel) { viewModel.loadQuickLookups() }
+    if (editorOpen) {
+        QuickActionEditor(
+            action = editing,
+            state = state.content,
+            properties = state.properties,
+            lookups = lookups,
+            onSave = { action ->
+                viewModel.saveQuickAction(action)
+                editorOpen = false
+            },
+            onDismiss = { editorOpen = false },
+        )
+    } else {
+        QuickActionsSheet(
+            state = state.content,
+            properties = state.properties,
+            lookups = lookups,
+            onEdit = { action ->
+                editing = action
+                editorOpen = true
+            },
+            onDelete = viewModel::deleteQuickAction,
+            onDismiss = onDismiss,
+        )
+    }
+}
+
+/**
+ * Quick actions from a note's ⋮ (#119): those of data source [databaseId], the note's, made and
+ * changed there as in the database. A deleted one offers Undo in the note's [snackbar] ([scope]:
+ * the note's, so it outlives the sheet).
+ */
+@Composable
+internal fun NoteQuickActions(databaseId: String, snackbar: SnackbarHostState, scope: CoroutineScope, onDismiss: () -> Unit) {
+    val viewModel: DatabaseViewModel = viewModel(key = "database-$databaseId", factory = DatabaseViewModel.factory(databaseId))
+    val deleted = stringResource(R.string.quick_action_deleted)
+    val undo = stringResource(R.string.undo)
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            if (event is DatabaseEvent.QuickActionDeleted) {
+                scope.launch {
+                    val result = snackbar.showSnackbar(deleted, actionLabel = undo, duration = SnackbarDuration.Long)
+                    if (result == SnackbarResult.ActionPerformed) viewModel.undoDeleteQuickAction(event)
+                }
+            }
+        }
+    }
+    QuickActionsFlow(viewModel, onDismiss)
+}

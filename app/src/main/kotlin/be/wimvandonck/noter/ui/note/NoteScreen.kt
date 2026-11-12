@@ -165,6 +165,9 @@ import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material.icons.rounded.Bolt
+import be.wimvandonck.noter.data.NotesRepository
+import be.wimvandonck.noter.ui.main.NoteQuickActions
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.launch
@@ -209,6 +212,9 @@ fun NoteScreen(
     // The note as text in one selection area, to select across lines (see SelectTextView).
     var selectingText by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
+    // The database whose quick actions are open from ⋮ (null: closed).
+    var quickActionsFor by remember { mutableStateOf<String?>(null) }
+    val noteScope = rememberCoroutineScope()
     val openFailed by viewModel.openFailed.collectAsStateWithLifecycle()
     val openFailedText = stringResource(R.string.page_open_failed)
     LaunchedEffect(openFailed) {
@@ -317,6 +323,9 @@ fun NoteScreen(
         )
     }
 
+    quickActionsFor?.let { databaseId ->
+        NoteQuickActions(databaseId, snackbar, noteScope, onDismiss = { quickActionsFor = null })
+    }
     if (confirmTrash && note != null) {
         TrashDialog(
             title = InlineMarkdown.stripped(note.title).ifBlank { stringResource(R.string.untitled) },
@@ -414,6 +423,17 @@ fun NoteScreen(
                                         onClick = {
                                             menu = false
                                             shareLink(context, InlineMarkdown.stripped(note.title), note.url)
+                                        },
+                                    )
+                                }
+                                // A note in a database: its quick actions are made and changed here too.
+                                if (note.databaseId != NotesRepository.PAGES) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.quick_actions)) },
+                                        leadingIcon = { Icon(Icons.Rounded.Bolt, null) },
+                                        onClick = {
+                                            menu = false
+                                            quickActionsFor = note.databaseId
                                         },
                                     )
                                 }

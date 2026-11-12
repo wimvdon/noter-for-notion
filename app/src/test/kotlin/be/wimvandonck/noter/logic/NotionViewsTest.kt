@@ -1,11 +1,8 @@
 package be.wimvandonck.noter.logic
 
 import be.wimvandonck.noter.data.model.DatabaseSchema
-import be.wimvandonck.noter.data.model.DatabaseSetup
-import be.wimvandonck.noter.data.model.NoteSort
 import be.wimvandonck.noter.data.model.NotionView
 import be.wimvandonck.noter.data.model.PropertySchema
-import be.wimvandonck.noter.data.model.SortKind
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.junit.Assert.assertEquals
@@ -34,28 +31,29 @@ class NotionViewsTest {
     }
 
     @Test
-    fun `a database opens on Notion's first view the first time`() {
+    fun `a database opens on Notion's first view, then on the view used last`() {
         val views = listOf(view("1"), view("2"))
-        assertEquals("1", NotionViews.chosen(emptyMap(), emptyMap(), "ds-1", views))
+        assertEquals("1", NotionViews.chosen(null, views))
+        assertEquals("2", NotionViews.chosen("2", views))
+        // A chosen view that is gone or hidden: the first shown one.
+        assertEquals("1", NotionViews.chosen("gone", views))
+        assertNull(NotionViews.chosen(null, emptyList()))
     }
 
     @Test
-    fun `after that it opens on the view used last`() {
+    fun `tabs follow the user's order, new views after it, hidden ones apart`() {
+        val views = listOf(view("1"), view("2"), view("3"), view("4"))
+        val (shown, hidden) = NotionViews.arranged(views, order = listOf("3", "1", "2"), hidden = listOf("2"))
+        assertEquals(listOf("3", "1", "4"), shown.map { it.id })
+        assertEquals(listOf("2"), hidden.map { it.id })
+    }
+
+    @Test
+    fun `when every view is hidden they all show`() {
         val views = listOf(view("1"), view("2"))
-        assertEquals("2", NotionViews.chosen(mapOf("ds1" to "2"), emptyMap(), "ds-1", views))
-        assertEquals(NotionViews.NOTER, NotionViews.chosen(mapOf("ds-1" to NotionViews.NOTER), emptyMap(), "ds-1", views))
-    }
-
-    @Test
-    fun `a database set up before Notion's views came opens on the Noter view`() {
-        val views = listOf(view("1"))
-        assertEquals(NotionViews.NOTER, NotionViews.chosen(emptyMap(), mapOf("ds-1" to DatabaseSetup()), "ds-1", views))
-    }
-
-    @Test
-    fun `a chosen view that is gone gives Notion's first, and no views the Noter view`() {
-        assertEquals("1", NotionViews.chosen(mapOf("ds-1" to "gone"), mapOf("ds-1" to DatabaseSetup()), "ds-1", listOf(view("1"))))
-        assertEquals(NotionViews.NOTER, NotionViews.chosen(emptyMap(), emptyMap(), "ds-1", emptyList()))
+        val (shown, hidden) = NotionViews.arranged(views, order = emptyList(), hidden = listOf("1", "2"))
+        assertEquals(listOf("1", "2"), shown.map { it.id })
+        assertEquals(emptyList<NotionView>(), hidden)
     }
 
     @Test
@@ -84,33 +82,6 @@ class NotionViewsTest {
     @Test
     fun `no filter and no sorts ask for every note in Notion's order`() {
         assertEquals(null to null, NotionViews.query(view("1", sorts = "[]"), schema))
-    }
-
-    @Test
-    fun `a view's first sort becomes Noter's`() {
-        assertEquals(NoteSort(SortKind.PROPERTY, "Due", descending = false), NotionViews.noterSort(view("1", sorts = """[{"property":"a%3Bb","direction":"ascending"}]"""), schema))
-        assertEquals(NoteSort(SortKind.PROPERTY, "Due", descending = true), NotionViews.noterSort(view("1", sorts = """[{"property":"Due","direction":"descending"}]"""), schema))
-        assertEquals(NoteSort(SortKind.TITLE, descending = false), NotionViews.noterSort(view("1", sorts = """[{"property":"Name","direction":"ascending"}]"""), schema))
-        assertEquals(NoteSort(SortKind.CREATED, descending = true), NotionViews.noterSort(view("1", sorts = """[{"timestamp":"created_time","direction":"descending"}]"""), schema))
-        assertEquals(NoteSort(SortKind.LAST_EDITED, descending = false), NotionViews.noterSort(view("1", sorts = """[{"timestamp":"last_edited_time","direction":"ascending"}]"""), schema))
-    }
-
-    @Test
-    fun `a sort Noter can't follow is the custom order`() {
-        assertEquals(NoteSort(SortKind.CUSTOM), NotionViews.noterSort(view("1"), schema))
-        assertEquals(NoteSort(SortKind.CUSTOM), NotionViews.noterSort(view("1", sorts = """[{"property":"Files","direction":"ascending"}]"""), schema))
-        assertEquals(NoteSort(SortKind.CUSTOM), NotionViews.noterSort(view("1", sorts = """[{"property":"Gone","direction":"ascending"}]"""), schema))
-    }
-
-    @Test
-    fun `a change in a Notion view starts the Noter view from it`() {
-        val setup = DatabaseSetup(quickFilters = listOf("Status"), selected = mapOf("Status" to listOf("Done")), sort = NoteSort(SortKind.TITLE))
-        val copied = NotionViews.copy(setup, view("1", sorts = """[{"timestamp":"created_time","direction":"ascending"}]"""), schema)
-        assertEquals("1", copied.baseView)
-        assertEquals("View 1", copied.baseViewName)
-        assertEquals(emptyMap<String, List<String>>(), copied.selected)
-        assertEquals(NoteSort(SortKind.CREATED, descending = false), copied.sort)
-        assertEquals(listOf("Status"), copied.quickFilters)
     }
 
     @Test

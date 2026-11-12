@@ -92,6 +92,9 @@ import java.util.UUID
 import be.wimvandonck.noter.logic.NoteLists
 
 /** One database's notes as the screens see them. */
+/** Notion is being asked ([asking]), or the last time failed ([error], see NotionErrors). */
+data class ViewStatus(val asking: Boolean = false, val error: String? = null)
+
 data class DatabaseState(
     val schema: DatabaseSchema? = null,
     val notes: List<NoteSummary> = emptyList(),
@@ -866,6 +869,7 @@ class NotesRepository(
                 }
                 _offline.value = false
                 retryDelayMs = RETRY_MIN_MS
+                _lastSentMs.value = clock()
                 lock.withLock {
                     val queue = _outbox.value.toMutableList()
                     // A create is found by its note (create marks it as sent, and renames it).
@@ -1268,6 +1272,21 @@ class NotesRepository(
     private val viewsRead = mutableSetOf<String>()
     private val viewsAsking = mutableSetOf<String>()
 
+    private val _viewStatus = MutableStateFlow<Map<String, ViewStatus>>(emptyMap())
+
+    /**
+     * Whether Notion is being asked about a data source's views (by data source ID) or a view's
+     * notes (by "data source ID/view ID"), and what went wrong the last time (see NotionErrors).
+     */
+    val viewStatus: StateFlow<Map<String, ViewStatus>> = _viewStatus.asStateFlow()
+
+    private fun setStatus(key: String, status: ViewStatus) = _viewStatus.update { it + (key to status) }
+
+    private val _lastSentMs = MutableStateFlow(0L)
+
+    /** Phone time (ms) a change last reached Notion: a view's notes asked before that may be out of date. */
+    val lastSentMs: StateFlow<Long> = _lastSentMs.asStateFlow()
+
     private fun setViews(sourceId: String, transform: (ViewsCache) -> ViewsCache) {
         var saved: ViewsCache? = null
         _views.update { map -> transform(map[sourceId] ?: ViewsCache()).let { saved = it; map + (sourceId to it) } }
@@ -1288,6 +1307,7 @@ class NotesRepository(
         val current = _views.value[sourceId]
         if (!force && current != null && clock() - current.fetchedMs < VIEWS_TTL_MS) return@withContext
         if (!synchronized(viewsAsking) { viewsAsking.add(sourceId) }) return@withContext
+        setStatus(sourceId, ViewStatus(asking = true))
         try {
             // Asked by database: by data source the list wasn't in the order of Notion's tabs.
             val ids = client.listViews(sourceId, databaseOf(sourceId)).mapNotNull { it.stringOrNull("id") }
@@ -1302,8 +1322,12 @@ class NotesRepository(
             }
             val started = clock()
             setViews(sourceId) { old -> old.copy(views = views, fetchedMs = started, results = old.results.filterKeys { id -> views.any { it.id == id } }) }
+            setStatus(sourceId, ViewStatus())
+            _offline.value = false
         } catch (e: NotionException) {
             if (e.isOffline) _offline.value = true
+            if (e.status == 401) _events.tryEmit(RepoEvent.KeyRejected)
+            setStatus(sourceId, ViewStatus(error = NotionErrors.of(e)))
         } finally {
             synchronized(viewsAsking) { viewsAsking.remove(sourceId) }
         }
@@ -1322,6 +1346,7 @@ class NotesRepository(
         if (!force && known != null && clock() - known.fetchedMs < VIEW_RESULTS_TTL_MS) return@withContext
         val asking = "$sourceId/$viewId"
         if (!synchronized(viewsAsking) { viewsAsking.add(asking) }) return@withContext
+        setStatus(asking, ViewStatus(asking = true))
         try {
             val started = clock()
             // Sorts name properties by name: the data source's properties, asked when not known yet.
@@ -1339,14 +1364,17 @@ class NotesRepository(
             val ids = pages.filterNot { PropertyCodec.isTrashed(it) }.mapNotNull { it.stringOrNull("id") }
             val result = ViewResult(ids, started, Instant.ofEpochMilli(started).toString())
             setViews(sourceId) { it.copy(results = it.results + (viewId to result)) }
+            setStatus(asking, ViewStatus())
+            _offline.value = false
         } catch (e: NotionException) {
             if (e.isOffline) _offline.value = true
+            setStatus(asking, ViewStatus(error = NotionErrors.of(e)))
         } finally {
             synchronized(viewsAsking) { viewsAsking.remove(asking) }
         }
     }
 
-    /** Data source [sourceId] shows view [viewId] (a Notion view's ID, or NotionViews.NOTER) from now on. */
+    /** Data source [sourceId] shows Notion view [viewId] from now on (kept for next time, backed up). */
     suspend fun chooseView(sourceId: String, viewId: String) {
         settings.update { s ->
             val key = s.views.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
@@ -1354,30 +1382,12 @@ class NotesRepository(
         }
     }
 
-    /**
-     * A change made in Notion view [viewId]: data source [sourceId] shows the Noter view from now on,
-     * its setup [transform]ed, in one step (Notion's view isn't changed).
-     */
-    suspend fun switchToNoter(sourceId: String, schema: DatabaseSchema?, transform: (DatabaseSetup) -> DatabaseSetup) {
+    /** Data source [sourceId]'s view tabs: [order] (every view, shown and hidden) and the [hidden] ones. */
+    suspend fun arrangeViews(sourceId: String, order: List<String>, hidden: List<String>) {
         settings.update { s ->
-            val setupKey = s.setups.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
-            val viewKey = s.views.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
-            s.copy(
-                setups = s.setups + (setupKey to transform(DatabaseSetups.of(s.setups, sourceId, schema))),
-                views = s.views + (viewKey to NotionViews.NOTER),
-            )
-        }
-    }
-
-    /** Undo for [switchToNoter]: [previous] setup back (none: the first one again) and Notion view [viewId] shown. */
-    suspend fun undoSwitchToNoter(sourceId: String, previous: DatabaseSetup?, viewId: String) {
-        settings.update { s ->
-            val setupKey = s.setups.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
-            val viewKey = s.views.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
-            s.copy(
-                setups = if (previous != null) s.setups + (setupKey to previous) else s.setups - setupKey,
-                views = s.views + (viewKey to viewId),
-            )
+            val orderKey = s.viewOrder.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
+            val hiddenKey = s.hiddenViews.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
+            s.copy(viewOrder = s.viewOrder + (orderKey to order), hiddenViews = s.hiddenViews + (hiddenKey to hidden))
         }
     }
 
@@ -1549,14 +1559,11 @@ class NotesRepository(
         TokenCodec.parse(if (key != null) client.me(key) else client.me())
     }
 
-    /**
-     * Changes how data source [sourceId] shows its notes (kept on this phone, see [DatabaseSetup]);
-     * one never changed starts from [DatabaseSetups.initial] for [schema].
-     */
-    suspend fun updateSetup(sourceId: String, schema: DatabaseSchema?, transform: (DatabaseSetup) -> DatabaseSetup) {
+    /** Changes what this phone keeps for data source [sourceId]: its cards and quick actions (see [DatabaseSetup]). */
+    suspend fun updateSetup(sourceId: String, transform: (DatabaseSetup) -> DatabaseSetup) {
         settings.update { s ->
             val key = s.setups.keys.firstOrNull { plain(it) == plain(sourceId) } ?: sourceId
-            s.copy(setups = s.setups + (key to transform(DatabaseSetups.of(s.setups, sourceId, schema))))
+            s.copy(setups = s.setups + (key to transform(DatabaseSetups.of(s.setups, sourceId))))
         }
     }
 
@@ -1678,6 +1685,7 @@ class NotesRepository(
             databaseInfos.clear()
             databasesAsked.clear()
             _views.value = emptyMap()
+            _viewStatus.value = emptyMap()
             synchronized(viewsRead) { viewsRead.clear() }
             _recent.value = null
             _outbox.value = emptyList()

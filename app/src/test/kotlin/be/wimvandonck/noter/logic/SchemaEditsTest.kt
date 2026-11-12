@@ -85,18 +85,11 @@ class SchemaEditsTest {
         val change = SchemaChange(mapOf("x" to null), renamed = mapOf("Tags" to "Labels"), removed = setOf("Due"))
         val setup = DatabaseSetup(
             quickFilters = listOf("Tags", "Due"),
-            filterOrder = listOf("Due", "Tags", "Status"),
-            selected = mapOf("Tags" to listOf("a"), "Due" to listOf("today")),
-            sort = NoteSort(SortKind.DATE, property = "Due"),
             cards = CardLayout(properties = listOf("Tags", "Due")),
         )
         val changed = change.applyTo(setup)
         assertEquals(listOf("Labels"), changed.quickFilters)
-        assertEquals(listOf("Labels", "Status"), changed.filterOrder)
-        assertEquals(mapOf("Labels" to listOf("a")), changed.selected)
-        assertNull(changed.sort)
         assertEquals(listOf("Labels"), changed.cards?.properties)
-        assertEquals("Labels", change.applyTo(setup.copy(sort = NoteSort(SortKind.DATE, property = "Tags"))).sort?.property)
     }
 
     @Test

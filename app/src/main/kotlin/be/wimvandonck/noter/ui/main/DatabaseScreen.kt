@@ -36,11 +36,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.SecondaryScrollableTabRow
-import androidx.compose.material3.InputChip
-import androidx.compose.material3.InputChipDefaults
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.foundation.layout.size
-import be.wimvandonck.noter.logic.NotionViews
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -65,7 +61,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import be.wimvandonck.noter.R
-import be.wimvandonck.noter.data.model.QuickAction
 import be.wimvandonck.noter.ui.common.PageIconView
 import be.wimvandonck.noter.ui.common.SMALL_PAGE_ICON
 import be.wimvandonck.noter.ui.common.SyncButton
@@ -76,11 +71,11 @@ import androidx.compose.material.icons.rounded.Share
 import be.wimvandonck.noter.ui.common.shareLink
 
 /**
- * A database, opened from Home, Search or a link in a note: its notes with rows of filter chips.
- * The top app bar has Filters, Sort, Cards (what the cards show) and a ⋮ menu (pin on Home, open
- * in Notion, share, Quick actions). Everything changed here is kept for the database at once; there is nothing
- * to save. A database of several data sources has a tab per data source, each with its own
- * filters, sort and cards.
+ * A database, opened from Home, Search or a link in a note: its notes as its Notion views show
+ * them, one tab each, with the view settings (Tune) at the start of the tabs: the tabs' order, the
+ * hidden ones and what the cards show. The top app bar has a ⋮ menu (pin on Home, edit database,
+ * quick actions, open in Notion, share). Everything changed here is kept at once; there is nothing
+ * to save. A database of several data sources has a tab per data source, each with its own views.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,34 +90,23 @@ fun DatabaseScreen(
     val snackbar = remember { SnackbarHostState() }
     val untitled = stringResource(R.string.untitled)
     val content = state.content
-    var filtersOpen by remember { mutableStateOf(false) }
-    var cardsOpen by remember { mutableStateOf(false) }
+    var settingsOpen by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
     // Quick actions (#119): the list (⋮) and the one being made or changed. They run from a note.
     var quickActionsOpen by remember { mutableStateOf(false) }
-    var editingAction by remember { mutableStateOf<QuickAction?>(null) }
-    var editorOpen by remember { mutableStateOf(false) }
     val editing by viewModel.editing.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val actions = SetupActions(onArrangeFilters = viewModel::arrangeFilters, onSort = viewModel::setSort)
+    // On top: a change that reached Notion meanwhile asks the view's notes again.
+    LifecycleResumeEffect(viewModel) {
+        viewModel.setVisible(true)
+        onPauseOrDispose { viewModel.setVisible(false) }
+    }
 
-    val sortedByHand = stringResource(R.string.sorted_by_hand)
     val quickActionDeleted = stringResource(R.string.quick_action_deleted)
-    val switchedToNoter = stringResource(R.string.switched_to_noter)
     val undo = stringResource(R.string.undo)
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is DatabaseEvent.SortedByHand -> {
-                    // Dragging changed the order; the old one is a tap away.
-                    val result = snackbar.showSnackbar(sortedByHand, actionLabel = undo, duration = SnackbarDuration.Long)
-                    if (result == SnackbarResult.ActionPerformed) viewModel.undoSortedByHand(event)
-                }
-                is DatabaseEvent.SwitchedToNoter -> {
-                    // A change in a Notion view went to the Noter view; Notion's view is a tap away.
-                    val result = snackbar.showSnackbar(switchedToNoter, actionLabel = undo, duration = SnackbarDuration.Long)
-                    if (result == SnackbarResult.ActionPerformed) viewModel.undoSwitchToNoter(event)
-                }
                 is DatabaseEvent.QuickActionDeleted -> {
                     val result = snackbar.showSnackbar(quickActionDeleted, actionLabel = undo, duration = SnackbarDuration.Long)
                     if (result == SnackbarResult.ActionPerformed) viewModel.undoDeleteQuickAction(event)
@@ -176,10 +160,11 @@ fun DatabaseScreen(
                             },
                             actions = {
                                 SyncButton(content.pendingCount, content.offline, syncing = false, onSync = { viewModel.refresh() }, alwaysShown = false)
-                                if (content.hasKey) SetupBarActions(content, actions, onOpenFilters = { filtersOpen = true })
-                                // What the cards show: the same icon as the properties button of a page.
-                                IconButton(onClick = { cardsOpen = true }) {
-                                    Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.cards_title))
+                                // Until the views are known the view settings (what the cards show) are here.
+                                if (state.views.isEmpty()) {
+                                    IconButton(onClick = { settingsOpen = true }) {
+                                        Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.view_settings))
+                                    }
                                 }
                                 Box {
                                     IconButton(onClick = { menu = true }) {
@@ -246,35 +231,26 @@ fun DatabaseScreen(
                                 }
                             }
                         }
-                        // The data source's Notion views, then the Noter view: peers showing the same notes.
+                        // The data source's Notion views, after the view settings (the same icon as a page's properties button).
                         if (state.views.isNotEmpty() && !content.sourceMissing) {
-                            val tabs = state.views.map { it.id to it.name.ifBlank { untitled } } + (NotionViews.NOTER to stringResource(R.string.view_noter))
-                            SecondaryScrollableTabRow(selectedTabIndex = tabs.indexOfFirst { it.first == state.viewId }.coerceAtLeast(0), edgePadding = 16.dp) {
-                                tabs.forEach { (id, name) ->
-                                    Tab(
-                                        selected = id == state.viewId,
-                                        onClick = { viewModel.selectView(id) },
-                                        text = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                    )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = { settingsOpen = true }, modifier = Modifier.padding(start = 4.dp)) {
+                                    Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.view_settings))
+                                }
+                                SecondaryScrollableTabRow(
+                                    selectedTabIndex = state.views.indexOfFirst { it.id == state.viewId }.coerceAtLeast(0),
+                                    edgePadding = 0.dp,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    state.views.forEach { view ->
+                                        Tab(
+                                            selected = view.id == state.viewId,
+                                            onClick = { viewModel.selectView(view.id) },
+                                            text = { Text(view.name.ifBlank { untitled }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                        )
+                                    }
                                 }
                             }
-                        }
-                        // The Noter view started from a Notion view shows only its notes; × shows them all.
-                        state.baseViewName?.let { name ->
-                            if (state.viewId == NotionViews.NOTER && !content.sourceMissing) {
-                                InputChip(
-                                    selected = true,
-                                    onClick = viewModel::clearBaseView,
-                                    label = { Text(stringResource(R.string.base_view, name.ifBlank { untitled }), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                    trailingIcon = {
-                                        Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.show_all_notes), modifier = Modifier.size(InputChipDefaults.IconSize))
-                                    },
-                                    modifier = Modifier.padding(horizontal = 16.dp),
-                                )
-                            }
-                        }
-                        if (content.hasKey && content.chipGroups.isNotEmpty() && !content.sourceMissing) {
-                            ChipRows(content, onToggle = viewModel::toggleChip, onClearRow = viewModel::clearRow)
                         }
                     }
                 }
@@ -304,25 +280,24 @@ fun DatabaseScreen(
                     state = content,
                     previews = previews,
                     onLoadPreviews = viewModel::loadPreviews,
-                    onToggleChip = viewModel::toggleChip,
-                    onClearChips = viewModel::clearChips,
-                    onLoadChipTitles = { viewModel.loadChipTitles(it) },
                     onRefresh = { viewModel.refresh() },
                     onOpen = onOpenNote,
                     onTogglePin = { viewModel.togglePin(it) },
-                    onReordered = viewModel::saveOrder,
                 )
             }
         }
     }
 
-    if (filtersOpen) {
-        FiltersSheet(
-            state = content,
-            actions = actions,
-            onToggle = viewModel::toggleChip,
-            onClear = viewModel::clearChips,
-            onDismiss = { filtersOpen = false },
+    if (settingsOpen) {
+        ViewSettingsSheet(
+            views = state.views,
+            hiddenViews = state.hiddenViews,
+            cards = state.cards,
+            properties = state.properties,
+            onArrangeViews = viewModel::arrangeViews,
+            onCards = viewModel::editCards,
+            onEditInNotion = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, state.notionUrl.toUri())) } },
+            onDismiss = { settingsOpen = false },
         )
     }
     editing?.let { edit ->
@@ -331,49 +306,9 @@ fun DatabaseScreen(
             title = state.title,
             icon = state.icon,
             onSave = viewModel::saveEdit,
+            onOpenInNotion = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, state.notionUrl.toUri())) } },
             onDismiss = viewModel::dismissEdit,
         )
     }
-    // People and linked pages to choose from in quick actions, loaded when their sheets open.
-    val quickLookups by viewModel.quickLookups.collectAsStateWithLifecycle()
-    LaunchedEffect(quickActionsOpen || editorOpen) { if (quickActionsOpen || editorOpen) viewModel.loadQuickLookups() }
-    if (quickActionsOpen) {
-        QuickActionsSheet(
-            state = content,
-            properties = state.properties,
-            lookups = quickLookups,
-            onEdit = { action ->
-                editingAction = action
-                editorOpen = true
-                quickActionsOpen = false
-            },
-            onDelete = viewModel::deleteQuickAction,
-            onDismiss = { quickActionsOpen = false },
-        )
-    }
-    if (editorOpen) {
-        val close = {
-            editorOpen = false
-            quickActionsOpen = true
-        }
-        QuickActionEditor(
-            action = editingAction,
-            state = content,
-            properties = state.properties,
-            lookups = quickLookups,
-            onSave = { action ->
-                viewModel.saveQuickAction(action)
-                close()
-            },
-            onDismiss = close,
-        )
-    }
-    if (cardsOpen) {
-        CardsSheet(
-            cards = state.cards,
-            properties = state.properties,
-            onCards = viewModel::editCards,
-            onDismiss = { cardsOpen = false },
-        )
-    }
+    if (quickActionsOpen) QuickActionsFlow(viewModel, onDismiss = { quickActionsOpen = false })
 }

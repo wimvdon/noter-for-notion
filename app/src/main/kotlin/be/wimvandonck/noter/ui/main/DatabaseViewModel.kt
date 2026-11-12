@@ -13,7 +13,6 @@ import be.wimvandonck.noter.data.model.CardLayout
 import be.wimvandonck.noter.data.model.DatabaseSchema
 import be.wimvandonck.noter.data.model.DatabaseSetup
 import be.wimvandonck.noter.data.model.NotionUser
-import be.wimvandonck.noter.data.model.NoteSort
 import be.wimvandonck.noter.data.model.NoteSummary
 import be.wimvandonck.noter.data.model.NotionView
 import be.wimvandonck.noter.data.model.PageIcon
@@ -21,15 +20,15 @@ import be.wimvandonck.noter.data.model.PageRef
 import be.wimvandonck.noter.data.model.PinnedDatabase
 import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.data.model.QuickAction
-import be.wimvandonck.noter.data.model.SortKind
 import be.wimvandonck.noter.logic.DatabaseEdit
-import be.wimvandonck.noter.logic.DatabaseSetups
 import be.wimvandonck.noter.logic.EditedProperty
 import be.wimvandonck.noter.logic.PropertyKind
 import be.wimvandonck.noter.logic.SchemaEdits
 import be.wimvandonck.noter.logic.PropertyLayouts
 import be.wimvandonck.noter.logic.QuickActions
 import be.wimvandonck.noter.logic.NotionViews
+import be.wimvandonck.noter.logic.DatabaseSetups
+import be.wimvandonck.noter.data.ViewStatus
 import be.wimvandonck.noter.data.store.ViewsCache
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,18 +52,18 @@ data class DatabaseUiState(
     val sources: List<PageRef>? = null,
     /** The data source shown. */
     val sourceId: String = "",
-    /** What the cards show now (see PropertyLayouts.cards), for the Cards panel. */
+    /** What the cards show now (see PropertyLayouts.cards), for the view settings. */
     val cards: CardLayout = CardLayout(),
     /** The data source's properties (the cards can show some). */
     val properties: List<PropertySchema> = emptyList(),
-    /** Notion's web link to the database, for Open in Notion and Share. */
+    /** Notion's web link to the database, for Open in Notion, Share and editing its views. */
     val notionUrl: String = "",
-    /** The data source's Notion views, for the view tabs (none: just the Noter view, no tabs). */
+    /** The data source's Notion views shown as tabs, in the user's order. */
     val views: List<NotionView> = emptyList(),
-    /** The view shown: a Notion view's ID, or NotionViews.NOTER. */
-    val viewId: String = NotionViews.NOTER,
-    /** The Noter view shows only the notes of this Notion view (its name; null: all notes). */
-    val baseViewName: String? = null,
+    /** Its Notion views hidden from the tabs. */
+    val hiddenViews: List<NotionView> = emptyList(),
+    /** The view shown (null: no views known yet). */
+    val viewId: String? = null,
 )
 
 /**
@@ -82,38 +81,22 @@ data class QuickLookups(
 
 /** Something the database's screen tells the user once. */
 sealed interface DatabaseEvent {
-    /** Dragging a note switched the data source from [previous] to the custom order (Undo restores it). */
-    data class SortedByHand(val sourceId: String, val previous: NoteSort?) : DatabaseEvent
-
-    /**
-     * A change in Notion view [viewId] turned it into the Noter view; [previous] is the Noter view
-     * from before (null: there was none). Undo puts both back.
-     */
-    data class SwitchedToNoter(val sourceId: String, val viewId: String, val previous: DatabaseSetup?) : DatabaseEvent
-
     /** Quick action [action] was deleted from place [index] (Undo puts it back). */
     data class QuickActionDeleted(val action: QuickAction, val index: Int) : DatabaseEvent
 }
 
 /**
- * A database: its notes with the filters, sort and cards kept for it on this phone
- * ([DatabaseSetup], per data source; every change is kept at once). [openedId] is a data source
- * (from Home or Search) or a database (a link, or a database of several data sources); a database
- * with several data sources shows one at a time, with tabs.
+ * A database: its notes as its Notion views show them, one tab each (the order and the hidden
+ * ones kept on this phone), and the cards and quick actions kept for it ([DatabaseSetup], per
+ * data source). [openedId] is a data source (from Home or Search) or a database (a link, or a
+ * database of several data sources); a database with several data sources shows one at a time,
+ * with tabs.
  */
 class DatabaseViewModel(
     private val openedId: String,
     private val repository: NotesRepository,
     hasKey: StateFlow<Boolean>,
 ) : ViewModel() {
-    private val chipTitles = MutableStateFlow<Map<String, String>>(emptyMap())
-
-    /** Loads the titles of a related database's pages, for the chips of a relation filter. */
-    fun loadChipTitles(databaseId: String) = viewModelScope.launch {
-        val pages = repository.relatedPages(databaseId) ?: return@launch
-        chipTitles.update { it + pages.associate { page -> page.id to page.title } }
-    }
-
     private val source = MutableStateFlow(openedId)
     private val sources = MutableStateFlow<List<PageRef>?>(null)
 
@@ -133,23 +116,28 @@ class DatabaseViewModel(
 
     private val status = combine(repository.pendingCount, repository.offline, hasKey, repository.missingSources, ::Status)
 
+    private data class Views(val all: Map<String, ViewsCache>, val status: Map<String, ViewStatus>)
+
     val state: StateFlow<DatabaseUiState> = combine(
         repository.settingsFlow(),
-        combine(repository.databases, repository.views, ::Pair),
+        combine(repository.databases, combine(repository.views, repository.viewStatus, ::Views), ::Pair),
         combine(source, sources, label, databaseLink, ::Shown),
         status,
-    ) { settings, (databases, allViews), (id, list, named, link), (pending, offline, key, missing) ->
+    ) { settings, (databases, views), (id, list, named, link), (pending, offline, key, missing) ->
         val db = databases[id]
-        val noterSetup = DatabaseSetups.of(settings.setups, id, db?.schema)
-        val sourceViews = allViews[id]
-        val views = NotionViews.listed(sourceViews?.views.orEmpty(), id)
-        val viewId = NotionViews.chosen(settings.views, settings.setups, id, views)
-        val view = views.firstOrNull { it.id == viewId }
-        // A Notion view shows its notes in its order; the Noter view those of the view it started from, if any.
-        val base = if (view == null) views.firstOrNull { it.id == noterSetup.baseView } else null
-        val setup = if (view != null) NotionViews.shownAs(noterSetup, view, db?.schema) else noterSetup
-        val within = (view ?: base)?.let { members(sourceViews, it.id, db?.notes.orEmpty()) }
-        val notesBase = NotesUiState(
+        val setup = DatabaseSetups.of(settings.setups, id)
+        val sourceViews = views.all[id]
+        val (shown, hidden) = arrangedViews(sourceViews, settings, id)
+        val viewId = NotionViews.chosen(choiceOf(settings, id), shown)
+        val listStatus = views.status[id]
+        val resultStatus = viewId?.let { views.status["$id/$it"] }
+        val members = when {
+            viewId != null -> members(sourceViews, viewId, db?.notes.orEmpty())
+            // Notion has no views of these notes to show (all of them forms or dashboards): every note, last edited first.
+            sourceViews != null && sourceViews.fetchedMs > 0 -> db?.notes.orEmpty().sortedByDescending { it.lastEditedTime }.map { it.id }
+            else -> null
+        }
+        val base = NotesUiState(
             ready = true,
             hasKey = key,
             pinnedIds = settings.pinned.toSet(),
@@ -162,21 +150,27 @@ class DatabaseViewModel(
         DatabaseUiState(
             title = named?.first ?: known?.title ?: db?.schema?.title.orEmpty(),
             icon = named?.second ?: known?.icon,
-            content = setupContent(notesBase, setup, db, settings, id, within, inOrder = view != null),
+            content = setupContent(
+                base, setup, db, settings, id, members,
+                viewLoading = listStatus?.asking == true || resultStatus?.asking == true,
+                viewError = (if (viewId == null) listStatus?.error else resultStatus?.error),
+            ),
             pinned = settings.pinnedDatabases.any { plain(it.id) == plain(pinKey(id, list)) },
             sources = list,
             sourceId = id,
             cards = PropertyLayouts.cards(setup, settings.propertyLayouts[id]),
             properties = db?.schema?.properties.orEmpty(),
             notionUrl = ReadOnlyBlocks.notionUrl(link ?: db?.schema?.databaseId ?: pinKey(id, list)),
-            views = views,
+            views = shown,
+            hiddenViews = hidden,
             viewId = viewId,
-            baseViewName = base?.let { noterSetup.baseViewName.ifBlank { it.name } },
         )
-    }.combine(chipTitles) { state, titles -> state.copy(content = state.content.copy(chipTitles = titles)) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DatabaseUiState())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DatabaseUiState())
 
     val previews: StateFlow<Map<String, String>> = repository.previews
+
+    /** True while the screen is on top: then the view shown is asked again once changes reached Notion. */
+    private val visible = MutableStateFlow(false)
 
     init {
         viewModelScope.launch {
@@ -201,7 +195,35 @@ class DatabaseViewModel(
             // Opened as a database: that is the link. Opened as a data source: the database it is in.
             databaseLink.value = if (plain(resolved) != plain(openedId)) openedId else repository.databaseOf(resolved)
         }
+        // Back on screen, or a change reached Notion while it shows: the views and the view's notes again
+        // (a note edited here moves in or out of the view, as in Notion).
+        viewModelScope.launch {
+            combine(visible, repository.lastSentMs, ::Pair).collect { (shown, sent) ->
+                if (!shown) return@collect
+                val id = sourceId
+                val result = state.value.viewId?.let { repository.views.value[id]?.results?.get(it) }
+                launch { openViews(id, forceResults = result != null && sent > result.fetchedMs) }
+            }
+        }
     }
+
+    /** The screen is on top ([shown]) or not (another screen covers it, or the app is in the background). */
+    fun setVisible(shown: Boolean) {
+        visible.value = shown
+    }
+
+    private fun choiceOf(settings: be.wimvandonck.noter.data.store.AppSettings, id: String): String? =
+        settings.views[id] ?: settings.views.entries.firstOrNull { plain(it.key) == plain(id) }?.value
+
+    private fun <T> byPlain(map: Map<String, T>, id: String): T? = map[id] ?: map.entries.firstOrNull { plain(it.key) == plain(id) }?.value
+
+    /** Data source [id]'s Notion views: the shown ones in the user's order, then the hidden ones. */
+    private fun arrangedViews(views: ViewsCache?, settings: be.wimvandonck.noter.data.store.AppSettings, id: String): Pair<List<NotionView>, List<NotionView>> =
+        NotionViews.arranged(
+            NotionViews.listed(views?.views.orEmpty(), id),
+            byPlain(settings.viewOrder, id).orEmpty(),
+            byPlain(settings.hiddenViews, id).orEmpty(),
+        )
 
     /** The notes of Notion view [viewId] as last asked (null: not asked yet), with the ones made since. */
     private fun members(views: ViewsCache?, viewId: String, notes: List<NoteSummary>): List<String>? {
@@ -210,21 +232,19 @@ class DatabaseViewModel(
     }
 
     /**
-     * Data source [id]'s Notion views, then the notes of the one shown (and of the one the Noter
-     * view starts from). The first time it opens with views, Notion's first one is kept as chosen.
+     * Data source [id]'s Notion views ([force]: asked again whatever their age), then the notes of
+     * the one shown ([forceResults] too). The first time, Notion's first view is kept as chosen.
      */
-    private suspend fun openViews(id: String, force: Boolean = false) {
+    private suspend fun openViews(id: String, force: Boolean = false, forceResults: Boolean = force) {
         repository.openViews(id, force)
         val settings = repository.currentSettings()
-        val views = NotionViews.listed(repository.views.value[id]?.views.orEmpty(), id)
-        if (views.isEmpty()) return
-        val chosen = NotionViews.chosen(settings.views, settings.setups, id, views)
-        if (settings.views.keys.none { plain(it) == plain(id) }) repository.chooseView(id, chosen)
-        val shown = if (chosen == NotionViews.NOTER) DatabaseSetups.of(settings.setups, id, null).baseView else chosen
-        if (shown != null) repository.refreshViewResults(id, shown, force)
+        val (shown, _) = arrangedViews(repository.views.value[id], settings, id)
+        val chosen = NotionViews.chosen(choiceOf(settings, id), shown) ?: return
+        if (choiceOf(settings, id) != chosen) repository.chooseView(id, chosen)
+        repository.refreshViewResults(id, chosen, forceResults)
     }
 
-    /** Shows view [viewId] (a Notion view's ID, or NotionViews.NOTER), kept for next time. */
+    /** Shows Notion view [viewId], kept for next time. */
     fun selectView(viewId: String) {
         val id = sourceId
         if (viewId == state.value.viewId) return
@@ -234,8 +254,18 @@ class DatabaseViewModel(
         }
     }
 
-    /** The Noter view shows every note again, not only those of the Notion view it started from. */
-    fun clearBaseView() = updateSetup { it.copy(baseView = null, baseViewName = "") }
+    /**
+     * The view settings were arranged: [shown] views (by ID) are tabs in this order, [hidden] aren't.
+     * At least one view stays shown.
+     */
+    fun arrangeViews(shown: List<String>, hidden: List<String>) {
+        if (shown.isEmpty()) return
+        val id = sourceId
+        viewModelScope.launch {
+            repository.arrangeViews(id, shown + hidden, hidden)
+            openViews(id)
+        }
+    }
 
     /** What pins this database: the database when it has several data sources, else its data source. */
     private fun pinKey(sourceId: String, sources: List<PageRef>?): String = if (sources != null) openedId else sourceId
@@ -252,63 +282,16 @@ class DatabaseViewModel(
         }
     }
 
-    /** Changes how the data source shown shows its notes (kept on this phone, Notion isn't changed). */
+    /** Changes what this phone keeps for the data source shown (Notion isn't changed). */
     private fun updateSetup(transform: (DatabaseSetup) -> DatabaseSetup) {
         val id = sourceId
-        viewModelScope.launch { repository.updateSetup(id, repository.databases.value[id]?.schema, transform) }
+        viewModelScope.launch { repository.updateSetup(id, transform) }
     }
 
-    /** The Notion view shown (null: the Noter view). */
-    private fun notionView(): NotionView? = state.value.let { ui -> ui.views.firstOrNull { it.id == ui.viewId } }
-
-    /**
-     * Changes which notes show or their order. In a Notion view this starts the Noter view from it
-     * (its notes, its sort) with the change on top, and says so with Undo; Notion's view stays.
-     */
-    private fun changeView(transform: (DatabaseSetup) -> DatabaseSetup) {
-        val view = notionView() ?: return updateSetup(transform)
-        val id = sourceId
-        viewModelScope.launch {
-            val schema = repository.databases.value[id]?.schema
-            val previous = repository.currentSettings().setups.entries.firstOrNull { plain(it.key) == plain(id) }?.value
-            repository.switchToNoter(id, schema) { transform(NotionViews.copy(it, view, schema)) }
-            _events.tryEmit(DatabaseEvent.SwitchedToNoter(id, view.id, previous))
-        }
-    }
-
-    /** Undo after a change in a Notion view switched to the Noter view. */
-    fun undoSwitchToNoter(event: DatabaseEvent.SwitchedToNoter) = viewModelScope.launch {
-        repository.undoSwitchToNoter(event.sourceId, event.previous, event.viewId)
-    }
-
-    fun toggleChip(property: String, key: String) = changeView { it.copy(selected = DatabaseSetups.toggle(it.selected, property, key)) }
-
-    fun clearChips() {
-        if (notionView() == null) updateSetup { it.copy(selected = emptyMap()) }
-    }
-
-    /**
-     * The Filters panel was arranged: [shown] have a row of chips above the notes, [hidden] don't,
-     * each in this order (filters stay as they are).
-     */
-    fun arrangeFilters(shown: List<String>, hidden: List<String>) = updateSetup { DatabaseSetups.arranged(it, shown, hidden) }
-
-    /** The × at the end of a row of chips: [property] doesn't filter any more. */
-    fun clearRow(property: String) {
-        if (notionView() == null) updateSetup { it.copy(selected = it.selected - property) }
-    }
-
-    fun setSort(sort: NoteSort) = changeView { it.copy(sort = sort) }
-
-    /** Changes what the cards show, starting from what they show now. */
+    /** Changes what the cards show, starting from what they show now (for every view). */
     fun editCards(transform: (CardLayout) -> CardLayout) {
         val current = state.value.cards
         updateSetup { it.copy(cards = transform(it.cards ?: current)) }
-    }
-
-    /** Undo after dragging switched the data source to the custom order. */
-    fun undoSortedByHand(event: DatabaseEvent.SortedByHand) = viewModelScope.launch {
-        repository.updateSetup(event.sourceId, repository.databases.value[event.sourceId]?.schema) { it.copy(sort = event.previous) }
     }
 
     /** Pins the database on Home, or unpins it. */
@@ -372,43 +355,11 @@ class DatabaseViewModel(
     fun togglePin(id: String) = viewModelScope.launch { repository.togglePin(id) }
 
 
-    /**
-     * Saves the new order after the user dragged notes in [group] (the pinned ones or the others).
-     * Sorted another way, dragging switches to the custom order, starting from the order on screen.
-     */
-    fun saveOrder(group: List<String>) {
-        val ui = state.value.content
-        val id = ui.databaseId ?: return
-        val setup = ui.setup ?: return
-        val view = notionView()
-        val switching = view != null || setup.currentSort.kind != SortKind.CUSTOM
-        val ids = when {
-            !switching -> group
-            ui.pinned.any { it.id in group } -> group + ui.others.map { it.id }
-            else -> ui.pinned.map { it.id } + group
-        }
-        viewModelScope.launch {
-            repository.saveOrder(id, ids)
-            if (view != null) {
-                // Dragging in a Notion view: the Noter view, in the order on screen.
-                val schema = repository.databases.value[id]?.schema
-                val previous = repository.currentSettings().setups.entries.firstOrNull { plain(it.key) == plain(id) }?.value
-                repository.switchToNoter(id, schema) { NotionViews.copy(it, view, schema).copy(sort = NoteSort(SortKind.CUSTOM)) }
-                _events.tryEmit(DatabaseEvent.SwitchedToNoter(id, view.id, previous))
-            } else if (switching) {
-                repository.updateSetup(id, repository.databases.value[id]?.schema) { it.copy(sort = NoteSort(SortKind.CUSTOM)) }
-                _events.tryEmit(DatabaseEvent.SortedByHand(id, setup.sort))
-            }
-        }
-    }
-
-    /** A new note, with the values of the filters selected where it can. */
+    /** A new note in the data source shown (Notion gives it the view's defaults when it shows it). */
     fun createNote(onCreated: (String) -> Unit) {
-        val ui = state.value.content
-        val id = ui.databaseId ?: return
+        val id = state.value.content.databaseId ?: return
         viewModelScope.launch {
-            val preset = presets(ui.filterOptions, ui.setup?.selected.orEmpty().mapValues { it.value.toSet() })
-            val note = repository.createNote(id, preset) ?: return@launch
+            val note = repository.createNote(id) ?: return@launch
             onCreated(note)
         }
     }

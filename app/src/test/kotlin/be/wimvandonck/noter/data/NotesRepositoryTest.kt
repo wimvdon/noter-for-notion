@@ -12,9 +12,8 @@ import be.wimvandonck.noter.data.model.PinnedDatabase
 import be.wimvandonck.noter.data.model.PropertySchema
 import be.wimvandonck.noter.data.model.NoteProperty
 import be.wimvandonck.noter.data.model.PropertyValue
-import be.wimvandonck.noter.data.model.NoteSort
-import be.wimvandonck.noter.data.model.SortKind
 import be.wimvandonck.noter.logic.NotionViews
+import be.wimvandonck.noter.data.model.CardLayout
 import be.wimvandonck.noter.data.store.CacheStore
 import be.wimvandonck.noter.data.store.DatabaseCache
 import be.wimvandonck.noter.data.sync.PendingOp
@@ -531,10 +530,11 @@ class NotesRepositoryTest {
         val repo = repository()
         val schema = DatabaseSchema("ds-9", "Tasks", listOf(PropertySchema("st", "Status", "status")))
 
-        repo.updateSetup("ds-9", schema) { it.copy(selected = mapOf("Status" to listOf("Done"))) }
-        // A database never changed starts from its first status property as a row of chips.
-        assertEquals(DatabaseSetup(quickFilters = listOf("Status"), selected = mapOf("Status" to listOf("Done"))), repo.currentSettings().setups["ds-9"])
-        repo.updateSetup("ds9", schema) { it.copy(quickFilters = emptyList()) }
+        repo.updateSetup("ds-9") { it.copy(cards = CardLayout(cover = true)) }
+        assertEquals(DatabaseSetup(cards = CardLayout(cover = true)), repo.currentSettings().setups["ds-9"])
+        // Written without dashes: the same data source.
+        repo.updateSetup("ds9") { it.copy(cards = CardLayout(content = false)) }
+        assertEquals(DatabaseSetup(cards = CardLayout(content = false)), repo.currentSettings().setups["ds-9"])
         assertEquals(setOf("db", "ds-9"), repo.currentSettings().setups.keys)
 
         repo.togglePinDatabase(PinnedDatabase("ds-9", "Tasks"))
@@ -655,19 +655,51 @@ class NotesRepositoryTest {
     }
 
     @Test
-    fun `a change in a Notion view goes to the Noter view, and Undo puts both back`() = runBlocking {
+    fun `the view shown, the tabs' order and the hidden views are kept per data source`() = runBlocking {
         val settings = newSettings()
         val repo = repository(settings = settings)
-        settings.update { it.copy(setups = emptyMap(), views = mapOf("db" to "v1")) }
+        repo.chooseView("ds-1", "v2")
+        repo.arrangeViews("ds-1", listOf("v2", "v1", "v3"), listOf("v3"))
+        // Written without dashes: the same data source.
+        repo.chooseView("ds1", "v1")
+        val now = settings.current()
+        assertEquals(mapOf("ds-1" to "v1"), now.views)
+        assertEquals(mapOf("ds-1" to listOf("v2", "v1", "v3")), now.viewOrder)
+        assertEquals(mapOf("ds-1" to listOf("v3")), now.hiddenViews)
+    }
 
-        repo.switchToNoter("db", null) { it.copy(baseView = "v1", sort = NoteSort(SortKind.TITLE)) }
-        var now = settings.current()
-        assertEquals(NotionViews.NOTER, now.views["db"])
-        assertEquals("v1", now.setups["db"]?.baseView)
+    @Test
+    fun `asking Notion about views says so, and what went wrong`() = runBlocking {
+        notion.respond = { sent ->
+            when {
+                sent.path == "/data_sources/db" ->
+                    200 to """{"object":"data_source","id":"db","parent":{"type":"database_id","database_id":"dbase"},"title":[],"properties":{}}"""
+                sent.path.startsWith("/views?") -> 400 to """{"object":"error","status":400,"code":"validation_error","message":"Not allowed"}"""
+                else -> 200 to "{}"
+            }
+        }
+        val repo = repository()
+        repo.openViews("db")
+        val status = repo.viewStatus.value["db"]
+        assertFalse(status!!.asking)
+        assertTrue(status.error != null)
+        assertTrue(repo.views.value["db"] == null)
+    }
 
-        repo.undoSwitchToNoter("db", null, "v1")
-        now = settings.current()
-        assertEquals("v1", now.views["db"])
-        assertFalse(now.setups.containsKey("db"))
+    @Test
+    fun `a change reaching Notion is noted, so the view shown is asked again`() = runBlocking {
+        notion.respond = { sent ->
+            when {
+                sent.path.startsWith("/data_sources/db/query") -> 200 to FakeNotion.list()
+                sent.path.startsWith("/data_sources/db") -> 200 to FakeNotion.database("db")
+                sent.method == "POST" && sent.path == "/pages" -> 200 to FakeNotion.page("page-1", "db")
+                else -> 200 to "{}"
+            }
+        }
+        val repo = repository()
+        assertEquals(0L, repo.lastSentMs.value)
+        repo.createNote("db")
+        repo.flush()
+        assertTrue(repo.lastSentMs.value > 0)
     }
 }

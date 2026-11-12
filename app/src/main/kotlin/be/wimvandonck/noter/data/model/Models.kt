@@ -5,49 +5,21 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
 /**
- * How one data source's notes are shown, kept on this phone per data source (Notion isn't
- * changed): the values filtering them, the properties with a row of chips above them, their order
- * and what their cards show. Changed in the database itself; there is nothing to save.
+ * What this phone keeps per data source (Notion isn't changed): what its cards show and its quick
+ * actions. Which notes show, and in which order, is up to its Notion views (see NotionViews).
  */
 @Serializable
 data class DatabaseSetup(
-    /** Properties whose values are filter chips above the notes (quick filters), one row each, in this order. */
-    val quickFilters: List<String> = emptyList(),
     /**
-     * The order of every property the Filters panel lists, the ones with a row of chips and the
-     * hidden ones (empty: the database's order). [quickFilters] are the shown ones among them.
+     * From before Notion's views were used: the properties with a row of filter chips. Only the
+     * first is still read, as the property the cards show when none were chosen for them.
      */
-    val filterOrder: List<String> = emptyList(),
-    /** The selected filter values per property: a note shows when it has one of each property's. */
-    val selected: Map<String, List<String>> = emptyMap(),
-    /** The order of the notes (null: the custom order). */
-    val sort: NoteSort? = null,
+    val quickFilters: List<String> = emptyList(),
     /** What the cards show (null: what the database's cards showed before, see PropertyLayouts.cards). */
     val cards: CardLayout? = null,
     /** Quick actions (#119): named sets of property changes, run on a note from its page. */
     val quickActions: List<QuickAction> = emptyList(),
-    /**
-     * The Notion view whose filter the Noter view starts from (null: none): set when a change in
-     * a Notion view turned it into the Noter view (see NotionViews.copy). Only its notes show.
-     */
-    val baseView: String? = null,
-    /** [baseView]'s name when it was copied, for the chip that removes it. */
-    val baseViewName: String = "",
-) {
-    /**
-     * The order the notes are in now ([SortKind.NOTION] from before reads as the custom order,
-     * [SortKind.DATE] from before as [SortKind.PROPERTY]).
-     */
-    val currentSort: NoteSort
-        get() {
-            val sort = sort ?: return NoteSort(SortKind.CUSTOM)
-            return when (sort.kind) {
-                SortKind.NOTION -> NoteSort(SortKind.CUSTOM)
-                SortKind.DATE -> sort.copy(kind = SortKind.PROPERTY)
-                else -> sort
-            }
-        }
-}
+)
 
 /**
  * A database pinned on Home: [id] is what opens it (a data source, or a database of several data

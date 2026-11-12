@@ -36,7 +36,6 @@
     <string name="empty_no_key">Füge in den Einstellungen ein persönliches Zugriffstoken hinzu, um deine Notizen zu sehen.</string>
     <string name="empty_no_key_action">Zu den Einstellungen</string>
     <string name="empty_database">Tippe auf +, um eine hinzuzufügen.</string>
-    <string name="empty_filtered">Keine Notizen passen zu den Filtern</string>
     <string name="status_offline">Offline. Änderungen werden auf diesem Handy gespeichert und später gesendet.</string>
     <string name="status_not_synced">Noch nicht in Notion</string>
     <string name="sync_failed">„%1$s“ konnte nicht in Notion gespeichert werden: %2$s</string>
@@ -118,8 +117,6 @@
     <string name="card_content">Anfang des Inhalts</string>
     <string name="action_indent">Einrücken (in den Block darüber)</string>
     <string name="action_outdent">Ausrücken (aus dem Block heraus)</string>
-    <string name="chip_checked">%1$s</string>
-    <string name="chip_unchecked">Nicht %1$s</string>
     <string name="cards_properties">Eigenschaften auf der Karte (bis zu %1$d)</string>
     <string name="new_page">Neue Seite</string>
     <string name="new_page_top_level">Oben in deinem Workspace</string>
@@ -129,32 +126,13 @@
     <string name="browse_empty_title">Noch nichts hier</string>
     <string name="empty_no_key_title">Mit Notion verbinden</string>
     <string name="empty_database_title">Noch keine Notizen</string>
-    <string name="empty_clear_filters">Filter löschen</string>
-    <string name="filters">Filter</string>
-    <string name="filters_count">Filter · %1$d</string>
-    <string name="sort_custom">Eigene Reihenfolge</string>
-    <string name="sort_last_edited">Zuletzt bearbeitet</string>
-    <string name="sort_created">Erstellt</string>
-    <string name="sort_title">Titel</string>
-    <string name="sorted_by_hand">Jetzt in deiner eigenen Reihenfolge</string>
     <string name="undo">Rückgängig</string>
     <string name="empty_error_title">Die Notizen konnten nicht geladen werden</string>
-    <string name="chip_overdue">Überfällig</string>
-    <string name="chip_today">Heute</string>
-    <string name="chip_next_7_days">Nächste 7 Tage</string>
-    <string name="chip_later">Später</string>
-    <string name="chip_no_date">Kein Datum</string>
-    <string name="sort_by">Sortierung: %1$s</string>
-    <string name="sort_ascending">Aufsteigend</string>
-    <string name="sort_descending">Absteigend</string>
     <string name="error_offline">Keine Verbindung zu Notion. Prüfe dein Internet und versuch es noch einmal.</string>
     <string name="error_not_found">Notion findet das nicht. Vielleicht wurde es gelöscht oder es ist nicht mit deiner Verbindung geteilt.</string>
     <string name="error_busy">Notion ist ausgelastet. Versuch es gleich noch einmal.</string>
     <string name="error_no_data_source">Diese Datenbank hat keine Datenquelle, die die App öffnen kann.</string>
-    <string name="clear_row">Nicht mehr nach %1$s filtern</string>
-    <string name="chip_rows_shown">Angezeigt</string>
     <string name="new_subpage">Neue Unterseite</string>
-    <string name="filter_no_values">Noch keine Werte</string>
     <string name="search_or_add">Suchen oder hinzufügen</string>
     <string name="add_option">„%1$s“ hinzufügen</string>
     <string name="source_missing_title">Notion findet diese Datenquelle nicht</string>
@@ -294,9 +272,8 @@
         <item quantity="one">%d Tag</item>
         <item quantity="other">%d Tage</item>
     </plurals>
-    <string name="view_noter">Noter</string>
-    <string name="views">Ansichten</string>
-    <string name="switched_to_noter">Jetzt in deiner Noter-Ansicht. Die Ansicht in Notion bleibt, wie sie ist.</string>
-    <string name="base_view">Notizen in %1$s</string>
-    <string name="show_all_notes">Alle Notizen anzeigen</string>
+    <string name="view_settings">Ansichtseinstellungen</string>
+    <string name="views_shown">Ansichten</string>
+    <string name="edit_views_in_notion">Ansichten in Notion bearbeiten</string>
+    <string name="more_in_notion">Weitere Optionen in Notion</string>
 </resources>

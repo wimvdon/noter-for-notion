@@ -244,7 +244,7 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   staggered grid (cells at least 160dp wide: two columns on a phone) with, when chosen per
   database, the header image on top (96dp high, cropped), the title (Title Medium), up to ten lines of content preview (Body Medium, `onSurfaceVariant`) and the
   properties chosen for cards (up to three; options in Notion's colours, other values in Label
-  Medium), or else the filter property's options. "Pinned" and "Others" are Label Large headers spanning
+  Medium), or else the options of a status or select property. "Pinned" and "Others" are Label Large headers spanning
   the grid. A dragged card lifts (shadow, 3% larger, `surfaceContainerHigh`).
 - Navigation: no navigation bar; Home is the one main screen and everything else is a child page.
   Home's top is a large search bar (56dp high, fully rounded, `surfaceContainerHigh`, a search
@@ -265,29 +265,21 @@ app apart from their package (and `R` import) lines. Copy a change to the other 
   say "Workspace · Edited …", and the + sheet has a part per workspace (its name as the title, with
   a chevron that folds the part away,
   "New page at the top" when its token may, then its databases).
-- A database is a child page: back arrow, Notion's icon and name, then sync, Filters, Sort, Cards
-  (Tune icon, as a page's properties button) and ⋮ (Pin or Unpin, Edit database, Open in Notion, Share). Edit database is a full-screen dialog (× and Save in its bar): the icon (a page's emoji sheet) next to the name field, then one field per property, labelled with its kind, with × to remove it (none for the title property), and Add property with the kinds of New database. Removing asks first (Remove and save). Tapping the icon or the name in the app bar opens it too. A database of several data sources has a primary scrollable tab row, one
-  tab per data source. Under it (or under the app bar) a secondary scrollable tab row lists the data source's Notion views, then "Noter" (the view kept in the app), when Notion has views for it. A change in a Notion view goes to the Noter tab with a snackbar and Undo; the Noter view started from a Notion view shows an input chip "Notes in …" with × under the tabs. The whole header (top app bar, tab rows, that chip and rows of chips, `surface`)
+- A database is a child page: back arrow, Notion's icon and name, then sync and ⋮ (Pin or Unpin, Edit database, Quick actions, Open in Notion, Share). Edit database is a full-screen dialog (× and Save in its bar): the icon (a page's emoji sheet) next to the name field, then one field per property, labelled with its kind, with × to remove it (none for the title property), Add property with the kinds of New database, and "More options in Notion" (a text button with the external-link icon). Removing asks first (Remove and save). Tapping the icon or the name in the app bar opens it too. A database of several data sources has a primary scrollable tab row, one
+  tab per data source. Under it (or under the app bar) the Tune icon button (view settings) starts a row with a secondary scrollable tab row of the data source's Notion views. The whole header (top app bar, tab rows, `surface`)
   scrolls away with the notes and comes back on the first scroll up (`QuickReturnHeader`); the
-  status bar area stays.
-- Filters and sort: icon buttons in a database's top app bar. Filters shows a small badge dot
-  while filters are on; Sort opens a menu with a check on the current sort and an arrow (up:
-  ascending, down: descending) that tapping the current sort again turns around. Each quick
-  filter has a row of chips of its own above the notes, starting with the property's name (Label
-  Large, `onSurfaceVariant`) and, while something in it is selected, ending in an × icon button
-  outside the scrolling chips. The Filters panel is the property arranger: "Shown" and "Hidden"
-  sections, a drag handle and an eye on each property, and its values to filter by (filter chips)
-  right below it, so it is one list. A chip's count of notes sits in a small
-  `surfaceContainerHighest` pill after its label.
+  status bar area stays. Notes in a database follow their Notion view's order: a long press opens a card's menu, it doesn't move the card.
 - Search, a child page: a back arrow and the query field in the app bar, a row of filter chips
   (Pages, Databases and, with several workspaces, one per workspace; a tap again shows
   everything), then one list of rows, best matches first, without headers.
 - Bottom sheets all open through `NoterSheet` (`ui/common/`): fully open at once, never under the status
   bar, closed by a swipe down that starts at the top of its list (or on the handle), a tap beside it or Back,
   never by a scroll in its list; with the keyboard open those close the keyboard first.
-- Cards panel (the Cards button in a database's top app bar): a bottom sheet with switches for the header image and
-  the start of the content, and filter chips for up to three properties.
-- Quick actions (a database's ⋮, Bolt icon): a bottom sheet listing them as `ListItem`s (name, its changes as supporting
+- View settings (the Tune button at the start of a database's view tabs): a bottom sheet titled "View settings" with the views
+  arranged like a note's properties ("Views" and "Hidden" sections, a drag handle and an eye on each; the last shown view can't
+  be hidden), a text button "Edit views in Notion" with the external-link icon, a divider, then "Cards": switches for the header
+  image and the start of the content, and filter chips for up to three properties.
+- Quick actions (a database's ⋮, or a note's ⋮ for its database, Bolt icon): a bottom sheet listing them as `ListItem`s (name, its changes as supporting
   text, a delete icon button; a tap edits), with a hint and a filled "New quick action" button. Editing is a sheet with
   a name field and "Changes": per change the property's name with a × to remove it, a segmented button for what it
   does (Add, Remove, Replace, Clear; Set, Increase, Decrease; Set, Move; Set, Toggle), then its value (filter chips

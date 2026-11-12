@@ -36,7 +36,6 @@
     <string name="empty_no_key">Voeg in Instellingen een persoonlijk toegangstoken toe om je notities te zien.</string>
     <string name="empty_no_key_action">Naar instellingen</string>
     <string name="empty_database">Tik op + om er een te maken.</string>
-    <string name="empty_filtered">Geen notities met deze filters</string>
     <string name="status_offline">Offline. Wijzigingen worden op deze telefoon bewaard en later verstuurd.</string>
     <string name="status_not_synced">Nog niet in Notion</string>
     <string name="sync_failed">Kon “%1$s” niet opslaan in Notion: %2$s</string>
@@ -118,8 +117,6 @@
     <string name="card_content">Begin van de inhoud</string>
     <string name="action_indent">Inspringen (in het blok erboven zetten)</string>
     <string name="action_outdent">Uitspringen (uit het blok halen waar het in staat)</string>
-    <string name="chip_checked">%1$s</string>
-    <string name="chip_unchecked">Niet %1$s</string>
     <string name="cards_properties">Eigenschappen op de kaart (maximaal %1$d)</string>
     <string name="new_page">Nieuwe pagina</string>
     <string name="new_page_top_level">Bovenaan in je werkruimte</string>
@@ -129,32 +126,13 @@
     <string name="browse_empty_title">Nog niets te zien</string>
     <string name="empty_no_key_title">Verbind met Notion</string>
     <string name="empty_database_title">Nog geen notities</string>
-    <string name="empty_clear_filters">Filters wissen</string>
-    <string name="filters">Filters</string>
-    <string name="filters_count">Filters · %1$d</string>
-    <string name="sort_custom">Eigen volgorde</string>
-    <string name="sort_last_edited">Laatst bewerkt</string>
-    <string name="sort_created">Aangemaakt</string>
-    <string name="sort_title">Titel</string>
-    <string name="sorted_by_hand">Nu in je eigen volgorde</string>
     <string name="undo">Ongedaan maken</string>
     <string name="empty_error_title">Kon de notities niet laden</string>
-    <string name="chip_overdue">Te laat</string>
-    <string name="chip_today">Vandaag</string>
-    <string name="chip_next_7_days">Komende 7 dagen</string>
-    <string name="chip_later">Later</string>
-    <string name="chip_no_date">Geen datum</string>
-    <string name="sort_by">Sorteren: %1$s</string>
-    <string name="sort_ascending">Oplopend</string>
-    <string name="sort_descending">Aflopend</string>
     <string name="error_offline">Geen verbinding met Notion. Controleer je internet en probeer opnieuw.</string>
     <string name="error_not_found">Notion vindt dit niet. Misschien is het verwijderd, of het is niet gedeeld met je verbinding.</string>
     <string name="error_busy">Notion is druk. Probeer het zo meteen opnieuw.</string>
     <string name="error_no_data_source">Deze database heeft geen gegevensbron die de app kan openen.</string>
-    <string name="clear_row">Niet meer filteren op %1$s</string>
-    <string name="chip_rows_shown">Getoond</string>
     <string name="new_subpage">Nieuwe subpagina</string>
-    <string name="filter_no_values">Nog geen waarden</string>
     <string name="search_or_add">Zoeken of toevoegen</string>
     <string name="add_option">“%1$s” toevoegen</string>
     <string name="source_missing_title">Notion vindt deze gegevensbron niet</string>
@@ -294,9 +272,8 @@
         <item quantity="one">%d dag</item>
         <item quantity="other">%d dagen</item>
     </plurals>
-    <string name="view_noter">Noter</string>
-    <string name="views">Weergaven</string>
-    <string name="switched_to_noter">Nu in je Noter-weergave. De weergave in Notion blijft zoals ze is.</string>
-    <string name="base_view">Notities in %1$s</string>
-    <string name="show_all_notes">Alle notities tonen</string>
+    <string name="view_settings">Weergave-instellingen</string>
+    <string name="views_shown">Weergaven</string>
+    <string name="edit_views_in_notion">Weergaven bewerken in Notion</string>
+    <string name="more_in_notion">Meer opties in Notion</string>
 </resources>
