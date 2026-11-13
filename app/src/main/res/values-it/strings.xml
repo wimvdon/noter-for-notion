@@ -88,7 +88,7 @@
     <string name="nested_content">Ha contenuti annidati: modificali in Notion</string>
     <string name="show_key">Mostra token</string>
     <string name="hide_key">Nascondi token</string>
-    <string name="key_failed">Qualcosa è andato storto: %1$s</string>
+    <string name="key_failed">Impossibile collegarsi a Notion: %1$s</string>
     <string name="key_removed">Token rimosso. Le note copiate su questo telefono sono state eliminate.</string>
     <string name="sync_now">Sincronizza ora</string>
     <string name="section_appearance">Aspetto</string>
