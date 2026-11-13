@@ -88,7 +88,7 @@
     <string name="nested_content">Hat verschachtelten Inhalt: in Notion bearbeiten</string>
     <string name="show_key">Token anzeigen</string>
     <string name="hide_key">Token ausblenden</string>
-    <string name="key_failed">Etwas ist schiefgelaufen: %1$s</string>
+    <string name="key_failed">Verbindung mit Notion fehlgeschlagen: %1$s</string>
     <string name="key_removed">Token entfernt. Die auf dieses Handy kopierten Notizen wurden gelöscht.</string>
     <string name="sync_now">Jetzt synchronisieren</string>
     <string name="section_appearance">Darstellung</string>

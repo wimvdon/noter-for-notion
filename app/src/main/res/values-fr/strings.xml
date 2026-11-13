@@ -88,7 +88,7 @@
     <string name="nested_content">Contient du contenu imbriqué : modifiez-le dans Notion</string>
     <string name="show_key">Afficher le jeton</string>
     <string name="hide_key">Masquer le jeton</string>
-    <string name="key_failed">Un problème est survenu : %1$s</string>
+    <string name="key_failed">Connexion à Notion impossible : %1$s</string>
     <string name="key_removed">Jeton retiré. Les notes copiées sur ce téléphone ont été supprimées.</string>
     <string name="sync_now">Synchroniser</string>
     <string name="section_appearance">Apparence</string>
