@@ -196,7 +196,7 @@ fun ReadOnlyValue(property: NoteProperty) {
         else -> PropertyCodec.displayText(property.value)
     }
     Text(
-        text.ifBlank { "—" },
+        text.ifBlank { stringResource(R.string.property_empty) },
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
