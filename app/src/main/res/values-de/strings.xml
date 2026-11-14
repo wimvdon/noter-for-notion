@@ -236,7 +236,7 @@
     <string name="quick_action_name">Name</string>
     <string name="quick_action_delete">%1$s löschen</string>
     <string name="quick_action_deleted">Schnellaktion gelöscht</string>
-    <string name="quick_actions_hint">Wie eine Notion-Schaltfläche: Ändere die Eigenschaften einer Notiz mit einem Tipp. Jede Schnellaktion ist eine Schaltfläche unter den Eigenschaften jeder Notiz in dieser Datenbank.</string>
+    <string name="quick_actions_hint">Schaltflächen unter jeder Notiz dieser Datenbank, die ihre Eigenschaften mit einem Tipp ändern.</string>
     <string name="quick_action_no_values">Noch nichts zur Auswahl.</string>
     <string name="quick_action_no_properties">Diese Datenbank hat keine Eigenschaften, die eine Schnellaktion ändern kann.</string>
     <string name="quick_action_changes">Änderungen</string>

@@ -236,7 +236,7 @@
     <string name="quick_action_name">Naam</string>
     <string name="quick_action_delete">%1$s verwijderen</string>
     <string name="quick_action_deleted">Snelle actie verwijderd</string>
-    <string name="quick_actions_hint">Zoals een knop in Notion: wijzig de eigenschappen van een notitie met één tik. Elke snelle actie is een knop onder de eigenschappen van elke notitie in deze database.</string>
+    <string name="quick_actions_hint">Knoppen onder elke notitie in deze database die haar eigenschappen met één tik wijzigen.</string>
     <string name="quick_action_no_values">Nog niets om uit te kiezen.</string>
     <string name="quick_action_no_properties">Deze database heeft geen eigenschappen die een snelle actie kan wijzigen.</string>
     <string name="quick_action_changes">Wijzigingen</string>
