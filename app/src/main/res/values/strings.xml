@@ -236,7 +236,7 @@
     <string name="quick_action_name">Name</string>
     <string name="quick_action_delete">Delete %1$s</string>
     <string name="quick_action_deleted">Quick action deleted</string>
-    <string name="quick_actions_hint">Like a Notion button: change a note\'s properties in one tap. Each quick action is a button under the properties of every note in this database.</string>
+    <string name="quick_actions_hint">Buttons under every note in this database that change its properties in one tap.</string>
     <string name="quick_action_no_values">Nothing to choose from yet.</string>
     <string name="quick_action_no_properties">This database has no properties a quick action can change.</string>
     <string name="quick_action_changes">Changes</string>

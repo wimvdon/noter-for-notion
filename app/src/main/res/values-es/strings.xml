@@ -239,7 +239,7 @@
     <string name="quick_action_name">Nombre</string>
     <string name="quick_action_delete">Eliminar %1$s</string>
     <string name="quick_action_deleted">Acción rápida eliminada</string>
-    <string name="quick_actions_hint">Como un botón de Notion: cambia las propiedades de una nota con un toque. Cada acción rápida es un botón bajo las propiedades de cada nota de esta base de datos.</string>
+    <string name="quick_actions_hint">Botones bajo cada nota de esta base de datos que cambian sus propiedades con un toque.</string>
     <string name="quick_action_no_values">Aún no hay nada para elegir.</string>
     <string name="quick_action_no_properties">Esta base de datos no tiene propiedades que una acción rápida pueda cambiar.</string>
     <string name="quick_action_changes">Cambios</string>
